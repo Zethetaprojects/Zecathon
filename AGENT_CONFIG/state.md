@@ -5,10 +5,11 @@
 - **AGENT_CONFIG**: created; context, plan, state, and todo maintained.
 - **Phase**: Space music toggle + auth-aware landing page / navbar complete and validated.
 - **Space music**:
-  - Procedural Web Audio space/chiptune loop (low drone + arpeggio) in `MusicProvider.tsx`.
-  - Global toggle button in the navbar (speaker icon).
-  - Autoplay-safe: starts only after the user clicks the button.
-  - **Volume increased**: master gain 0.5, multi-layered bass drones (A1/A2/E2), arpeggio peak 0.18 with longer decay.
+  - New cinematic ambient engine in `MusicProvider.tsx`.
+  - Slow chord progression (Am7 → Fmaj7 → Cmaj7 → G6) at 66 BPM, ~55 seconds long before repeating.
+  - Layered pad voices, sub-bass, sparse generative melody, and a gentle harp glissando.
+  - Simple delay line for space/cinematic depth.
+  - Global toggle button in the navbar; starts only after user clicks.
 - **Auth-aware UI**:
   - Navbar center nav (Features dropdown, Hackathons, Leaderboards, Dashboard) is hidden until login.
   - Landing page CTAs adapt: guests see Join/Log in; logged-in users see Enter Arena + Host (organizers only).

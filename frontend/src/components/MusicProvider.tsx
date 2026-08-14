@@ -7,101 +7,201 @@ interface MusicContextType {
 
 const MusicContext = createContext<MusicContextType | undefined>(undefined);
 
-export function MusicProvider({ children }: { children: ReactNode }) {
-  const [playing, setPlaying] = useState(false);
-  const audioCtxRef = useRef<AudioContext | null>(null);
-  const intervalRef = useRef<number | null>(null);
-  const dronesRef = useRef<OscillatorNode[]>([]);
-  const masterGainRef = useRef<GainNode | null>(null);
+// ---------------------------------------------------------------------------
+// Cinematic ambient music engine
+// ---------------------------------------------------------------------------
+// Inspired by a slow Hans Zimmer-style pad progression: Am7 → Fmaj7 → Cmaj7 → G6
+// at a relaxed tempo, with layered drones, long chord pads, and a sparse melody.
 
-  const cleanup = useCallback(() => {
-    if (intervalRef.current) {
-      window.clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-    if (dronesRef.current.length) {
-      dronesRef.current.forEach((d) => {
-        try { d.stop(); } catch { /* already stopped */ }
-        d.disconnect();
-      });
-      dronesRef.current = [];
-    }
-    if (masterGainRef.current) {
-      masterGainRef.current.disconnect();
-      masterGainRef.current = null;
-    }
-    if (audioCtxRef.current && audioCtxRef.current.state !== 'closed') {
-      audioCtxRef.current.close().catch(() => {});
-    }
-    audioCtxRef.current = null;
-  }, []);
+interface ChordVoicing {
+  name: string;
+  notes: number[]; // Hz
+  bass: number; // Hz
+}
 
-  const start = useCallback(() => {
-    cleanup();
+const CHORDS: ChordVoicing[] = [
+  { name: 'Am7', notes: [220.0, 261.63, 329.63, 392.0], bass: 55.0 },
+  { name: 'Fmaj7', notes: [174.61, 220.0, 261.63, 329.63], bass: 43.65 },
+  { name: 'Cmaj7', notes: [261.63, 329.63, 392.0, 493.88], bass: 65.41 },
+  { name: 'G6', notes: [196.0, 246.94, 293.66, 392.0], bass: 49.0 },
+];
+
+const TEMPO = 66; // BPM
+const BEATS_PER_BAR = 4;
+const BARS_PER_CHORD = 4;
+const CHORD_DURATION_BEATS = BEATS_PER_BAR * BARS_PER_CHORD; // 16 beats
+
+class MusicEngine {
+  private ctx: AudioContext;
+  private master: GainNode;
+  private delay: DelayNode;
+  private delayGain: GainNode;
+
+  private nextNoteTime = 0;
+  private beat = 0;
+  private chordIndex = 0;
+  private interval: number | null = null;
+  private beatDuration = 60 / TEMPO;
+  private chordDuration = CHORD_DURATION_BEATS * this.beatDuration;
+
+  constructor() {
     const AC =
       (window as any).AudioContext || (window as any).webkitAudioContext as typeof AudioContext | undefined;
-    if (!AC) return;
+    if (!AC) throw new Error('Web Audio not supported');
 
-    const ctx = new AC();
-    audioCtxRef.current = ctx;
+    this.ctx = new AC();
 
-    const master = ctx.createGain();
-    master.gain.value = 0.5;
-    master.connect(ctx.destination);
-    masterGainRef.current = master;
+    // Master
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0.55;
+    this.master.connect(this.ctx.destination);
 
-    // Low space drones (A1 + A2 + E2 fifth) for a fuller bass bed
-    [
-      { freq: 55, gain: 0.15 },
-      { freq: 110, gain: 0.12 },
-      { freq: 82.41, gain: 0.08 },
-    ].forEach(({ freq, gain }) => {
-      const drone = ctx.createOscillator();
-      drone.type = 'sine';
-      drone.frequency.value = freq;
-      const droneGain = ctx.createGain();
-      droneGain.gain.value = gain;
-      drone.connect(droneGain);
-      droneGain.connect(master);
-      drone.start();
-      dronesRef.current.push(drone);
+    // Simple delay for cinematic space
+    this.delay = this.ctx.createDelay();
+    this.delay.delayTime.value = 0.55;
+    this.delayGain = this.ctx.createGain();
+    this.delayGain.gain.value = 0.3;
+    this.delay.connect(this.delayGain);
+    this.delayGain.connect(this.master);
+
+    this.ctx.resume().catch(() => {});
+  }
+
+  private scheduleEnvelope(
+    gain: GainNode,
+    time: number,
+    peak: number,
+    attack: number,
+    sustain: number,
+    release: number
+  ) {
+    gain.gain.setValueAtTime(0, time);
+    gain.gain.linearRampToValueAtTime(peak, time + attack);
+    gain.gain.setValueAtTime(peak, time + sustain);
+    gain.gain.exponentialRampToValueAtTime(0.0001, time + sustain + release);
+  }
+
+  private scheduleVoice(
+    freq: number,
+    time: number,
+    duration: number,
+    type: OscillatorType,
+    peak: number,
+    attack: number,
+    release: number,
+    sendToDelay: boolean
+  ) {
+    const osc = this.ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.value = freq;
+
+    const gain = this.ctx.createGain();
+    this.scheduleEnvelope(gain, time, peak, attack, duration, release);
+
+    osc.connect(gain);
+    gain.connect(this.master);
+    if (sendToDelay) gain.connect(this.delay);
+
+    osc.start(time);
+    osc.stop(time + duration + release + 0.1);
+  }
+
+  private scheduleChordPad(time: number, chord: ChordVoicing) {
+    // Layered pad voices with slight detune and staggered attacks for richness
+    chord.notes.forEach((freq, i) => {
+      this.scheduleVoice(freq, time + i * 0.08, this.chordDuration, 'triangle', 0.04, 1.2, 3.0, false);
+      this.scheduleVoice(freq * 0.5, time + i * 0.12, this.chordDuration, 'sine', 0.05, 1.0, 3.0, false);
     });
+  }
 
-    // Procedural chiptune arpeggio
-    const notes = [220, 261.63, 329.63, 392, 440, 329.63, 293.66, 220]; // A minor / pentatonic feel
-    let index = 0;
+  private scheduleBass(time: number, chord: ChordVoicing) {
+    this.scheduleVoice(chord.bass, time, this.chordDuration, 'sine', 0.14, 0.6, 2.0, false);
+    this.scheduleVoice(chord.bass * 0.5, time, this.chordDuration, 'triangle', 0.06, 0.8, 2.0, false);
+  }
 
-    const schedule = () => {
-      if (ctx.state !== 'running' || !audioCtxRef.current) return;
-      const freq = notes[index % notes.length];
-      index++;
-      const t = ctx.currentTime;
-      const osc = ctx.createOscillator();
-      osc.type = 'square';
-      osc.frequency.value = freq;
-      const gain = ctx.createGain();
-      gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.18, t + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
-      osc.connect(gain);
-      gain.connect(master);
-      osc.start(t);
-      osc.stop(t + 0.3);
-    };
+  private scheduleMelody(time: number, chord: ChordVoicing) {
+    // Sparse, slow melody: pick a chord tone, sometimes an octave up
+    const idx = Math.floor(Math.random() * chord.notes.length);
+    const base = chord.notes[idx];
+    const freq = Math.random() > 0.5 ? base * 2 : base;
+    const duration = (2 + Math.random() * 2) * this.beatDuration;
+    this.scheduleVoice(freq, time, duration, 'sine', 0.07, 0.15, 1.2, true);
+  }
 
-    ctx.resume().catch(() => {});
-    intervalRef.current = window.setInterval(schedule, 260);
-  }, [cleanup]);
+  private scheduleHarpGlissando(time: number, chord: ChordVoicing) {
+    // A gentle rising triplet every chord section for texture
+    const triplet = [chord.notes[0], chord.notes[1], chord.notes[2]];
+    triplet.forEach((freq, i) => {
+      this.scheduleVoice(freq * 2, time + i * 0.18, 0.6, 'triangle', 0.05, 0.02, 0.5, true);
+    });
+  }
+
+  private tick() {
+    const lookahead = 0.5;
+    while (this.nextNoteTime < this.ctx.currentTime + lookahead) {
+      const chord = CHORDS[this.chordIndex];
+      const isChordStart = this.beat % CHORD_DURATION_BEATS === 0;
+
+      if (isChordStart) {
+        this.scheduleChordPad(this.nextNoteTime, chord);
+        this.scheduleBass(this.nextNoteTime, chord);
+      }
+
+      // Melody: on beats 2 and 6 of each bar, with a rest for space
+      const barBeat = this.beat % BEATS_PER_BAR;
+      if ((barBeat === 2 || barBeat === 6) && Math.random() > 0.25) {
+        this.scheduleMelody(this.nextNoteTime, chord);
+      }
+
+      // Harp glissando at the mid-point of each chord
+      if (this.beat % CHORD_DURATION_BEATS === Math.floor(CHORD_DURATION_BEATS / 2)) {
+        this.scheduleHarpGlissando(this.nextNoteTime, chord);
+      }
+
+      this.nextNoteTime += this.beatDuration;
+      this.beat++;
+      if (this.beat % CHORD_DURATION_BEATS === 0) {
+        this.chordIndex = (this.chordIndex + 1) % CHORDS.length;
+      }
+    }
+  }
+
+  start() {
+    this.nextNoteTime = this.ctx.currentTime + 0.05;
+    this.interval = window.setInterval(() => this.tick(), 100);
+  }
+
+  stop() {
+    if (this.interval) {
+      window.clearInterval(this.interval);
+      this.interval = null;
+    }
+    if (this.ctx.state !== 'closed') {
+      this.ctx.close().catch(() => {});
+    }
+  }
+}
+
+export function MusicProvider({ children }: { children: ReactNode }) {
+  const [playing, setPlaying] = useState(false);
+  const engineRef = useRef<MusicEngine | null>(null);
 
   const toggle = useCallback(() => {
     if (playing) {
-      cleanup();
+      engineRef.current?.stop();
+      engineRef.current = null;
       setPlaying(false);
     } else {
-      start();
-      setPlaying(true);
+      try {
+        const engine = new MusicEngine();
+        engineRef.current = engine;
+        engine.start();
+        setPlaying(true);
+      } catch {
+        setPlaying(false);
+      }
     }
-  }, [playing, cleanup, start]);
+  }, [playing]);
 
   return (
     <MusicContext.Provider value={{ playing, toggle }}>
