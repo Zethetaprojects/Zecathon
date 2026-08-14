@@ -15,7 +15,11 @@ export default function Navbar() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-3 group">
-            <div className="w-8 h-8 bg-gradient-to-br from-neon-pink to-neon-purple rounded shadow-neon-pink group-hover:scale-110 transition" />
+            <img
+              src="/zecathon-logo.svg"
+              alt="ZECATHON logo"
+              className="w-9 h-9 object-contain group-hover:scale-110 transition"
+            />
             <span className="font-pixel text-sm sm:text-base tracking-widest text-white group-hover:text-neon-cyan transition">
               ZECATHON
             </span>

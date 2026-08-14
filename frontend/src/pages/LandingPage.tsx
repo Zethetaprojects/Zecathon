@@ -2,22 +2,6 @@ import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import PageLayout from '../components/PageLayout';
 
-function PixelHero() {
-  return (
-    <div className="relative mx-auto">
-      <div className="pixel-hero animate-float" />
-      {/* pixel hood shading */}
-      <div
-        className="absolute inset-0 opacity-30"
-        style={{
-          background:
-            'repeating-linear-gradient(0deg, transparent 0 8px, rgba(0,0,0,0.25) 8px 16px)',
-        }}
-      />
-    </div>
-  );
-}
-
 function FeatureCard({ title, desc, color }: { title: string; desc: string; color: 'pink' | 'cyan' | 'purple' }) {
   const border = {
     pink: 'border-neon-pink/40 hover:border-neon-pink',
@@ -47,7 +31,11 @@ export default function LandingPage() {
     <PageLayout>
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-24 text-center">
         <div className="mb-8 flex justify-center">
-          <PixelHero />
+          <img
+            src="/zecathon-logo.svg"
+            alt="ZECATHON logo"
+            className="w-36 h-36 sm:w-48 sm:h-48 animate-float drop-shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+          />
         </div>
 
         <h1 className="font-pixel text-3xl sm:text-5xl md:text-6xl text-white mb-4 text-shadow-neon leading-tight">
