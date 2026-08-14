@@ -1,29 +1,25 @@
 # Current State
 
 - **Date**: 2026-08-14
-- **Repo**: full-stack hackathon evaluation platform with RBAC and Gemini integration
+- **Repo**: full-stack hackathon evaluation platform with RBAC, Gemini integration, and ZECATHON landing page
 - **AGENT_CONFIG**: created; context, plan, state, and todo maintained.
-- **Phase**: RBAC + Gemini integration complete and committed.
-- **RBAC implemented**:
-  - User roles: `admin`, `organizer`, `judge`, `participant`.
-  - Lightweight migration adds `role` column to existing SQLite `users` table.
-  - Route protections:
-    - Create hackathon / upload problem statement → organizer or admin.
-    - Evaluate submissions → judge, organizer, or admin.
-    - Teams/submissions → authenticated users.
-  - Admin endpoint: `PUT /api/auth/users/{id}/role`.
-  - CLI helper: `python -m backend.scripts.set_role <username> <role>`.
-- **Gemini 2.5 Flash integration**:
-  - `LLMClient` calls Google Gemini REST API when `GEMINI_API_KEY` is set.
-  - Falls back to generic `AI_BACKEND_URL`, then deterministic mock.
-  - Model configurable via `GEMINI_MODEL` (default `gemini-2.5-flash`).
-- **Frontend role-aware UI**:
-  - Dashboard shows role badge.
-  - Create hackathon / upload problem statement / evaluate buttons hidden for participants.
+- **Phase**: Landing page / footer redesign complete and validated.
+- **Landing page**:
+  - Hero with ZECATHON branding, stats row, and dual CTA buttons.
+  - Features grid (AI scoring, tech repos, non-tech documents, leaderboards, RBAC, discrete scoring).
+  - How-it-works steps (Create → Assemble → Submit → Evaluate).
+  - CTA banner and new `Footer` component.
+  - Dark space/pixel theme preserved; logo from `frontend/public/ZeTheta Logo.png`.
+- **Navbar**:
+  - Dark glass pill bar with logo + "ZECATHON by Zetheta" on the left.
+  - Centered navigation with a "Features" dropdown.
+  - Auth buttons on the right; role-aware links.
 - **Validation**:
-  - `pytest backend/tests` ✅
-  - `validate_flow.py` ✅
   - `npm run build` ✅
-- **Next action**: restart dev servers and hand over; user must add `GEMINI_API_KEY` to backend `.env` for real evaluations.
+  - `pytest backend/tests` ✅
+  - `validate_flow.py` ✅ (after stopping conflicting dev servers)
+- **Dev servers**: restarted on `http://127.0.0.1:8000` (backend) and `http://localhost:5173` (frontend).
+- **Default test account**: `flowuser` / `secret123` (organizer role; exists in `backend/hackathon.db`).
+- **Next action**: user review in browser; hard-refresh `localhost:5173` to see new landing page and footer.
 - **Blockers**: none.
-- **Leftovers**: promote existing users to appropriate roles via script/admin endpoint; configure real Gemini key; S3 storage migration.
+- **Leftovers**: add real `GEMINI_API_KEY` to `backend/.env` for live LLM evaluations; promote users via set_role script/admin endpoint; S3 storage migration; mobile hamburger menu refinement.

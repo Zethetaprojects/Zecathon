@@ -55,13 +55,14 @@
 - [x] Commit
 
 ## UI/UX theme pass (current)
-- [x] ZECATHON landing page at `/`
-- [x] Space/pixel theme across all screens
-- [x] Shared `SpaceBackground`, `Navbar`, `PageLayout`, `ErrorBoundary`
-- [x] Fix blank-page causes (ErrorBoundary, explicit token storage, themed loading states)
+- [x] ZECATHON landing page at `/` with hero, stats, features, how-it-works, CTA, footer
+- [x] Dark space/pixel theme across all screens
+- [x] Shared `SpaceBackground`, `Navbar`, `PageLayout`, `ErrorBoundary`, `Footer`
+- [x] Modern SaaS-style glass pill navbar with centered Features dropdown
 - [x] Build passes (`npm run build`)
 - [x] Full-flow validation passes (`validate_flow.py`)
 - [x] Update `AGENT_CONFIG` state and todo
+- [x] Commit
 
 ## Phase 10 — RBAC + Gemini 2.5 Flash
 - [x] Add UserRole enum and role column
@@ -75,11 +76,9 @@
 - [x] Commit
 
 ## Leftovers / next steps
-- [ ] User adds GEMINI_API_KEY to backend/.env
+- [ ] User adds GEMINI_API_KEY to backend/.env for real evaluations
 - [ ] Promote existing users to organizer/judge via set_role script or admin endpoint
 - [ ] Optional S3 storage migration
-- [ ] User review of new theme in browser
+- [ ] User review of new theme in browser (hard-refresh localhost:5173)
 - [ ] Optional real LLM endpoint configuration
-- [ ] Optional S3 storage migration
 - [ ] Optional mobile hamburger menu refinement
-- [ ] Commit the UI/UX pass once user approves

@@ -1,9 +1,60 @@
+import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+
+function ChevronDown({ open }: { open: boolean }) {
+  return (
+    <svg
+      className={`w-4 h-4 ml-1 transition-transform ${open ? 'rotate-180' : ''}`}
+      fill="none"
+      viewBox="0 0 24 24"
+      stroke="currentColor"
+    >
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+    </svg>
+  );
+}
+
+function FeatureItem({
+  to,
+  title,
+  desc,
+  icon,
+}: {
+  to: string;
+  title: string;
+  desc: string;
+  icon: React.ReactNode;
+}) {
+  return (
+    <Link
+      to={to}
+      className="flex items-start gap-3 p-3 rounded-lg hover:bg-white/10 transition"
+    >
+      <div className="flex-shrink-0 w-8 h-8 rounded bg-neon-cyan/10 text-neon-cyan flex items-center justify-center">
+        {icon}
+      </div>
+      <div>
+        <p className="text-sm font-semibold text-white">{title}</p>
+        <p className="text-xs text-slate-400 mt-0.5">{desc}</p>
+      </div>
+    </Link>
+  );
+}
 
 export default function Navbar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    function handleClick(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    }
+    document.addEventListener('mousedown', handleClick);
+    return () => document.removeEventListener('mousedown', handleClick);
+  }, []);
 
   const handleLogout = () => {
     logout();
@@ -11,60 +62,125 @@ export default function Navbar() {
   };
 
   return (
-    <nav className="sticky top-0 z-50 glass-panel border-b border-white/10 rounded-none">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-16">
+    <nav className="sticky top-4 z-50 mx-4 sm:mx-8">
+      <div className="max-w-7xl mx-auto glass-panel rounded-2xl px-4 sm:px-6 py-3 border border-white/10">
+        <div className="flex items-center justify-between gap-6">
+          {/* Logo */}
           <Link to="/" className="flex items-center gap-3 group">
             <img
               src="/ZeTheta%20Logo.png"
-              alt="ZECATHON logo"
+              alt="Zetheta logo"
               className="w-9 h-9 object-contain group-hover:scale-110 transition"
             />
-            <span className="font-pixel text-sm sm:text-base tracking-widest text-white group-hover:text-neon-cyan transition">
-              ZECATHON
-            </span>
+            <div className="flex flex-col leading-none">
+              <span className="font-pixel text-xs sm:text-sm tracking-widest text-white group-hover:text-neon-cyan transition">
+                ZECATHON
+              </span>
+              <span className="text-[10px] text-slate-400 tracking-wide hidden sm:inline">
+                by Zetheta
+              </span>
+            </div>
           </Link>
 
-          <div className="hidden md:flex items-center gap-8">
-            <Link to="/" className="text-sm pixel-caps text-slate-300 hover:text-neon-cyan transition">
-              Home
-            </Link>
-            <Link to="/hackathons" className="text-sm pixel-caps text-slate-300 hover:text-neon-cyan transition">
+          {/* Center nav */}
+          <div className="hidden md:flex items-center gap-1">
+            <div className="relative" ref={ref}>
+              <button
+                onClick={() => setOpen(!open)}
+                className={`flex items-center px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition ${open ? 'bg-white/10 text-white' : ''}`}
+              >
+                Features
+                <ChevronDown open={open} />
+              </button>
+
+              {open && (
+                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-3 w-80 p-3 rounded-xl glass-panel border border-white/10 shadow-2xl">
+                  <FeatureItem
+                    to="/hackathons"
+                    title="Tech Evaluation"
+                    desc="Score GitHub repositories against hackathon rubrics."
+                    icon={
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M10 20l4-16m4 4l4 4-4 4M6 16l-4-4 4-4" />
+                      </svg>
+                    }
+                  />
+                  <FeatureItem
+                    to="/hackathons"
+                    title="Non-Tech Evaluation"
+                    desc="Evaluate PDFs, PPTs, and documents with AI."
+                    icon={
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                      </svg>
+                    }
+                  />
+                  <FeatureItem
+                    to="/hackathons"
+                    title="Live Leaderboards"
+                    desc="Discrete, ranked scores after every evaluation."
+                    icon={
+                      <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+                      </svg>
+                    }
+                  />
+                </div>
+              )}
+            </div>
+
+            <Link
+              to="/hackathons"
+              className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition"
+            >
               Hackathons
             </Link>
+            <Link
+              to="/hackathons"
+              className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition"
+            >
+              Leaderboards
+            </Link>
+            <Link
+              to="/dashboard"
+              className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition"
+            >
+              Dashboard
+            </Link>
+          </div>
+
+          {/* Right auth */}
+          <div className="flex items-center gap-3">
             {user ? (
               <>
-                <Link to="/dashboard" className="text-sm pixel-caps text-slate-300 hover:text-neon-cyan transition">
-                  Dashboard
+                <Link
+                  to="/dashboard"
+                  className="hidden sm:block text-sm text-slate-300 hover:text-white transition"
+                >
+                  {user.username}
                 </Link>
                 <button
                   onClick={handleLogout}
-                  className="text-sm pixel-caps text-neon-pink hover:text-white transition"
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-white/10 hover:bg-white/20 border border-white/10 transition"
                 >
                   Log out
                 </button>
               </>
             ) : (
               <>
-                <Link to="/login" className="text-sm pixel-caps text-slate-300 hover:text-neon-cyan transition">
-                  Login
+                <Link
+                  to="/login"
+                  className="hidden sm:block px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white transition"
+                >
+                  Log in
                 </Link>
                 <Link
                   to="/register"
-                  className="px-4 py-2 rounded neon-btn neon-btn-primary text-xs"
+                  className="px-4 py-2 rounded-lg text-sm font-medium text-white bg-gradient-to-r from-neon-pink to-neon-purple hover:opacity-90 transition shadow-neon-pink"
                 >
                   Register
                 </Link>
               </>
-            )}
-          </div>
-
-          {/* Mobile nav placeholder - kept simple for stability */}
-          <div className="md:hidden text-xs text-slate-400">
-            {user ? (
-              <button onClick={handleLogout} className="text-neon-pink">Log out</button>
-            ) : (
-              <Link to="/login" className="text-neon-cyan">Login</Link>
             )}
           </div>
         </div>
