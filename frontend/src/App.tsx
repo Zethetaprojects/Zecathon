@@ -1,11 +1,22 @@
+import { Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './hooks/useAuth';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import Dashboard from './pages/Dashboard';
+import PrivateRoute from './components/PrivateRoute';
+
 function App() {
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50 text-gray-800">
-      <div className="text-center">
-        <h1 className="text-3xl font-bold mb-2">Hackathon Evaluation Platform</h1>
-        <p className="text-gray-600">Scaffolding complete. Phase 1 starts next.</p>
-      </div>
-    </div>
+    <AuthProvider>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route path="/register" element={<Register />} />
+        <Route element={<PrivateRoute />}>
+          <Route path="/dashboard" element={<Dashboard />} />
+        </Route>
+        <Route path="*" element={<Navigate to="/dashboard" replace />} />
+      </Routes>
+    </AuthProvider>
   );
 }
 
