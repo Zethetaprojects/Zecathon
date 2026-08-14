@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { useAuth } from '../hooks/useAuth';
+import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 
 export default function Login() {
@@ -23,7 +24,7 @@ export default function Login() {
       login(tokenData.access_token, user);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Login failed');
+      setError(formatError(err, 'Login failed'));
     } finally {
       setBusy(false);
     }

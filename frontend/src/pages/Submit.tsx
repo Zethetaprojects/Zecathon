@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { submissionsApi } from '../api/teams';
 import { Hackathon, Team, ProblemStatement } from '../types';
+import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 
 export default function Submit() {
@@ -33,7 +34,7 @@ export default function Submit() {
         const p = res.data.problem_statements?.find((x) => x.id === Number(problemStatementId));
         setPs(p || null);
       })
-      .catch((err) => setError(err.response?.data?.detail || 'Failed to load hackathon'))
+      .catch((err) => setError(formatError(err, 'Failed to load hackathon')))
       .finally(() => setLoading(false));
   }, [hackathonId, teamId, problemStatementId]);
 
@@ -56,7 +57,7 @@ export default function Submit() {
       await submissionsApi.create(form);
       navigate(`/hackathons/${hackathonId}/teams`);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Submission failed');
+      setError(formatError(err, 'Submission failed'));
     } finally {
       setBusy(false);
     }

@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { teamsApi, submissionsApi } from '../api/teams';
 import { Hackathon, Team, ProblemStatement, Submission } from '../types';
+import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 
 export default function HackathonTeams() {
@@ -22,14 +23,14 @@ export default function HackathonTeams() {
     hackathonsApi
       .get(hackathonId)
       .then((res) => setHackathon(res.data))
-      .catch((err) => setError(err.response?.data?.detail || 'Failed to load hackathon'));
+      .catch((err) => setError(formatError(err, 'Failed to load hackathon')));
   };
 
   const fetchTeams = () => {
     teamsApi
       .list(hackathonId)
       .then((res) => setTeams(res.data))
-      .catch((err) => setError(err.response?.data?.detail || 'Failed to load teams'))
+      .catch((err) => setError(formatError(err, 'Failed to load teams')))
       .finally(() => setLoading(false));
   };
 
@@ -43,7 +44,7 @@ export default function HackathonTeams() {
         });
         setSubmissionsByTeam(map);
       })
-      .catch((err) => setError(err.response?.data?.detail || 'Failed to load submissions'));
+      .catch((err) => setError(formatError(err, 'Failed to load submissions')));
   };
 
   useEffect(() => {
@@ -65,7 +66,7 @@ export default function HackathonTeams() {
       setTeamName('');
       fetchTeams();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create team');
+      setError(formatError(err, 'Failed to create team'));
     } finally {
       setBusy(false);
     }
@@ -77,7 +78,7 @@ export default function HackathonTeams() {
       await teamsApi.join(teamId);
       fetchTeams();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to join team');
+      setError(formatError(err, 'Failed to join team'));
     }
   };
 
@@ -96,7 +97,7 @@ export default function HackathonTeams() {
       }
       fetchSubmissions(teams);
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Evaluation failed');
+      setError(formatError(err, 'Evaluation failed'));
     } finally {
       setEvaluating((prev) => ({ ...prev, [submission.id]: false }));
     }

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
+import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 
 export default function CreateHackathon() {
@@ -29,7 +30,7 @@ export default function CreateHackathon() {
       await hackathonsApi.create(payload);
       navigate('/hackathons');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to create hackathon');
+      setError(formatError(err, 'Failed to create hackathon'));
     } finally {
       setBusy(false);
     }

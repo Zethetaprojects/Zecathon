@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { hackathonsApi, problemStatementsApi } from '../api/hackathons';
 import { Hackathon, ProblemStatement } from '../types';
+import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 
 export default function HackathonDetail() {
@@ -19,7 +20,7 @@ export default function HackathonDetail() {
     hackathonsApi
       .get(Number(id))
       .then((res) => setHackathon(res.data))
-      .catch((err) => setError(err.response?.data?.detail || 'Failed to load hackathon'))
+      .catch((err) => setError(formatError(err, 'Failed to load hackathon')))
       .finally(() => setLoading(false));
   };
 
@@ -44,7 +45,7 @@ export default function HackathonDetail() {
       if (fileRef.current) fileRef.current.value = '';
       fetchHackathon();
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Failed to upload problem statement');
+      setError(formatError(err, 'Failed to upload problem statement'));
     } finally {
       setPsBusy(false);
     }

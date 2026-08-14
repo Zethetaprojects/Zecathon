@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { leaderboardApi } from '../api/leaderboard';
 import { LeaderboardEntry } from '../types';
+import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 
 const verdictColor: Record<string, string> = {
@@ -23,7 +24,7 @@ export default function Leaderboard() {
     leaderboardApi
       .get(hackathonId)
       .then((res) => setEntries(res.data))
-      .catch((err) => setError(err.response?.data?.detail || 'Failed to load leaderboard'))
+      .catch((err) => setError(formatError(err, 'Failed to load leaderboard')))
       .finally(() => setLoading(false));
   }, [hackathonId]);
 

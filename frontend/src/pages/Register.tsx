@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { useAuth } from '../hooks/useAuth';
+import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 
 export default function Register() {
@@ -27,7 +28,7 @@ export default function Register() {
       login(tokenData.access_token, user);
       navigate('/dashboard');
     } catch (err: any) {
-      setError(err.response?.data?.detail || 'Registration failed');
+      setError(formatError(err, 'Registration failed'));
     } finally {
       setBusy(false);
     }

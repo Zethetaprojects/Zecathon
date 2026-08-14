@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { Hackathon } from '../types';
+import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 
 export default function Hackathons() {
@@ -13,7 +14,7 @@ export default function Hackathons() {
     hackathonsApi
       .list()
       .then((res) => setHackathons(res.data))
-      .catch((err) => setError(err.response?.data?.detail || 'Failed to load hackathons'))
+      .catch((err) => setError(formatError(err, 'Failed to load hackathons')))
       .finally(() => setLoading(false));
   }, []);
 
