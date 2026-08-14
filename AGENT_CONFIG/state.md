@@ -4,7 +4,7 @@
 - **Repo**: full-stack hackathon evaluation platform MVP complete
 - **AGENT_CONFIG**: created; context, plan, state, and todo maintained.
 - **Phase**: 8 complete (integration, E2E smoke test, polish, final commit)
-- **Latest runtime fix**: API validation errors (Pydantic `detail` arrays with `{type, loc, msg, input}` objects) were being rendered as React children and crashing the UI. Added `frontend/src/utils/formatError.ts` and updated every `setError` call to convert error responses to strings before rendering.
+- **Latest runtime fix**: login sent JSON to the backend's OAuth2 form endpoint, causing "Field required" validation errors. Updated `frontend/src/api/auth.ts` to send `application/x-www-form-urlencoded` credentials. Frontend dev server restarted with the fix.
 - **Servers restarted**: both backend and frontend dev servers are running; frontend is on `http://localhost:5173/`.
   - Added public landing page at `/` with hero, CTA, feature cards, and Zetheta Algorithms branding.
   - Re-themed Login, Register, Dashboard, Hackathons, CreateHackathon, HackathonDetail, HackathonTeams, Submit, and Leaderboard.
