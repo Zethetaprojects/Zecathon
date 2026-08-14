@@ -16,7 +16,7 @@ export default function Navbar() {
         <div className="flex items-center justify-between h-16">
           <Link to="/" className="flex items-center gap-3 group">
             <img
-              src="/zecathon-logo.svg"
+              src="/ZeTheta%20Logo.png"
               alt="ZECATHON logo"
               className="w-9 h-9 object-contain group-hover:scale-110 transition"
             />

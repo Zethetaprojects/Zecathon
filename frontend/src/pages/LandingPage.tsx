@@ -32,7 +32,7 @@ export default function LandingPage() {
       <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-24 text-center">
         <div className="mb-8 flex justify-center">
           <img
-            src="/zecathon-logo.svg"
+            src="/ZeTheta%20Logo.png"
             alt="ZECATHON logo"
             className="w-36 h-36 sm:w-48 sm:h-48 animate-float drop-shadow-[0_0_20px_rgba(255,255,255,0.15)]"
           />
