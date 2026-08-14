@@ -4,6 +4,7 @@ import { isOrganizer } from '../utils/role';
 import { ScrollReveal } from '../hooks/useInView';
 import PageLayout from '../components/PageLayout';
 import Footer from '../components/Footer';
+import EasterEgg from '../components/EasterEgg';
 
 const colorAccent = {
   pink: 'border-neon-pink/50 hover:border-neon-pink shadow-neon-pink',
@@ -317,6 +318,7 @@ export default function LandingPage() {
         </ScrollReveal>
       </div>
 
+      <EasterEgg />
       <Footer />
     </PageLayout>
   );

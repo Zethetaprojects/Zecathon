@@ -79,12 +79,6 @@ export default function Dashboard() {
               color="purple"
             />
           )}
-          <ActionCard
-            to="/hackathons"
-            title="Leaderboards"
-            desc="View ranked results once evaluations are complete."
-            color="yellow"
-          />
         </div>
       </div>
     </PageLayout>

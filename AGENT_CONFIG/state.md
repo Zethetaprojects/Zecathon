@@ -4,6 +4,11 @@
 - **Repo**: full-stack hackathon evaluation platform with RBAC, Gemini integration, and ZECATHON landing page
 - **AGENT_CONFIG**: created; context, plan, state, and todo maintained.
 - **Phase**: Space music toggle + auth-aware landing page / navbar complete and validated.
+- **Easter egg**:
+  - Hidden game controller icon on the landing page (semi-transparent, bottom-right corner).
+  - Clicking it plays a retro coin sound and shows a "Hidden controller found! +100 XP" toast.
+- **Dashboard**:
+  - Removed the Leaderboards action card.
 - **Micro-interactions & custom cursor**:
   - New `CustomCursor.tsx` using `frontend/public/pngegg.png` as the cursor image with a purple neon glow and a trailing ghost cursor.
   - Hides default cursor on desktop; disabled on touch devices.
