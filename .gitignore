@@ -1,0 +1,44 @@
+# Python / FastAPI
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.env
+.venv/
+venv/
+backend/.env
+backend/venv/
+backend/uploads/
+backend/*.db
+backend/sqlite.db
+*.sqlite3
+instance/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Node / React
+node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# IDE / OS
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# OS / editor
+*.tmp
+*.bak
+
+# Uploads
+uploads/*
+!uploads/.gitkeep
