@@ -9,7 +9,8 @@ from app.config import settings
 
 
 class LLMClient:
-    """Thin HTTP client to a configurable LLM backend."""
+    """Thin HTTP client that prefers Gemini 2.5 Flash, falls back to a configurable
+    generic LLM backend, and finally to a deterministic mock for offline testing."""
 
     def __init__(self, url: str = None, token: str = None):
         self.url = url or settings.ai_backend_url
@@ -17,9 +18,49 @@ class LLMClient:
 
     def complete_json(self, prompt: str, temperature: float = 0.2) -> Dict[str, Any]:
         """Call the LLM and return a parsed JSON object."""
-        if not self.url:
-            return self._mock_response(prompt)
+        if settings.gemini_api_key:
+            return self._call_gemini(prompt, temperature)
+        if self.url:
+            return self._call_generic_backend(prompt, temperature)
+        return self._mock_response(prompt)
 
+    def _call_gemini(self, prompt: str, temperature: float) -> Dict[str, Any]:
+        model = settings.gemini_model
+        endpoint = (
+            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+            f"?key={settings.gemini_api_key}"
+        )
+        payload = {
+            "contents": [
+                {
+                    "role": "user",
+                    "parts": [{"text": prompt}],
+                }
+            ],
+            "generationConfig": {
+                "temperature": temperature,
+                "responseMimeType": "application/json",
+                "maxOutputTokens": 8192,
+            },
+        }
+        try:
+            r = requests.post(endpoint, json=payload, timeout=180)
+            r.raise_for_status()
+            data = r.json()
+            text = self._extract_gemini_text(data)
+            return self._extract_json({"content": text})
+        except Exception as exc:
+            return self._mock_response(prompt, error=f"Gemini call failed: {exc}")
+
+    def _extract_gemini_text(self, data: Dict[str, Any]) -> str:
+        candidates = data.get("candidates", [])
+        if not candidates:
+            raise ValueError("No candidates in Gemini response")
+        content = candidates[0].get("content", {})
+        parts = content.get("parts", [])
+        return "".join(part.get("text", "") for part in parts)
+
+    def _call_generic_backend(self, prompt: str, temperature: float) -> Dict[str, Any]:
         headers = {"Content-Type": "application/json"}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
@@ -65,7 +106,7 @@ class LLMClient:
             "key_strengths": ["Coherent structure"],
             "areas_for_improvement": ["Add more problem-specific detail"],
             "red_flags": [],
-            "recommendation": "Configure AI_BACKEND_URL for real evaluation.",
+            "recommendation": "Configure GEMINI_API_KEY or AI_BACKEND_URL for real evaluation.",
             "_mock": True,
             "_error": error,
         }

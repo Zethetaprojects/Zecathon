@@ -85,7 +85,7 @@ def test_evaluate_tech(auth_client, client, fake_repo, fake_llm):
         headers={"Authorization": f"Bearer {token}"},
     )
     sub_b_id = r.json()["id"]
-    r = client.post(f"/api/evaluate/tech/{sub_b_id}", headers={"Authorization": f"Bearer {token}"})
+    r = client.post(f"/api/evaluate/tech/{sub_b_id}", headers=auth_client.headers)
     assert r.status_code == 200
     score_b = r.json()["total_score"]
     assert score_b != score_a

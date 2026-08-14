@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models import User
+from app.models import User, UserRole
 from app.schemas import TokenData
 
 pwd_context = None  # legacy placeholder removed; using bcrypt directly
@@ -61,3 +61,20 @@ async def get_current_active_user(current_user: User = Depends(get_current_user)
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
+
+
+def require_role(*roles: UserRole):
+    def checker(current_user: User = Depends(get_current_active_user)) -> User:
+        if current_user.role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Requires one of the following roles: {', '.join(r.value for r in roles)}",
+            )
+        return current_user
+
+    return checker
+
+
+require_admin = require_role(UserRole.admin)
+require_organizer = require_role(UserRole.admin, UserRole.organizer)
+require_judge = require_role(UserRole.admin, UserRole.organizer, UserRole.judge)

@@ -3,10 +3,14 @@ import { useParams, Link } from 'react-router-dom';
 import { hackathonsApi, problemStatementsApi } from '../api/hackathons';
 import { Hackathon, ProblemStatement } from '../types';
 import { formatError } from '../utils/formatError';
+import { isOrganizer } from '../utils/role';
+import { useAuth } from '../hooks/useAuth';
 import PageLayout from '../components/PageLayout';
 
 export default function HackathonDetail() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useAuth();
+  const canManage = isOrganizer(user?.role);
   const [hackathon, setHackathon] = useState<Hackathon | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -137,47 +141,49 @@ export default function HackathonDetail() {
             </ul>
           )}
 
-          <form onSubmit={handleUpload} className="p-5 rounded bg-black/20 border border-white/10">
-            <h3 className="font-pixel text-xs text-white mb-4">UPLOAD NEW STATEMENT</h3>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-xs pixel-caps text-slate-300 mb-2">Title</label>
-                <input
-                  value={psTitle}
-                  onChange={(e) => setPsTitle(e.target.value)}
-                  required
-                  className="w-full rounded px-4 py-3 neon-input"
-                  placeholder="Problem statement title"
-                />
+          {canManage && (
+            <form onSubmit={handleUpload} className="p-5 rounded bg-black/20 border border-white/10">
+              <h3 className="font-pixel text-xs text-white mb-4">UPLOAD NEW STATEMENT</h3>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs pixel-caps text-slate-300 mb-2">Title</label>
+                  <input
+                    value={psTitle}
+                    onChange={(e) => setPsTitle(e.target.value)}
+                    required
+                    className="w-full rounded px-4 py-3 neon-input"
+                    placeholder="Problem statement title"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs pixel-caps text-slate-300 mb-2">Description</label>
+                  <textarea
+                    value={psDescription}
+                    onChange={(e) => setPsDescription(e.target.value)}
+                    rows={3}
+                    className="w-full rounded px-4 py-3 neon-input"
+                    placeholder="Detailed description"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs pixel-caps text-slate-300 mb-2">File (optional)</label>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    onChange={(e) => setPsFile(e.target.files?.[0] || null)}
+                    className="w-full text-sm text-slate-300 file:mr-4 file:px-3 file:py-2 file:rounded file:border-0 file:text-xs file:bg-neon-cyan/20 file:text-neon-cyan file:cursor-pointer"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  disabled={psBusy}
+                  className="px-5 py-2 rounded neon-btn neon-btn-primary text-xs disabled:opacity-50"
+                >
+                  {psBusy ? 'Uploading...' : 'Upload statement'}
+                </button>
               </div>
-              <div>
-                <label className="block text-xs pixel-caps text-slate-300 mb-2">Description</label>
-                <textarea
-                  value={psDescription}
-                  onChange={(e) => setPsDescription(e.target.value)}
-                  rows={3}
-                  className="w-full rounded px-4 py-3 neon-input"
-                  placeholder="Detailed description"
-                />
-              </div>
-              <div>
-                <label className="block text-xs pixel-caps text-slate-300 mb-2">File (optional)</label>
-                <input
-                  ref={fileRef}
-                  type="file"
-                  onChange={(e) => setPsFile(e.target.files?.[0] || null)}
-                  className="w-full text-sm text-slate-300 file:mr-4 file:px-3 file:py-2 file:rounded file:border-0 file:text-xs file:bg-neon-cyan/20 file:text-neon-cyan file:cursor-pointer"
-                />
-              </div>
-              <button
-                type="submit"
-                disabled={psBusy}
-                className="px-5 py-2 rounded neon-btn neon-btn-primary text-xs disabled:opacity-50"
-              >
-                {psBusy ? 'Uploading...' : 'Upload statement'}
-              </button>
-            </div>
-          </form>
+            </form>
+          )}
         </div>
       </div>
     </PageLayout>

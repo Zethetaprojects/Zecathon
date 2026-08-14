@@ -3,12 +3,16 @@ import { Link } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { Hackathon } from '../types';
 import { formatError } from '../utils/formatError';
+import { isOrganizer } from '../utils/role';
+import { useAuth } from '../hooks/useAuth';
 import PageLayout from '../components/PageLayout';
 
 export default function Hackathons() {
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const { user } = useAuth();
+  const canCreate = isOrganizer(user?.role);
 
   useEffect(() => {
     hackathonsApi
@@ -26,12 +30,14 @@ export default function Hackathons() {
             <h1 className="font-pixel text-lg text-white text-shadow-neon">HACKATHONS</h1>
             <p className="text-slate-400 text-sm mt-1">Active arenas and missions</p>
           </div>
-          <Link
-            to="/hackathons/new"
-            className="px-5 py-2.5 rounded neon-btn neon-btn-primary text-xs"
-          >
-            + Create hackathon
-          </Link>
+          {canCreate && (
+            <Link
+              to="/hackathons/new"
+              className="px-5 py-2.5 rounded neon-btn neon-btn-primary text-xs"
+            >
+              + Create hackathon
+            </Link>
+          )}
         </div>
 
         {error && (
@@ -47,10 +53,16 @@ export default function Hackathons() {
           </div>
         ) : hackathons.length === 0 ? (
           <div className="glass-panel p-8 text-center">
-            <p className="text-slate-300 mb-4">No hackathons yet. Be the first to create one.</p>
-            <Link to="/hackathons/new" className="px-5 py-2 rounded neon-btn neon-btn-cyan text-xs">
-              Create hackathon
-            </Link>
+            <p className="text-slate-300 mb-4">
+              {canCreate
+                ? 'No hackathons yet. Be the first to create one.'
+                : 'No hackathons yet. Wait for an organiser to create one.'}
+            </p>
+            {canCreate && (
+              <Link to="/hackathons/new" className="px-5 py-2 rounded neon-btn neon-btn-cyan text-xs">
+                Create hackathon
+              </Link>
+            )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

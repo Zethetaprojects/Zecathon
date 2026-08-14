@@ -5,6 +5,7 @@ from sqlalchemy.orm import sessionmaker
 
 from app.database import Base, get_db
 from app.main import app
+from app.models import User, UserRole
 
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
@@ -40,13 +41,16 @@ def client(db):
 
 
 @pytest.fixture
-def auth_client(client):
+def auth_client(client, db):
     r = client.post("/api/auth/register", json={
         "username": "testuser",
         "email": "testuser@example.com",
         "password": "secret123"
     })
     assert r.status_code == 201
+    user = db.query(User).filter(User.username == "testuser").first()
+    user.role = UserRole.organizer
+    db.commit()
     r = client.post("/api/auth/login", data={"username": "testuser", "password": "secret123"})
     assert r.status_code == 200
     token = r.json()["access_token"]

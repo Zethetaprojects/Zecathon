@@ -7,6 +7,7 @@ LLM evaluator, so it does not require a configured AI backend.
 """
 import os
 import shutil
+import sqlite3
 import subprocess
 import sys
 import time
@@ -60,6 +61,13 @@ def _register_and_login(base, username, email, password):
     return r.json()["access_token"]
 
 
+def _set_role(username: str, role: str):
+    con = sqlite3.connect(str(TEST_DB))
+    con.execute("UPDATE users SET role = ? WHERE username = ?", (role, username))
+    con.commit()
+    con.close()
+
+
 def main():
     # Clean up any previous run artefacts
     TEST_DB.unlink(missing_ok=True)
@@ -93,6 +101,7 @@ def main():
 
         # 1. Register organiser
         token_a = _register_and_login(base, "flowuser", "flow@example.com", "secret123")
+        _set_role("flowuser", "organizer")
         headers_a = {"Authorization": f"Bearer {token_a}"}
         steps.append(("POST /auth/register + login (organiser)", 200, "OK"))
 
@@ -135,6 +144,7 @@ def main():
 
         # 5. Non-tech team + submission (needs a second user because one user = one team per hackathon)
         token_b = _register_and_login(base, "flowuser2", "flow2@example.com", "secret123")
+        _set_role("flowuser2", "participant")
         headers_b = {"Authorization": f"Bearer {token_b}"}
         steps.append(("POST /auth/register + login (second user)", 200, "OK"))
 
@@ -159,7 +169,7 @@ def main():
         assert r.status_code == 201, r.text
         non_tech_sub_id = r.json()["id"]
 
-        r = requests.post(f"{base}/evaluate/non-tech/{non_tech_sub_id}", headers=headers_b)
+        r = requests.post(f"{base}/evaluate/non-tech/{non_tech_sub_id}", headers=headers_a)
         steps.append((f"POST /evaluate/non-tech/{non_tech_sub_id}", r.status_code, r.text[:200]))
         assert r.status_code == 200, r.text
         non_tech_score = r.json()["total_score"]

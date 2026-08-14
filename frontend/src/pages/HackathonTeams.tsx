@@ -4,11 +4,15 @@ import { hackathonsApi } from '../api/hackathons';
 import { teamsApi, submissionsApi } from '../api/teams';
 import { Hackathon, Team, ProblemStatement, Submission } from '../types';
 import { formatError } from '../utils/formatError';
+import { isJudge } from '../utils/role';
+import { useAuth } from '../hooks/useAuth';
 import PageLayout from '../components/PageLayout';
 
 export default function HackathonTeams() {
   const { id } = useParams<{ id: string }>();
   const hackathonId = Number(id);
+  const { user } = useAuth();
+  const canEvaluate = isJudge(user?.role);
   const [hackathon, setHackathon] = useState<Hackathon | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [submissionsByTeam, setSubmissionsByTeam] = useState<Record<number, Submission[]>>({});
@@ -198,7 +202,7 @@ export default function HackathonTeams() {
                                   <span className="text-sm font-semibold text-neon-cyan">
                                     {sub.evaluation.total_score} pts — {sub.evaluation.verdict}
                                   </span>
-                                ) : (
+                                ) : canEvaluate ? (
                                   <button
                                     onClick={() => evaluate(sub)}
                                     disabled={evaluating[sub.id]}
@@ -206,6 +210,8 @@ export default function HackathonTeams() {
                                   >
                                     {evaluating[sub.id] ? 'Evaluating...' : 'Evaluate'}
                                   </button>
+                                ) : (
+                                  <span className="text-xs text-slate-500">Pending evaluation</span>
                                 )}
                               </>
                             ) : (

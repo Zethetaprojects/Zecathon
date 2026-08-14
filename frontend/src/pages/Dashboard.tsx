@@ -1,6 +1,7 @@
 import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import PageLayout from '../components/PageLayout';
+import { isOrganizer, isJudge } from '../utils/role';
 
 function ActionCard({
   to,
@@ -42,6 +43,9 @@ export default function Dashboard() {
             <h1 className="font-pixel text-lg text-white text-shadow-neon mb-1">COMMAND DECK</h1>
             <p className="text-slate-400 text-sm">
               Welcome back, <span className="text-neon-cyan font-semibold">{user?.username}</span>
+              <span className="ml-2 px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple text-xs uppercase tracking-wider">
+                {user?.role}
+              </span>
             </p>
           </div>
           <button
@@ -56,21 +60,25 @@ export default function Dashboard() {
           <ActionCard
             to="/hackathons"
             title="Browse Hackathons"
-            desc="Create, manage, and explore all hackathons on the platform."
+            desc="Explore all hackathons on the platform."
             color="pink"
           />
-          <ActionCard
-            to="/hackathons/new"
-            title="Host Hackathon"
-            desc="Launch a new hackathon with problem statements and teams."
-            color="cyan"
-          />
-          <ActionCard
-            to="/hackathons"
-            title="Evaluate Projects"
-            desc="Submit and score tech or non-tech projects against rubrics."
-            color="purple"
-          />
+          {isOrganizer(user?.role) && (
+            <ActionCard
+              to="/hackathons/new"
+              title="Host Hackathon"
+              desc="Launch a new hackathon with problem statements and teams."
+              color="cyan"
+            />
+          )}
+          {isJudge(user?.role) && (
+            <ActionCard
+              to="/hackathons"
+              title="Evaluate Projects"
+              desc="Score tech or non-tech projects against rubrics."
+              color="purple"
+            />
+          )}
           <ActionCard
             to="/hackathons"
             title="Leaderboards"

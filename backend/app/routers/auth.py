@@ -5,12 +5,14 @@ from sqlalchemy.orm import Session
 from app.auth import (
     create_access_token,
     get_current_active_user,
+    get_current_user,
     get_password_hash,
+    require_admin,
     verify_password,
 )
 from app.database import get_db
-from app.models import User
-from app.schemas import UserCreate, UserOut, Token
+from app.models import User, UserRole
+from app.schemas import Token, UserCreate, UserOut, UserRoleUpdate
 
 router = APIRouter()
 
@@ -23,6 +25,7 @@ async def register(payload: UserCreate, db: Session = Depends(get_db)):
         username=payload.username,
         email=payload.email,
         hashed_password=get_password_hash(payload.password),
+        role=UserRole.participant,
     )
     db.add(user)
     db.commit()
@@ -42,3 +45,19 @@ async def login(form_data: OAuth2PasswordRequestForm = Depends(), db: Session = 
 @router.get("/me", response_model=UserOut)
 async def me(current_user: User = Depends(get_current_active_user)):
     return current_user
+
+
+@router.put("/users/{user_id}/role", response_model=UserOut)
+async def update_user_role(
+    user_id: int,
+    payload: UserRoleUpdate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    user.role = payload.role
+    db.commit()
+    db.refresh(user)
+    return user

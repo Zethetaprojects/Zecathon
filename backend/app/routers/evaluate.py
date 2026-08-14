@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_active_user
+from app.auth import get_current_active_user, require_judge
 from app.database import get_db
 from app.models import ProblemStatement, Submission, SubmissionType, Team, TeamMember, User
 from app.schemas import EvaluationOut
@@ -10,16 +10,6 @@ from app.services.scoring.non_tech_evaluator import evaluate_non_tech
 from app.services.scoring.tech_evaluator import evaluate_tech
 
 router = APIRouter()
-
-
-def _ensure_team_member(team_id: int, user_id: int, db: Session) -> Team:
-    team = db.query(Team).filter(Team.id == team_id).first()
-    if not team:
-        raise HTTPException(status_code=404, detail="Team not found")
-    member = db.query(TeamMember).filter(TeamMember.team_id == team_id, TeamMember.user_id == user_id).first()
-    if not member:
-        raise HTTPException(status_code=403, detail="You are not a member of this team")
-    return team
 
 
 def _get_problem_statement_text(ps: ProblemStatement) -> str:
@@ -37,15 +27,13 @@ def _get_problem_statement_text(ps: ProblemStatement) -> str:
 async def evaluate_tech_endpoint(
     submission_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_judge),
 ):
     submission = db.query(Submission).filter(Submission.id == submission_id).first()
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
     if submission.type != SubmissionType.tech:
         raise HTTPException(status_code=400, detail="Submission is not a tech submission")
-
-    _ensure_team_member(submission.team_id, current_user.id, db)
 
     if submission.evaluation:
         return submission.evaluation
@@ -65,15 +53,13 @@ async def evaluate_tech_endpoint(
 async def evaluate_non_tech_endpoint(
     submission_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_judge),
 ):
     submission = db.query(Submission).filter(Submission.id == submission_id).first()
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
     if submission.type != SubmissionType.non_tech:
         raise HTTPException(status_code=400, detail="Submission is not a non-tech submission")
-
-    _ensure_team_member(submission.team_id, current_user.id, db)
 
     if submission.evaluation:
         return submission.evaluation

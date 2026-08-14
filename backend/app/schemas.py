@@ -2,7 +2,7 @@ from datetime import datetime
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel, ConfigDict, EmailStr
 
-from app.models import SubmissionType, SubmissionStatus
+from app.models import SubmissionType, SubmissionStatus, UserRole
 
 
 # Auth schemas
@@ -17,10 +17,15 @@ class UserLogin(BaseModel):
     password: str
 
 
+class UserRoleUpdate(BaseModel):
+    role: UserRole
+
+
 class UserOut(BaseModel):
     id: int
     username: str
     email: str
+    role: UserRole
     is_active: bool
     created_at: datetime
 

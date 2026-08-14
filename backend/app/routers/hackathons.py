@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_active_user
+from app.auth import get_current_active_user, require_organizer
 from app.database import get_db
 from app.models import Hackathon, ProblemStatement, User
 from app.schemas import HackathonCreate, HackathonOut, HackathonDetail, ProblemStatementOut
@@ -21,7 +21,7 @@ async def list_hackathons(db: Session = Depends(get_db), current_user: User = De
 async def create_hackathon(
     payload: HackathonCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_organizer),
 ):
     hackathon = Hackathon(
         name=payload.name,
@@ -55,13 +55,13 @@ async def create_problem_statement(
     description: str = Form(None),
     file: UploadFile = File(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_organizer),
 ):
     hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    if hackathon.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="Only the hackathon organiser can add problem statements")
+    if hackathon.created_by != current_user.id and current_user.role != UserRole.admin:
+        raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can add problem statements")
 
     file_path = None
     if file:

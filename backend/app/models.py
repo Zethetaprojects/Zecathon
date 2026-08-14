@@ -6,6 +6,13 @@ import enum
 from app.database import Base
 
 
+class UserRole(str, enum.Enum):
+    admin = "admin"
+    organizer = "organizer"
+    judge = "judge"
+    participant = "participant"
+
+
 class User(Base):
     __tablename__ = "users"
 
@@ -13,6 +20,7 @@ class User(Base):
     username = Column(String, unique=True, index=True, nullable=False)
     email = Column(String, unique=True, index=True, nullable=False)
     hashed_password = Column(String, nullable=False)
+    role = Column(Enum(UserRole), default=UserRole.participant, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 

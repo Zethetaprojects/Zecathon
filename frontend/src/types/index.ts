@@ -1,7 +1,10 @@
+export type UserRole = 'admin' | 'organizer' | 'judge' | 'participant';
+
 export interface User {
   id: number;
   username: string;
   email: string;
+  role: UserRole;
   is_active: boolean;
   created_at: string;
 }
