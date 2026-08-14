@@ -47,7 +47,7 @@ Create `backend/.env` from `.env.example`:
 | `SECRET_KEY` | JWT signing secret |
 | `AI_BACKEND_URL` | LLM endpoint, e.g. `http://localhost:5000` |
 | `AI_BACKEND_TOKEN` | Bearer token for the LLM endpoint |
-| `GITHUB_TOKEN` | GitHub token for higher API rate limits |
+| `GITHUB_TOKEN` | Optional: higher GitHub API rate limits. Public repos work without it. |
 | `UPLOAD_DIR` | Directory for uploaded files (default: `uploads`) |
 | `MAX_UPLOAD_SIZE` | Max upload bytes (default: 20 MB) |
 
@@ -105,6 +105,19 @@ venv\Scripts\pytest tests -v
 ```
 
 The test suite covers auth, hackathons, problem statements, teams, submissions, tech/non-tech evaluation, and the discrete leaderboard.
+
+## Running the validation harness
+
+A browserless full-stack flow test is included at the repo root:
+
+```bash
+cd backend
+venv\Scripts\activate
+venv\Scripts\python ../validate_flow.py
+```
+
+It starts the backend and Vite dev server, verifies the frontend loads, then walks through:
+register → login → create hackathon → upload problem statement → create team → submit tech repo → evaluate tech → create second team → submit non-tech document → evaluate non-tech → view leaderboard.
 
 ## Production notes
 - The default storage is local filesystem. For production, replace `app/services/file_storage.py` with S3-compatible storage.
