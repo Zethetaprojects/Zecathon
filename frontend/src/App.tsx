@@ -6,7 +6,8 @@ import Dashboard from './pages/Dashboard';
 import Hackathons from './pages/Hackathons';
 import CreateHackathon from './pages/CreateHackathon';
 import HackathonDetail from './pages/HackathonDetail';
-import Teams from './pages/Teams';
+import HackathonTeams from './pages/HackathonTeams';
+import Submit from './pages/Submit';
 import PrivateRoute from './components/PrivateRoute';
 
 function App() {
@@ -20,7 +21,8 @@ function App() {
           <Route path="/hackathons" element={<Hackathons />} />
           <Route path="/hackathons/new" element={<CreateHackathon />} />
           <Route path="/hackathons/:id" element={<HackathonDetail />} />
-          <Route path="/teams" element={<Teams />} />
+          <Route path="/hackathons/:id/teams" element={<HackathonTeams />} />
+          <Route path="/hackathons/:hackathonId/submit/:teamId/:problemStatementId" element={<Submit />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Routes>

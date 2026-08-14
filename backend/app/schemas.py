@@ -80,6 +80,7 @@ class ProblemStatementOut(ProblemStatementCreate):
 
 # Team schemas
 class TeamCreate(BaseModel):
+    hackathon_id: int
     name: str
 
 

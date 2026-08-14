@@ -25,14 +25,14 @@ export default function Dashboard() {
             className="block p-4 border rounded-lg hover:bg-blue-50 transition"
           >
             <h2 className="font-semibold text-lg">Hackathons</h2>
-            <p className="text-sm text-gray-600">Create and manage hackathons.</p>
+            <p className="text-sm text-gray-600">Create hackathons, teams, and submit projects.</p>
           </Link>
           <Link
-            to="/teams"
+            to="/hackathons"
             className="block p-4 border rounded-lg hover:bg-blue-50 transition"
           >
-            <h2 className="font-semibold text-lg">Teams</h2>
-            <p className="text-sm text-gray-600">Join a team and submit your project.</p>
+            <h2 className="font-semibold text-lg">Leaderboard</h2>
+            <p className="text-sm text-gray-600">View scores once evaluations are complete.</p>
           </Link>
         </div>
       </div>

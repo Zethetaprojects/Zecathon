@@ -72,6 +72,10 @@ class TeamMember(Base):
     team = relationship("Team", back_populates="members")
     user = relationship("User")
 
+    @property
+    def username(self) -> str | None:
+        return self.user.username if self.user else None
+
 
 class SubmissionType(str, enum.Enum):
     tech = "tech"

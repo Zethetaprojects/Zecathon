@@ -42,3 +42,5 @@ export interface TeamMember {
   role: string;
   joined_at: string;
 }
+
+export * from './submission';
