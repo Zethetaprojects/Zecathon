@@ -1,4 +1,6 @@
 import { Link } from 'react-router-dom';
+import { useAuth } from '../hooks/useAuth';
+import { isOrganizer } from '../utils/role';
 
 function SocialIcon({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
   return (
@@ -23,6 +25,7 @@ function FooterLink({ to, children }: { to: string; children: React.ReactNode })
 }
 
 export default function Footer() {
+  const { user } = useAuth();
   return (
     <footer className="border-t border-white/10 bg-space-900/60 backdrop-blur-md">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
@@ -49,14 +52,26 @@ export default function Footer() {
             </p>
           </div>
 
-          {/* Product */}
+          {/* Product / Get Started */}
           <div>
-            <h4 className="font-pixel text-[10px] tracking-widest text-white mb-4">PLATFORM</h4>
+            <h4 className="font-pixel text-[10px] tracking-widest text-white mb-4">
+              {user ? 'PLATFORM' : 'GET STARTED'}
+            </h4>
             <nav className="space-y-2">
-              <FooterLink to="/hackathons">Hackathons</FooterLink>
-              <FooterLink to="/hackathons/new">Host a Hackathon</FooterLink>
-              <FooterLink to="/hackathons">Leaderboards</FooterLink>
-              <FooterLink to="/dashboard">Dashboard</FooterLink>
+              {user ? (
+                <>
+                  <FooterLink to="/hackathons">Hackathons</FooterLink>
+                  {isOrganizer(user.role) && <FooterLink to="/hackathons/new">Host a Hackathon</FooterLink>}
+                  <FooterLink to="/hackathons">Leaderboards</FooterLink>
+                  <FooterLink to="/dashboard">Dashboard</FooterLink>
+                </>
+              ) : (
+                <>
+                  <FooterLink to="/register">Create account</FooterLink>
+                  <FooterLink to="/login">Log in</FooterLink>
+                  <FooterLink to="/">How it works</FooterLink>
+                </>
+              )}
             </nav>
           </div>
 

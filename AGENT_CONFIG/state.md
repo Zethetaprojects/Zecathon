@@ -3,7 +3,15 @@
 - **Date**: 2026-08-14
 - **Repo**: full-stack hackathon evaluation platform with RBAC, Gemini integration, and ZECATHON landing page
 - **AGENT_CONFIG**: created; context, plan, state, and todo maintained.
-- **Phase**: Landing page / footer redesign complete and validated.
+- **Phase**: Space music toggle + auth-aware landing page / navbar complete and validated.
+- **Space music**:
+  - Procedural Web Audio space/chiptune loop (low drone + arpeggio) in `MusicProvider.tsx`.
+  - Global toggle button in the navbar (speaker icon).
+  - Autoplay-safe: starts only after the user clicks the button.
+- **Auth-aware UI**:
+  - Navbar center nav (Features dropdown, Hackathons, Leaderboards, Dashboard) is hidden until login.
+  - Landing page CTAs adapt: guests see Join/Log in; logged-in users see Enter Arena + Host (organizers only).
+  - Footer platform links hidden until login; guests see Get Started links.
 - **Landing page**:
   - Hero with ZECATHON branding, stats row, and dual CTA buttons.
   - Features grid (AI scoring, tech repos, non-tech documents, leaderboards, RBAC, discrete scoring).
@@ -12,14 +20,14 @@
   - Dark space/pixel theme preserved; logo from `frontend/public/ZeTheta Logo.png`.
 - **Navbar**:
   - Dark glass pill bar with logo + "ZECATHON by Zetheta" on the left.
-  - Centered navigation with a "Features" dropdown.
-  - Auth buttons on the right; role-aware links.
+  - Centered navigation with a "Features" dropdown (logged-in only).
+  - Sound toggle + auth buttons on the right.
 - **Validation**:
   - `npm run build` ✅
   - `pytest backend/tests` ✅
-  - `validate_flow.py` ✅ (after stopping conflicting dev servers)
-- **Dev servers**: restarted on `http://127.0.0.1:8000` (backend) and `http://localhost:5173` (frontend).
+  - `validate_flow.py` ✅
+- **Dev servers**: will restart on `http://127.0.0.1:8000` (backend) and `http://localhost:5173` (frontend).
 - **Default test account**: `flowuser` / `secret123` (organizer role; exists in `backend/hackathon.db`).
-- **Next action**: user review in browser; hard-refresh `localhost:5173` to see new landing page and footer.
+- **Next action**: user review in browser; hard-refresh `localhost:5173` and click the speaker icon to test the space music.
 - **Blockers**: none.
 - **Leftovers**: add real `GEMINI_API_KEY` to `backend/.env` for live LLM evaluations; promote users via set_role script/admin endpoint; S3 storage migration; mobile hamburger menu refinement.

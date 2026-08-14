@@ -59,6 +59,8 @@
 - [x] Dark space/pixel theme across all screens
 - [x] Shared `SpaceBackground`, `Navbar`, `PageLayout`, `ErrorBoundary`, `Footer`
 - [x] Modern SaaS-style glass pill navbar with centered Features dropdown
+- [x] Procedural space/chiptune music with navbar toggle
+- [x] Auth-aware UI: logged-in-only features hidden from guests in navbar, landing page, and footer
 - [x] Build passes (`npm run build`)
 - [x] Full-flow validation passes (`validate_flow.py`)
 - [x] Update `AGENT_CONFIG` state and todo

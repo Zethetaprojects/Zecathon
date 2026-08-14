@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
+import { isOrganizer } from '../utils/role';
 import PageLayout from '../components/PageLayout';
 import Footer from '../components/Footer';
 
@@ -103,15 +104,27 @@ export default function LandingPage() {
           </p>
 
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
-            <Link
-              to={user ? '/hackathons' : '/register'}
-              className="px-8 py-4 rounded neon-btn neon-btn-primary text-sm"
-            >
-              {user ? 'Enter the Arena' : 'Join the Arena'}
-            </Link>
-            <Link to="/hackathons/new" className="px-8 py-4 rounded neon-btn neon-btn-ghost text-sm">
-              Host a Hackathon
-            </Link>
+            {user ? (
+              <>
+                <Link to="/hackathons" className="px-8 py-4 rounded neon-btn neon-btn-primary text-sm">
+                  Enter the Arena
+                </Link>
+                {isOrganizer(user.role) && (
+                  <Link to="/hackathons/new" className="px-8 py-4 rounded neon-btn neon-btn-ghost text-sm">
+                    Host a Hackathon
+                  </Link>
+                )}
+              </>
+            ) : (
+              <>
+                <Link to="/register" className="px-8 py-4 rounded neon-btn neon-btn-primary text-sm">
+                  Join the Arena
+                </Link>
+                <Link to="/login" className="px-8 py-4 rounded neon-btn neon-btn-ghost text-sm">
+                  Log in
+                </Link>
+              </>
+            )}
           </div>
 
           {/* Stats */}
@@ -264,12 +277,31 @@ export default function LandingPage() {
                 Set up a hackathon in minutes, invite teams, and let the AI evaluator handle the heavy lifting.
               </p>
               <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
-                <Link to="/hackathons/new" className="px-8 py-4 rounded neon-btn neon-btn-cyan text-sm">
-                  Host a Hackathon
-                </Link>
-                <Link to="/hackathons" className="px-8 py-4 rounded neon-btn neon-btn-ghost text-sm">
-                  Explore Hackathons
-                </Link>
+                {user ? (
+                  <>
+                    {isOrganizer(user.role) ? (
+                      <Link to="/hackathons/new" className="px-8 py-4 rounded neon-btn neon-btn-cyan text-sm">
+                        Host a Hackathon
+                      </Link>
+                    ) : (
+                      <Link to="/hackathons" className="px-8 py-4 rounded neon-btn neon-btn-cyan text-sm">
+                        Explore Hackathons
+                      </Link>
+                    )}
+                    <Link to="/hackathons" className="px-8 py-4 rounded neon-btn neon-btn-ghost text-sm">
+                      Explore Hackathons
+                    </Link>
+                  </>
+                ) : (
+                  <>
+                    <Link to="/register" className="px-8 py-4 rounded neon-btn neon-btn-cyan text-sm">
+                      Create your account
+                    </Link>
+                    <Link to="/login" className="px-8 py-4 rounded neon-btn neon-btn-ghost text-sm">
+                      Log in
+                    </Link>
+                  </>
+                )}
               </div>
             </div>
           </div>
