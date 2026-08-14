@@ -66,5 +66,13 @@
 - README with setup instructions, env vars, API docs.
 - Final review and commit: `release: MVP hackathon evaluation platform`
 
+## Phase 9 — UI/UX theme & landing page (ZECATHON)
+- Add public landing page at `/` with ZECATHON branding and Zetheta Algorithms tagline.
+- Apply dark space/pixel theme (navy background, starfield, neon pink/cyan/purple accents, pixel-style fonts) across Login, Register, Dashboard, Hackathons, Create, Detail, Teams, Submit, and Leaderboard.
+- Build shared components: `SpaceBackground`, `Navbar`, `PageLayout`, `ErrorBoundary`.
+- Fix blank-page causes: wrap app in `ErrorBoundary`, ensure token is stored before `/auth/me`, render themed loading/error fallbacks on every screen.
+- Validate: `npm run build` and `validate_flow.py` pass.
+- Commit: `feat: ZECATHON landing page and space/pixel theme`
+
 ## Commit cadence
 A commit is required at the end of every phase. If a phase is large, split it into intermediate commits (e.g. backend work first, frontend work second). Each commit message must be clear and phase-tagged.

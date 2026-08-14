@@ -39,6 +39,6 @@ Thumbs.db
 *.tmp
 *.bak
 
-# Uploads
-uploads/*
-!uploads/.gitkeep
+# Validation artifacts
+_validate_flow.db
+_validate_uploads/

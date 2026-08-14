@@ -20,8 +20,8 @@ FRONTEND_DIR = BASE_DIR / "frontend"
 TEST_DB = BASE_DIR / "_validate_flow.db"
 UPLOAD_DIR = BASE_DIR / "_validate_uploads"
 
-os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB}"
-os.environ["UPLOAD_DIR"] = str(UPLOAD_DIR)
+os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB.as_posix()}"
+os.environ["UPLOAD_DIR"] = str(UPLOAD_DIR.resolve())
 os.environ["SECRET_KEY"] = "validation-secret"
 os.environ["AI_BACKEND_URL"] = ""  # force deterministic fallback evaluator
 

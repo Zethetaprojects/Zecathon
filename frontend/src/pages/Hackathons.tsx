@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { Hackathon } from '../types';
+import PageLayout from '../components/PageLayout';
 
 export default function Hackathons() {
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
@@ -16,36 +17,59 @@ export default function Hackathons() {
       .finally(() => setLoading(false));
   }, []);
 
-  if (loading) return <div className="p-8">Loading...</div>;
-
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
-        <div className="flex justify-between items-center mb-6">
-          <h1 className="text-2xl font-bold">Hackathons</h1>
+    <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
+          <div>
+            <h1 className="font-pixel text-lg text-white text-shadow-neon">HACKATHONS</h1>
+            <p className="text-slate-400 text-sm mt-1">Active arenas and missions</p>
+          </div>
           <Link
             to="/hackathons/new"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
+            className="px-5 py-2.5 rounded neon-btn neon-btn-primary text-xs"
           >
-            Create hackathon
+            + Create hackathon
           </Link>
         </div>
-        {error && <div className="mb-4 text-red-600 text-sm">{error}</div>}
-        {hackathons.length === 0 ? (
-          <p className="text-gray-600">No hackathons yet. Create one to get started.</p>
+
+        {error && (
+          <div className="mb-6 px-4 py-3 rounded bg-neon-pink/10 border border-neon-pink/30 text-neon-pink text-sm">
+            {error}
+          </div>
+        )}
+
+        {loading ? (
+          <div className="text-center py-16">
+            <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+            <p className="text-slate-400 text-sm">Loading hackathons...</p>
+          </div>
+        ) : hackathons.length === 0 ? (
+          <div className="glass-panel p-8 text-center">
+            <p className="text-slate-300 mb-4">No hackathons yet. Be the first to create one.</p>
+            <Link to="/hackathons/new" className="px-5 py-2 rounded neon-btn neon-btn-cyan text-xs">
+              Create hackathon
+            </Link>
+          </div>
         ) : (
-          <ul className="divide-y">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {hackathons.map((h) => (
-              <li key={h.id} className="py-4">
-                <Link to={`/hackathons/${h.id}`} className="text-lg font-semibold text-blue-700 hover:underline">
-                  {h.name}
-                </Link>
-                <p className="text-gray-600 text-sm">{h.description}</p>
-              </li>
+              <Link
+                key={h.id}
+                to={`/hackathons/${h.id}`}
+                className="glass-panel p-6 block border-l-4 border-neon-cyan/40 hover:border-neon-cyan transition-all duration-300 hover:-translate-y-1 hover:shadow-neon-cyan"
+              >
+                <h2 className="font-pixel text-xs text-white mb-2">{h.name}</h2>
+                <p className="text-slate-300 text-sm line-clamp-2 mb-4">{h.description || 'No description provided.'}</p>
+                <div className="flex items-center gap-4 text-xs text-slate-400">
+                  <span>{h.problem_statements?.length || 0} problem statements</span>
+                  <span>{h.teams?.length || 0} teams</span>
+                </div>
+              </Link>
             ))}
-          </ul>
+          </div>
         )}
       </div>
-    </div>
+    </PageLayout>
   );
 }

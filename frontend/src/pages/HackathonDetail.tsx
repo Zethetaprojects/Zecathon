@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { hackathonsApi, problemStatementsApi } from '../api/hackathons';
 import { Hackathon, ProblemStatement } from '../types';
+import PageLayout from '../components/PageLayout';
 
 export default function HackathonDetail() {
   const { id } = useParams<{ id: string }>();
@@ -49,55 +50,85 @@ export default function HackathonDetail() {
     }
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
-  if (!hackathon) return <div className="p-8">Hackathon not found</div>;
+  if (loading) {
+    return (
+      <PageLayout className="flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-400 text-sm">Loading hackathon...</p>
+        </div>
+      </PageLayout>
+    );
+  }
 
-  return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
-        <div className="mb-4">
-          <Link to="/hackathons" className="text-blue-600 text-sm hover:underline">
+  if (!hackathon) {
+    return (
+      <PageLayout className="px-4 py-8">
+        <div className="max-w-4xl mx-auto glass-panel p-8 text-center">
+          <h2 className="font-pixel text-lg text-neon-pink mb-2">MISSION NOT FOUND</h2>
+          <p className="text-slate-300 mb-4">The hackathon you are looking for does not exist.</p>
+          <Link to="/hackathons" className="text-neon-cyan hover:text-white text-sm">
             ← Back to hackathons
           </Link>
         </div>
-        <h1 className="text-3xl font-bold mb-2">{hackathon.name}</h1>
-        <p className="text-gray-700 mb-6">{hackathon.description}</p>
+      </PageLayout>
+    );
+  }
 
-        <div className="mb-6 flex gap-3">
-          <Link
-            to={`/hackathons/${id}/teams`}
-            className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Manage teams & submissions
-          </Link>
-          <Link
-            to={`/hackathons/${id}/leaderboard`}
-            className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-          >
-            Leaderboard
+  return (
+    <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto">
+        <div className="mb-4">
+          <Link to="/hackathons" className="text-neon-cyan hover:text-white text-sm transition">
+            ← Back to hackathons
           </Link>
         </div>
 
-        {error && <div className="mb-4 text-red-600 text-sm">{error}</div>}
+        <div className="glass-panel p-6 sm:p-8 mb-8">
+          <h1 className="font-pixel text-xl text-white text-shadow-neon mb-3">{hackathon.name}</h1>
+          <p className="text-slate-300 mb-6 leading-relaxed">{hackathon.description}</p>
 
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Problem statements</h2>
+          <div className="flex flex-wrap gap-3">
+            <Link
+              to={`/hackathons/${id}/teams`}
+              className="px-5 py-2.5 rounded neon-btn neon-btn-primary text-xs"
+            >
+              Manage teams & submissions
+            </Link>
+            <Link
+              to={`/hackathons/${id}/leaderboard`}
+              className="px-5 py-2.5 rounded neon-btn neon-btn-cyan text-xs"
+            >
+              Leaderboard
+            </Link>
+          </div>
+        </div>
+
+        {error && (
+          <div className="mb-6 px-4 py-3 rounded bg-neon-pink/10 border border-neon-pink/30 text-neon-pink text-sm">
+            {error}
+          </div>
+        )}
+
+        <div className="glass-panel p-6 sm:p-8 mb-8">
+          <h2 className="font-pixel text-sm text-white mb-4">PROBLEM STATEMENTS</h2>
+
           {hackathon.problem_statements?.length === 0 ? (
-            <p className="text-gray-600 text-sm">No problem statements yet.</p>
+            <p className="text-slate-400 text-sm mb-6">No problem statements yet.</p>
           ) : (
-            <ul className="divide-y mb-4">
+            <ul className="space-y-4 mb-8">
               {hackathon.problem_statements?.map((ps: ProblemStatement) => (
-                <li key={ps.id} className="py-3">
-                  <p className="font-medium">{ps.title}</p>
-                  <p className="text-sm text-gray-600">{ps.description}</p>
+                <li key={ps.id} className="p-4 rounded bg-black/20 border border-white/10">
+                  <p className="font-semibold text-white mb-1">{ps.title}</p>
+                  <p className="text-sm text-slate-400 mb-2">{ps.description}</p>
                   {ps.file_path && (
                     <a
                       href={ps.file_path}
                       target="_blank"
                       rel="noreferrer"
-                      className="text-sm text-blue-600 hover:underline"
+                      className="text-xs text-neon-cyan hover:text-white transition"
                     >
-                      View file
+                      View file →
                     </a>
                   )}
                 </li>
@@ -105,45 +136,49 @@ export default function HackathonDetail() {
             </ul>
           )}
 
-          <form onSubmit={handleUpload} className="border rounded-lg p-4 bg-gray-50">
-            <h3 className="font-semibold mb-3">Upload new problem statement</h3>
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">Title</label>
-              <input
-                value={psTitle}
-                onChange={(e) => setPsTitle(e.target.value)}
-                required
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-              />
+          <form onSubmit={handleUpload} className="p-5 rounded bg-black/20 border border-white/10">
+            <h3 className="font-pixel text-xs text-white mb-4">UPLOAD NEW STATEMENT</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs pixel-caps text-slate-300 mb-2">Title</label>
+                <input
+                  value={psTitle}
+                  onChange={(e) => setPsTitle(e.target.value)}
+                  required
+                  className="w-full rounded px-4 py-3 neon-input"
+                  placeholder="Problem statement title"
+                />
+              </div>
+              <div>
+                <label className="block text-xs pixel-caps text-slate-300 mb-2">Description</label>
+                <textarea
+                  value={psDescription}
+                  onChange={(e) => setPsDescription(e.target.value)}
+                  rows={3}
+                  className="w-full rounded px-4 py-3 neon-input"
+                  placeholder="Detailed description"
+                />
+              </div>
+              <div>
+                <label className="block text-xs pixel-caps text-slate-300 mb-2">File (optional)</label>
+                <input
+                  ref={fileRef}
+                  type="file"
+                  onChange={(e) => setPsFile(e.target.files?.[0] || null)}
+                  className="w-full text-sm text-slate-300 file:mr-4 file:px-3 file:py-2 file:rounded file:border-0 file:text-xs file:bg-neon-cyan/20 file:text-neon-cyan file:cursor-pointer"
+                />
+              </div>
+              <button
+                type="submit"
+                disabled={psBusy}
+                className="px-5 py-2 rounded neon-btn neon-btn-primary text-xs disabled:opacity-50"
+              >
+                {psBusy ? 'Uploading...' : 'Upload statement'}
+              </button>
             </div>
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">Description</label>
-              <textarea
-                value={psDescription}
-                onChange={(e) => setPsDescription(e.target.value)}
-                rows={3}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-              />
-            </div>
-            <div className="mb-3">
-              <label className="block text-sm font-medium text-gray-700">File (optional)</label>
-              <input
-                ref={fileRef}
-                type="file"
-                onChange={(e) => setPsFile(e.target.files?.[0] || null)}
-                className="mt-1 block w-full text-sm"
-              />
-            </div>
-            <button
-              type="submit"
-              disabled={psBusy}
-              className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-            >
-              {psBusy ? 'Uploading...' : 'Upload'}
-            </button>
           </form>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }

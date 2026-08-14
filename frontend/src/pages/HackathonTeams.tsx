@@ -1,9 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
-import { teamsApi } from '../api/teams';
-import { submissionsApi } from '../api/teams';
+import { teamsApi, submissionsApi } from '../api/teams';
 import { Hackathon, Team, ProblemStatement, Submission } from '../types';
+import PageLayout from '../components/PageLayout';
 
 export default function HackathonTeams() {
   const { id } = useParams<{ id: string }>();
@@ -86,7 +86,7 @@ export default function HackathonTeams() {
   };
 
   const evaluate = async (submission: Submission) => {
-    setEvaluating({ ...evaluating, [submission.id]: true });
+    setEvaluating((prev) => ({ ...prev, [submission.id]: true }));
     setError('');
     try {
       if (submission.type === 'tech') {
@@ -98,116 +98,157 @@ export default function HackathonTeams() {
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Evaluation failed');
     } finally {
-      setEvaluating({ ...evaluating, [submission.id]: false });
+      setEvaluating((prev) => ({ ...prev, [submission.id]: false }));
     }
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
-  if (!hackathon) return <div className="p-8">Hackathon not found</div>;
+  if (loading) {
+    return (
+      <PageLayout className="flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-400 text-sm">Loading teams...</p>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  if (!hackathon) {
+    return (
+      <PageLayout className="px-4 py-8">
+        <div className="max-w-4xl mx-auto glass-panel p-8 text-center">
+          <h2 className="font-pixel text-lg text-neon-pink mb-2">MISSION NOT FOUND</h2>
+          <Link to="/hackathons" className="text-neon-cyan hover:text-white text-sm">
+            ← Back to hackathons
+          </Link>
+        </div>
+      </PageLayout>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
+    <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto">
         <div className="mb-4">
-          <Link to={`/hackathons/${hackathonId}`} className="text-blue-600 text-sm hover:underline">
+          <Link to={`/hackathons/${hackathonId}`} className="text-neon-cyan hover:text-white text-sm transition">
             ← Back to hackathon
           </Link>
         </div>
-        <div className="flex justify-between items-center mb-2">
-          <h1 className="text-3xl font-bold">{hackathon.name}</h1>
-          <Link
-            to={`/hackathons/${hackathonId}/leaderboard`}
-            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
-          >
-            Leaderboard
-          </Link>
-        </div>
-        <p className="text-gray-700 mb-6">Teams & submissions</p>
-        {error && <div className="mb-4 text-red-600 text-sm">{error}</div>}
 
-        <div className="mb-8">
-          <h2 className="text-xl font-semibold mb-4">Teams</h2>
-          {teams.length === 0 ? (
-            <p className="text-gray-600 text-sm">No teams yet. Create one below.</p>
-          ) : (
-            <ul className="divide-y mb-4">
-              {teams.map((team) => (
-                <li key={team.id} className="py-4">
-                  <div className="flex justify-between items-start">
+        <div className="glass-panel p-6 sm:p-8 mb-6">
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-2">
+            <h1 className="font-pixel text-xl text-white text-shadow-neon">{hackathon.name}</h1>
+            <Link
+              to={`/hackathons/${hackathonId}/leaderboard`}
+              className="px-5 py-2.5 rounded neon-btn neon-btn-cyan text-xs"
+            >
+              Leaderboard
+            </Link>
+          </div>
+          <p className="text-slate-400 text-sm">Teams & submissions</p>
+        </div>
+
+        {error && (
+          <div className="mb-6 px-4 py-3 rounded bg-neon-pink/10 border border-neon-pink/30 text-neon-pink text-sm">
+            {error}
+          </div>
+        )}
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 space-y-6">
+            {teams.length === 0 ? (
+              <div className="glass-panel p-8 text-center">
+                <p className="text-slate-300">No teams yet. Create the first team to start.</p>
+              </div>
+            ) : (
+              teams.map((team) => (
+                <div key={team.id} className="glass-panel p-6">
+                  <div className="flex justify-between items-start gap-4 mb-4">
                     <div>
-                      <p className="font-semibold text-lg">{team.name}</p>
-                      <p className="text-sm text-gray-600">
-                        Members: {team.members?.map((m) => `${m.username} (${m.role})`).join(', ')}
+                      <h2 className="font-pixel text-xs text-white mb-2">{team.name}</h2>
+                      <p className="text-xs text-slate-400">
+                        Members: {team.members?.map((m) => `${m.username} (${m.role})`).join(', ') || 'none'}
                       </p>
                     </div>
                     <button
                       onClick={() => joinTeam(team.id)}
-                      className="text-sm border border-blue-600 text-blue-600 px-3 py-1 rounded hover:bg-blue-50"
+                      className="px-3 py-1.5 rounded neon-btn neon-btn-ghost text-xs"
                     >
                       Join
                     </button>
                   </div>
-                  <div className="mt-3 space-y-2">
+
+                  <div className="space-y-3">
                     {hackathon.problem_statements?.map((ps) => {
                       const sub = submissionsByTeam[team.id]?.find((s) => s.problem_statement_id === ps.id);
                       return (
-                        <div key={ps.id} className="flex items-center gap-2 text-sm">
-                          <span className="text-gray-700">{ps.title}:</span>
-                          {sub ? (
-                            <>
-                              <span className="capitalize">{sub.status.replace('_', '-')}</span>
-                              {sub.evaluation ? (
-                                <span className="font-semibold text-blue-700">
-                                  {sub.evaluation.total_score} — {sub.evaluation.verdict}
+                        <div
+                          key={ps.id}
+                          className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 rounded bg-black/20 border border-white/10"
+                        >
+                          <span className="text-sm text-slate-300">{ps.title}</span>
+                          <div className="flex items-center gap-3">
+                            {sub ? (
+                              <>
+                                <span className="text-xs text-slate-400 capitalize">
+                                  {sub.status.replace('_', '-')}
                                 </span>
-                              ) : (
-                                <button
-                                  onClick={() => evaluate(sub)}
-                                  disabled={evaluating[sub.id]}
-                                  className="bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700 disabled:opacity-50"
-                                >
-                                  {evaluating[sub.id] ? 'Evaluating...' : 'Evaluate'}
-                                </button>
-                              )}
-                            </>
-                          ) : (
-                            <button
-                              onClick={() => submitFor(team.id, ps)}
-                              className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                            >
-                              Submit
-                            </button>
-                          )}
+                                {sub.evaluation ? (
+                                  <span className="text-sm font-semibold text-neon-cyan">
+                                    {sub.evaluation.total_score} pts — {sub.evaluation.verdict}
+                                  </span>
+                                ) : (
+                                  <button
+                                    onClick={() => evaluate(sub)}
+                                    disabled={evaluating[sub.id]}
+                                    className="px-3 py-1.5 rounded neon-btn neon-btn-primary text-xs disabled:opacity-50"
+                                  >
+                                    {evaluating[sub.id] ? 'Evaluating...' : 'Evaluate'}
+                                  </button>
+                                )}
+                              </>
+                            ) : (
+                              <button
+                                onClick={() => submitFor(team.id, ps)}
+                                className="px-3 py-1.5 rounded neon-btn neon-btn-cyan text-xs"
+                              >
+                                Submit
+                              </button>
+                            )}
+                          </div>
                         </div>
                       );
                     })}
+                    {!hackathon.problem_statements?.length && (
+                      <p className="text-xs text-slate-500">Upload problem statements to enable submissions.</p>
+                    )}
                   </div>
-                </li>
-              ))}
-            </ul>
-          )}
+                </div>
+              ))
+            )}
+          </div>
 
-          <form onSubmit={createTeam} className="border rounded-lg p-4 bg-gray-50">
-            <h3 className="font-semibold mb-3">Create a new team</h3>
-            <div className="flex gap-2">
+          <div className="glass-panel p-6 h-fit">
+            <h3 className="font-pixel text-xs text-white mb-4">CREATE TEAM</h3>
+            <form onSubmit={createTeam} className="space-y-4">
               <input
                 value={teamName}
                 onChange={(e) => setTeamName(e.target.value)}
                 placeholder="Team name"
                 required
-                className="flex-1 rounded-md border border-gray-300 px-3 py-2"
+                className="w-full rounded px-4 py-3 neon-input"
               />
               <button
                 type="submit"
                 disabled={busy}
-                className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
+                className="w-full rounded neon-btn neon-btn-primary py-3 text-xs disabled:opacity-50"
               >
-                {busy ? 'Creating...' : 'Create'}
+                {busy ? 'Creating...' : 'Create team'}
               </button>
-            </div>
-          </form>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }

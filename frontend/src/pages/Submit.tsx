@@ -3,6 +3,7 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { submissionsApi } from '../api/teams';
 import { Hackathon, Team, ProblemStatement } from '../types';
+import PageLayout from '../components/PageLayout';
 
 export default function Submit() {
   const { hackathonId, teamId, problemStatementId } = useParams<{
@@ -61,79 +62,127 @@ export default function Submit() {
     }
   };
 
-  if (loading) return <div className="p-8">Loading...</div>;
-  if (!hackathon || !team || !ps) return <div className="p-8">Invalid submission route</div>;
+  if (loading) {
+    return (
+      <PageLayout className="flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-slate-400 text-sm">Loading mission...</p>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  if (!hackathon || !team || !ps) {
+    return (
+      <PageLayout className="px-4 py-8">
+        <div className="max-w-3xl mx-auto glass-panel p-8 text-center">
+          <h2 className="font-pixel text-lg text-neon-pink mb-2">INVALID MISSION</h2>
+          <p className="text-slate-300 mb-4">The team or problem statement could not be found.</p>
+          <Link to="/hackathons" className="text-neon-cyan hover:text-white text-sm">
+            ← Back to hackathons
+          </Link>
+        </div>
+      </PageLayout>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-6">
+    <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto">
         <div className="mb-4">
-          <Link to={`/hackathons/${hackathonId}/teams`} className="text-blue-600 text-sm hover:underline">
+          <Link
+            to={`/hackathons/${hackathonId}/teams`}
+            className="text-neon-cyan hover:text-white text-sm transition"
+          >
             ← Back to teams
           </Link>
         </div>
-        <h1 className="text-2xl font-bold mb-2">Submit project</h1>
-        <p className="text-gray-600 mb-6">
-          Team: <span className="font-semibold">{team.name}</span> | Problem statement:{' '}
-          <span className="font-semibold">{ps.title}</span>
-        </p>
 
-        {error && <div className="mb-4 text-red-600 text-sm">{error}</div>}
-
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Submission type</label>
-            <select
-              value={type}
-              onChange={(e) => setType(e.target.value as 'tech' | 'non_tech')}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-            >
-              <option value="tech">Tech (GitHub repository)</option>
-              <option value="non_tech">Non-tech (document)</option>
-            </select>
+        <div className="glass-panel p-6 sm:p-8">
+          <h1 className="font-pixel text-lg text-white text-shadow-neon mb-2">SUBMIT PROJECT</h1>
+          <div className="text-slate-400 text-sm mb-6 space-y-1">
+            <p>
+              Hackathon: <span className="text-neon-cyan">{hackathon.name}</span>
+            </p>
+            <p>
+              Team: <span className="text-white">{team.name}</span>
+            </p>
+            <p>
+              Problem statement: <span className="text-white">{ps.title}</span>
+            </p>
           </div>
 
-          {type === 'tech' ? (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">GitHub URL</label>
-              <input
-                type="url"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                required
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-              />
-            </div>
-          ) : (
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Project document</label>
-              <input
-                type="file"
-                onChange={(e) => setFile(e.target.files?.[0] || null)}
-                required
-                className="mt-1 block w-full text-sm"
-              />
+          {error && (
+            <div className="mb-5 px-4 py-3 rounded bg-neon-pink/10 border border-neon-pink/30 text-neon-pink text-sm">
+              {error}
             </div>
           )}
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Optional PPT</label>
-            <input
-              type="file"
-              onChange={(e) => setPpt(e.target.files?.[0] || null)}
-              className="mt-1 block w-full text-sm"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-5">
+            <div>
+              <label className="block text-xs pixel-caps text-slate-300 mb-2">Submission type</label>
+              <select
+                value={type}
+                onChange={(e) => setType(e.target.value as 'tech' | 'non_tech')}
+                className="w-full rounded px-4 py-3 neon-input"
+              >
+                <option value="tech">Tech — GitHub repository</option>
+                <option value="non_tech">Non-tech — document / PDF / PPT / xlsx</option>
+              </select>
+            </div>
 
-          <button
-            type="submit"
-            disabled={busy}
-            className="w-full bg-blue-600 text-white py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            {busy ? 'Submitting...' : 'Submit project'}
-          </button>
-        </form>
+            {type === 'tech' ? (
+              <div>
+                <label className="block text-xs pixel-caps text-slate-300 mb-2">GitHub URL</label>
+                <input
+                  type="url"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  required
+                  className="w-full rounded px-4 py-3 neon-input"
+                  placeholder="https://github.com/owner/repo"
+                />
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs pixel-caps text-slate-300 mb-2">Project document</label>
+                <input
+                  type="file"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  required
+                  className="w-full text-sm text-slate-300 file:mr-4 file:px-3 file:py-2 file:rounded file:border-0 file:text-xs file:bg-neon-cyan/20 file:text-neon-cyan file:cursor-pointer"
+                />
+              </div>
+            )}
+
+            <div>
+              <label className="block text-xs pixel-caps text-slate-300 mb-2">Optional PPT</label>
+              <input
+                type="file"
+                onChange={(e) => setPpt(e.target.files?.[0] || null)}
+                className="w-full text-sm text-slate-300 file:mr-4 file:px-3 file:py-2 file:rounded file:border-0 file:text-xs file:bg-neon-purple/20 file:text-neon-purple file:cursor-pointer"
+              />
+            </div>
+
+            <div className="pt-2 flex gap-4">
+              <button
+                type="submit"
+                disabled={busy}
+                className="flex-1 rounded neon-btn neon-btn-primary py-3 text-sm disabled:opacity-50"
+              >
+                {busy ? 'Submitting...' : 'Submit project'}
+              </button>
+              <Link
+                to={`/hackathons/${hackathonId}/teams`}
+                className="px-6 py-3 rounded neon-btn neon-btn-ghost text-sm"
+              >
+                Cancel
+              </Link>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }

@@ -2,6 +2,15 @@ import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { leaderboardApi } from '../api/leaderboard';
 import { LeaderboardEntry } from '../types';
+import PageLayout from '../components/PageLayout';
+
+const verdictColor: Record<string, string> = {
+  OUTSTANDING: 'text-neon-yellow',
+  EXCELLENT: 'text-neon-cyan',
+  SATISFACTORY: 'text-neon-purple',
+  'NEEDS WORK': 'text-neon-pink',
+  'NOT ASSESSABLE': 'text-slate-500',
+};
 
 export default function Leaderboard() {
   const { id } = useParams<{ id: string }>();
@@ -18,52 +27,81 @@ export default function Leaderboard() {
       .finally(() => setLoading(false));
   }, [hackathonId]);
 
-  if (loading) return <div className="p-8">Loading...</div>;
-
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-4xl mx-auto bg-white rounded-lg shadow p-6">
-        <div className="mb-4">
-          <Link to={`/hackathons/${hackathonId}`} className="text-blue-600 text-sm hover:underline">
+    <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
+      <div className="max-w-5xl mx-auto">
+        <div className="mb-6">
+          <Link to={`/hackathons/${hackathonId}`} className="text-neon-cyan hover:text-white text-sm transition">
             ← Back to hackathon
           </Link>
         </div>
-        <h1 className="text-3xl font-bold mb-6">Leaderboard</h1>
-        {error && <div className="mb-4 text-red-600 text-sm">{error}</div>}
-        {entries.length === 0 ? (
-          <p className="text-gray-600">No evaluated submissions yet. Evaluate projects to see the leaderboard.</p>
-        ) : (
-          <table className="w-full text-left border-collapse">
-            <thead>
-              <tr className="border-b">
-                <th className="py-2">Rank</th>
-                <th>Team</th>
-                <th>Problem statement</th>
-                <th>Type</th>
-                <th>Score</th>
-                <th>Verdict</th>
-              </tr>
-            </thead>
-            <tbody>
-              {entries.map((entry, idx) => (
-                <tr key={entry.submission_id} className="border-b">
-                  <td className="py-3">{idx + 1}</td>
-                  <td>{entry.team_name}</td>
-                  <td>{entry.problem_statement_title}</td>
-                  <td className="capitalize">{entry.type.replace('_', '-')}</td>
-                  <td className="font-semibold">
-                    {entry.total_score}
-                    {entry.needs_review && (
-                      <span className="ml-2 text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">Review</span>
-                    )}
-                  </td>
-                  <td>{entry.verdict}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        )}
+
+        <div className="glass-panel p-6 sm:p-8">
+          <h1 className="font-pixel text-xl text-white text-shadow-neon mb-2">LEADERBOARD</h1>
+          <p className="text-slate-400 text-sm mb-6">Ranked by total score — no ties, all discrete.</p>
+
+          {error && (
+            <div className="mb-5 px-4 py-3 rounded bg-neon-pink/10 border border-neon-pink/30 text-neon-pink text-sm">
+              {error}
+            </div>
+          )}
+
+          {loading ? (
+            <div className="text-center py-16">
+              <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+              <p className="text-slate-400 text-sm">Loading leaderboard...</p>
+            </div>
+          ) : entries.length === 0 ? (
+            <div className="text-center py-12">
+              <p className="text-slate-300 mb-4">No evaluated submissions yet.</p>
+              <Link
+                to={`/hackathons/${hackathonId}/teams`}
+                className="px-5 py-2 rounded neon-btn neon-btn-cyan text-xs"
+              >
+                Evaluate projects
+              </Link>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-white/10 text-xs pixel-caps text-slate-400">
+                    <th className="py-3 pr-4">Rank</th>
+                    <th className="py-3 pr-4">Team</th>
+                    <th className="py-3 pr-4">Problem statement</th>
+                    <th className="py-3 pr-4">Type</th>
+                    <th className="py-3 pr-4">Score</th>
+                    <th className="py-3">Verdict</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {entries.map((entry, idx) => (
+                    <tr key={entry.submission_id} className="border-b border-white/10 hover:bg-white/5 transition">
+                      <td className="py-4 pr-4 font-pixel text-neon-cyan text-xs">#{idx + 1}</td>
+                      <td className="py-4 pr-4 text-white font-semibold">{entry.team_name}</td>
+                      <td className="py-4 pr-4 text-slate-300 text-sm">{entry.problem_statement_title}</td>
+                      <td className="py-4 pr-4 text-slate-400 text-sm capitalize">
+                        {entry.type.replace('_', '-')}
+                      </td>
+                      <td className="py-4 pr-4 font-semibold text-white">
+                        {entry.total_score}
+                        {entry.needs_review && (
+                          <span className="ml-2 text-xs px-2 py-1 rounded bg-neon-yellow/10 text-neon-yellow border border-neon-yellow/30">
+                            Review
+                          </span>
+                        )}
+                      </td>
+                      <td className={`py-4 text-sm font-semibold ${verdictColor[entry.verdict] || 'text-slate-300'}`}>
+                        {entry.verdict}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }

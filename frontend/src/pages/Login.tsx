@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { useAuth } from '../hooks/useAuth';
+import PageLayout from '../components/PageLayout';
 
 export default function Login() {
   const [username, setUsername] = useState('');
@@ -17,6 +18,7 @@ export default function Login() {
     setBusy(true);
     try {
       const { data: tokenData } = await authApi.login({ username, password });
+      localStorage.setItem('token', tokenData.access_token);
       const { data: user } = await authApi.me();
       login(tokenData.access_token, user);
       navigate('/dashboard');
@@ -28,41 +30,60 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gray-50">
-      <form onSubmit={handleSubmit} className="bg-white p-8 rounded-lg shadow-md w-full max-w-md">
-        <h1 className="text-2xl font-bold mb-6 text-center">Log in</h1>
-        {error && <div className="mb-4 text-red-600 text-sm">{error}</div>}
-        <div className="mb-4">
-          <label className="block text-sm font-medium text-gray-700">Username</label>
-          <input
-            type="text"
-            value={username}
-            onChange={(e) => setUsername(e.target.value)}
-            required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-          />
+    <PageLayout className="flex items-center justify-center px-4 py-12">
+      <div className="w-full max-w-md">
+        <div className="text-center mb-8">
+          <h1 className="font-pixel text-xl text-white text-shadow-neon mb-2">LOGIN</h1>
+          <p className="text-slate-400 text-sm">Enter the ZECATHON arena</p>
         </div>
-        <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700">Password</label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-          />
-        </div>
-        <button
-          type="submit"
-          disabled={busy}
-          className="w-full bg-blue-600 text-white py-2 rounded-md hover:bg-blue-700 disabled:opacity-50"
-        >
-          {busy ? 'Logging in...' : 'Log in'}
-        </button>
-        <p className="mt-4 text-center text-sm text-gray-600">
-          No account? <Link to="/register" className="text-blue-600 hover:underline">Register</Link>
-        </p>
-      </form>
-    </div>
+
+        <form onSubmit={handleSubmit} className="glass-panel p-8 space-y-5">
+          {error && (
+            <div className="px-4 py-3 rounded bg-neon-pink/10 border border-neon-pink/30 text-neon-pink text-sm">
+              {error}
+            </div>
+          )}
+
+          <div>
+            <label className="block text-xs pixel-caps text-slate-300 mb-2">Username</label>
+            <input
+              type="text"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              required
+              className="w-full rounded px-4 py-3 neon-input"
+              placeholder="flowuser"
+            />
+          </div>
+
+          <div>
+            <label className="block text-xs pixel-caps text-slate-300 mb-2">Password</label>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="w-full rounded px-4 py-3 neon-input"
+              placeholder="••••••••"
+            />
+          </div>
+
+          <button
+            type="submit"
+            disabled={busy}
+            className="w-full rounded neon-btn neon-btn-primary py-3 text-sm disabled:opacity-50"
+          >
+            {busy ? 'Authenticating...' : 'Log in'}
+          </button>
+
+          <p className="text-center text-sm text-slate-400">
+            No account?{' '}
+            <Link to="/register" className="text-neon-cyan hover:text-white transition">
+              Register
+            </Link>
+          </p>
+        </form>
+      </div>
+    </PageLayout>
   );
 }

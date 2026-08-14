@@ -4,6 +4,25 @@
 - **Repo**: full-stack hackathon evaluation platform MVP complete
 - **AGENT_CONFIG**: created; context, plan, state, and todo maintained.
 - **Phase**: 8 complete (integration, E2E smoke test, polish, final commit)
-- **Next action**: hand over to user for review / configure real LLM endpoint
+- **Latest UI/UX pass**: applied ZECATHON space/pixel theme across all screens
+  - Added public landing page at `/` with hero, CTA, feature cards, and Zetheta Algorithms branding.
+  - Re-themed Login, Register, Dashboard, Hackathons, CreateHackathon, HackathonDetail, HackathonTeams, Submit, and Leaderboard.
+  - Shared theme system: `SpaceBackground` canvas, `Navbar`, `PageLayout`, `ErrorBoundary`, Tailwind colors, custom CSS.
+  - Dark space blue background, neon pink/cyan/purple accents, pixel-style typography (`Press Start 2P` with monospace fallback), glass panels, neon buttons, starfield animation.
+- **Blank-page fixes applied**:
+  - `BrowserRouter` wrapper already present in `main.tsx`.
+  - Added `ErrorBoundary` around the whole app to catch React crashes and display a themed reboot screen instead of a white screen.
+  - Explicit `localStorage.setItem('token', ...)` before `/auth/me` in Login and Register to prevent race conditions.
+  - All pages now render themed loading and error fallback states instead of empty/white screens.
+  - `PrivateRoute` loading state uses the shared theme spinner.
+- **Validation**:
+  - `npm run build` passes.
+  - `validate_flow.py` passes all 12 API/flow steps (register/login, hackathon, problem statement, tech/non-tech submissions, evaluations, leaderboard).
+  - Fixed `validate_flow.py` SQLite URL to use forward slashes so the isolated test DB is actually used on Windows.
+- **Next action**: hand over to user for review; restart `npm run dev` and hard-refresh browser to see the new theme.
 - **Blockers**: none.
-- **Leftovers**: optional real LLM endpoint configuration; replace local file storage with S3 for production.
+- **Leftovers**:
+  - Optional real LLM endpoint configuration.
+  - Replace local file storage with S3 for production.
+  - Fine-tune pixel fonts if Google Fonts are unavailable offline (currently falls back to monospace).
+  - Add a mobile hamburger menu when needed (currently simple mobile nav).

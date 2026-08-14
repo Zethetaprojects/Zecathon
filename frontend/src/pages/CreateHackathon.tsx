@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
+import PageLayout from '../components/PageLayout';
 
 export default function CreateHackathon() {
   const [form, setForm] = useState({
@@ -35,62 +36,90 @@ export default function CreateHackathon() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 p-8">
-      <div className="max-w-2xl mx-auto bg-white rounded-lg shadow p-6">
-        <h1 className="text-2xl font-bold mb-6">Create hackathon</h1>
-        {error && <div className="mb-4 text-red-600 text-sm">{error}</div>}
-        <form onSubmit={handleSubmit} className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Name</label>
-            <input
-              name="name"
-              value={form.name}
-              onChange={handleChange}
-              required
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700">Description</label>
-            <textarea
-              name="description"
-              value={form.description}
-              onChange={handleChange}
-              rows={4}
-              className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-4">
+    <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
+      <div className="max-w-3xl mx-auto">
+        <div className="mb-6">
+          <Link to="/hackathons" className="text-neon-cyan hover:text-white text-sm transition">
+            ← Back to hackathons
+          </Link>
+        </div>
+
+        <div className="glass-panel p-6 sm:p-8">
+          <h1 className="font-pixel text-lg text-white text-shadow-neon mb-2">NEW HACKATHON</h1>
+          <p className="text-slate-400 text-sm mb-6">Configure the arena before teams enter.</p>
+
+          {error && (
+            <div className="mb-5 px-4 py-3 rounded bg-neon-pink/10 border border-neon-pink/30 text-neon-pink text-sm">
+              {error}
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Start date</label>
+              <label className="block text-xs pixel-caps text-slate-300 mb-2">Name</label>
               <input
-                name="start_date"
-                type="datetime-local"
-                value={form.start_date}
+                name="name"
+                value={form.name}
                 onChange={handleChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                required
+                className="w-full rounded px-4 py-3 neon-input"
+                placeholder="e.g. ZECATHON 2026"
               />
             </div>
+
             <div>
-              <label className="block text-sm font-medium text-gray-700">End date</label>
-              <input
-                name="end_date"
-                type="datetime-local"
-                value={form.end_date}
+              <label className="block text-xs pixel-caps text-slate-300 mb-2">Description</label>
+              <textarea
+                name="description"
+                value={form.description}
                 onChange={handleChange}
-                className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2"
+                rows={4}
+                className="w-full rounded px-4 py-3 neon-input"
+                placeholder="What is this hackathon about?"
               />
             </div>
-          </div>
-          <button
-            type="submit"
-            disabled={busy}
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 disabled:opacity-50"
-          >
-            {busy ? 'Creating...' : 'Create'}
-          </button>
-        </form>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs pixel-caps text-slate-300 mb-2">Start date</label>
+                <input
+                  name="start_date"
+                  type="datetime-local"
+                  value={form.start_date}
+                  onChange={handleChange}
+                  className="w-full rounded px-4 py-3 neon-input"
+                />
+              </div>
+              <div>
+                <label className="block text-xs pixel-caps text-slate-300 mb-2">End date</label>
+                <input
+                  name="end_date"
+                  type="datetime-local"
+                  value={form.end_date}
+                  onChange={handleChange}
+                  className="w-full rounded px-4 py-3 neon-input"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 flex gap-4">
+              <button
+                type="submit"
+                disabled={busy}
+                className="flex-1 rounded neon-btn neon-btn-primary py-3 text-sm disabled:opacity-50"
+              >
+                {busy ? 'Creating...' : 'Create hackathon'}
+              </button>
+              <Link
+                to="/hackathons"
+                className="px-6 py-3 rounded neon-btn neon-btn-ghost text-sm"
+              >
+                Cancel
+              </Link>
+            </div>
+          </form>
+        </div>
       </div>
-    </div>
+    </PageLayout>
   );
 }
