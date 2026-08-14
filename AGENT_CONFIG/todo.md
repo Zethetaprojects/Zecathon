@@ -15,6 +15,7 @@
 - [x] Phase 6: non-tech evaluation API (done)
 - [x] Phase 7: leaderboard and discrete scoring frontend + commit (done)
 - [x] Phase 8: integration, E2E smoke test, polish, final commit (done)
+- [x] Browserless full-flow validation: frontend loads, auth → hackathon → upload → teams → submissions → evaluations → leaderboard (done)
 - [ ] Phase 2: frontend foundation + commit
 - [ ] Phase 3: hackathons & problem statements + commit
 - [ ] Phase 4: teams & submissions + commit
