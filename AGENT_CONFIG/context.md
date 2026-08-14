@@ -10,10 +10,18 @@ Build a web application for running hackathons where:
   - **Non-tech** → requires a project document (PDF/DOCX/PPTX/XLSX/etc.).
 - Teams can optionally upload a supporting PPT for evaluation.
 - Two evaluation APIs decide the score:
-  - `POST /api/evaluate/tech`
-  - `POST /api/evaluate/non-tech`
+  - `POST /api/evaluate/tech/{submission_id}`
+  - `POST /api/evaluate/non-tech/{submission_id}`
 - Every hackathon has a live leaderboard.
 - Scores must be **discrete** (not clustered on the same value) and differentiate teams.
+- **RBAC** is enforced across the API:
+  - Roles: `admin`, `organizer`, `judge`, `participant`.
+  - New registrations default to `participant`.
+  - Only `organizer` or `admin` can create hackathons and upload problem statements.
+  - Only `judge`, `organizer`, or `admin` can evaluate submissions.
+  - All authenticated users can create/join teams and submit projects.
+  - Admins can change roles via `PUT /api/auth/users/{id}/role` or the `set_role` script.
+- **LLM evaluator** uses Google Gemini 2.5 Flash when `GEMINI_API_KEY` is provided, otherwise falls back to a generic `AI_BACKEND_URL`, then a deterministic mock.
 
 ## Input contract for the evaluator APIs
 Payload must contain at minimum:

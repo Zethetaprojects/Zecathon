@@ -63,7 +63,21 @@
 - [x] Full-flow validation passes (`validate_flow.py`)
 - [x] Update `AGENT_CONFIG` state and todo
 
+## Phase 10 — RBAC + Gemini 2.5 Flash
+- [x] Add UserRole enum and role column
+- [x] Lightweight migration for existing SQLite DBs
+- [x] RBAC dependencies and route protection
+- [x] Admin endpoint + set_role script
+- [x] Gemini REST API client integration
+- [x] GEMINI_API_KEY / GEMINI_MODEL env config
+- [x] Frontend role-aware UI
+- [x] pytest and validate_flow.py pass
+- [x] Commit
+
 ## Leftovers / next steps
+- [ ] User adds GEMINI_API_KEY to backend/.env
+- [ ] Promote existing users to organizer/judge via set_role script or admin endpoint
+- [ ] Optional S3 storage migration
 - [ ] User review of new theme in browser
 - [ ] Optional real LLM endpoint configuration
 - [ ] Optional S3 storage migration

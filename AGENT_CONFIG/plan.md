@@ -74,5 +74,18 @@
 - Validate: `npm run build` and `validate_flow.py` pass.
 - Commit: `feat: ZECATHON landing page and space/pixel theme`
 
+## Phase 10 — RBAC throughout API + Gemini 2.5 Flash evaluator
+- Add `role` column to `users` with enum (`admin`, `organizer`, `judge`, `participant`); default new registrations to `participant`.
+- Lightweight migration for existing SQLite databases.
+- Add RBAC dependencies (`require_admin`, `require_organizer`, `require_judge`) and protect routers:
+  - hackathons/problem-statements → organizer/admin
+  - evaluate → judge/organizer/admin
+  - teams/submissions → authenticated users
+- Admin endpoint and CLI script to assign roles.
+- Integrate Google Gemini 2.5 Flash REST API in `LLMClient` with `GEMINI_API_KEY`/`GEMINI_MODEL` env vars; keep generic backend and deterministic mock fallbacks.
+- Frontend role-aware UI: hide create/upload/evaluate actions for participants.
+- Validate: `pytest`, `validate_flow.py`, `npm run build` pass.
+- Commit: `feat: RBAC throughout API and Gemini 2.5 Flash integration`
+
 ## Commit cadence
 A commit is required at the end of every phase. If a phase is large, split it into intermediate commits (e.g. backend work first, frontend work second). Each commit message must be clear and phase-tagged.

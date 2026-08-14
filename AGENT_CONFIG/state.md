@@ -1,29 +1,29 @@
 # Current State
 
 - **Date**: 2026-08-14
-- **Repo**: full-stack hackathon evaluation platform MVP complete
+- **Repo**: full-stack hackathon evaluation platform with RBAC and Gemini integration
 - **AGENT_CONFIG**: created; context, plan, state, and todo maintained.
-- **Phase**: 8 complete (integration, E2E smoke test, polish, final commit)
-- **Latest runtime fix**: login sent JSON to the backend's OAuth2 form endpoint, causing "Field required" validation errors. Updated `frontend/src/api/auth.ts` to send `application/x-www-form-urlencoded` credentials. Frontend dev server restarted with the fix.
-- **Servers restarted**: both backend and frontend dev servers are running; frontend is on `http://localhost:5173/`.
-  - Added public landing page at `/` with hero, CTA, feature cards, and Zetheta Algorithms branding.
-  - Re-themed Login, Register, Dashboard, Hackathons, CreateHackathon, HackathonDetail, HackathonTeams, Submit, and Leaderboard.
-  - Shared theme system: `SpaceBackground` canvas, `Navbar`, `PageLayout`, `ErrorBoundary`, Tailwind colors, custom CSS.
-  - Dark space blue background, neon pink/cyan/purple accents, pixel-style typography (`Press Start 2P` with monospace fallback), glass panels, neon buttons, starfield animation.
-- **Blank-page fixes applied**:
-  - `BrowserRouter` wrapper already present in `main.tsx`.
-  - Added `ErrorBoundary` around the whole app to catch React crashes and display a themed reboot screen instead of a white screen.
-  - Explicit `localStorage.setItem('token', ...)` before `/auth/me` in Login and Register to prevent race conditions.
-  - All pages now render themed loading and error fallback states instead of empty/white screens.
-  - `PrivateRoute` loading state uses the shared theme spinner.
+- **Phase**: RBAC + Gemini integration complete and committed.
+- **RBAC implemented**:
+  - User roles: `admin`, `organizer`, `judge`, `participant`.
+  - Lightweight migration adds `role` column to existing SQLite `users` table.
+  - Route protections:
+    - Create hackathon / upload problem statement → organizer or admin.
+    - Evaluate submissions → judge, organizer, or admin.
+    - Teams/submissions → authenticated users.
+  - Admin endpoint: `PUT /api/auth/users/{id}/role`.
+  - CLI helper: `python -m backend.scripts.set_role <username> <role>`.
+- **Gemini 2.5 Flash integration**:
+  - `LLMClient` calls Google Gemini REST API when `GEMINI_API_KEY` is set.
+  - Falls back to generic `AI_BACKEND_URL`, then deterministic mock.
+  - Model configurable via `GEMINI_MODEL` (default `gemini-2.5-flash`).
+- **Frontend role-aware UI**:
+  - Dashboard shows role badge.
+  - Create hackathon / upload problem statement / evaluate buttons hidden for participants.
 - **Validation**:
-  - `npm run build` passes.
-  - `validate_flow.py` passes all 12 API/flow steps (register/login, hackathon, problem statement, tech/non-tech submissions, evaluations, leaderboard).
-  - Fixed `validate_flow.py` SQLite URL to use forward slashes so the isolated test DB is actually used on Windows.
-- **Next action**: hand over to user for review; restart `npm run dev` and hard-refresh browser to see the new theme.
+  - `pytest backend/tests` ✅
+  - `validate_flow.py` ✅
+  - `npm run build` ✅
+- **Next action**: restart dev servers and hand over; user must add `GEMINI_API_KEY` to backend `.env` for real evaluations.
 - **Blockers**: none.
-- **Leftovers**:
-  - Optional real LLM endpoint configuration.
-  - Replace local file storage with S3 for production.
-  - Fine-tune pixel fonts if Google Fonts are unavailable offline (currently falls back to monospace).
-  - Add a mobile hamburger menu when needed (currently simple mobile nav).
+- **Leftovers**: promote existing users to appropriate roles via script/admin endpoint; configure real Gemini key; S3 storage migration.
