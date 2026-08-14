@@ -9,7 +9,8 @@
 - [x] Phase 0: project scaffolding + commit
 - [x] Phase 1: backend FastAPI skeleton, DB, auth + commit (done)
 - [x] Phase 2: frontend scaffold with auth pages + commit (done)
-- [ ] Phase 3: hackathon and problem statement management + commit (in progress)
+- [x] Phase 3: hackathon and problem statement management + commit (done)
+- [ ] Phase 4: teams and submissions + commit (in progress)
 - [ ] Phase 2: frontend foundation + commit
 - [ ] Phase 3: hackathons & problem statements + commit
 - [ ] Phase 4: teams & submissions + commit
