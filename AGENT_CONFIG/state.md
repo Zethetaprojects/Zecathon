@@ -8,6 +8,7 @@
   - Procedural Web Audio space/chiptune loop (low drone + arpeggio) in `MusicProvider.tsx`.
   - Global toggle button in the navbar (speaker icon).
   - Autoplay-safe: starts only after the user clicks the button.
+  - **Volume increased**: master gain 0.5, multi-layered bass drones (A1/A2/E2), arpeggio peak 0.18 with longer decay.
 - **Auth-aware UI**:
   - Navbar center nav (Features dropdown, Hackathons, Leaderboards, Dashboard) is hidden until login.
   - Landing page CTAs adapt: guests see Join/Log in; logged-in users see Enter Arena + Host (organizers only).

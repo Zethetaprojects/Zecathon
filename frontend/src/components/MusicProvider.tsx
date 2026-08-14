@@ -11,7 +11,7 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   const [playing, setPlaying] = useState(false);
   const audioCtxRef = useRef<AudioContext | null>(null);
   const intervalRef = useRef<number | null>(null);
-  const droneRef = useRef<OscillatorNode | null>(null);
+  const dronesRef = useRef<OscillatorNode[]>([]);
   const masterGainRef = useRef<GainNode | null>(null);
 
   const cleanup = useCallback(() => {
@@ -19,10 +19,12 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       window.clearInterval(intervalRef.current);
       intervalRef.current = null;
     }
-    if (droneRef.current) {
-      try { droneRef.current.stop(); } catch { /* already stopped */ }
-      droneRef.current.disconnect();
-      droneRef.current = null;
+    if (dronesRef.current.length) {
+      dronesRef.current.forEach((d) => {
+        try { d.stop(); } catch { /* already stopped */ }
+        d.disconnect();
+      });
+      dronesRef.current = [];
     }
     if (masterGainRef.current) {
       masterGainRef.current.disconnect();
@@ -44,20 +46,26 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     audioCtxRef.current = ctx;
 
     const master = ctx.createGain();
-    master.gain.value = 0.15;
+    master.gain.value = 0.5;
     master.connect(ctx.destination);
     masterGainRef.current = master;
 
-    // Low space drone
-    const drone = ctx.createOscillator();
-    drone.type = 'sine';
-    drone.frequency.value = 110; // A2
-    const droneGain = ctx.createGain();
-    droneGain.gain.value = 0.05;
-    drone.connect(droneGain);
-    droneGain.connect(master);
-    drone.start();
-    droneRef.current = drone;
+    // Low space drones (A1 + A2 + E2 fifth) for a fuller bass bed
+    [
+      { freq: 55, gain: 0.15 },
+      { freq: 110, gain: 0.12 },
+      { freq: 82.41, gain: 0.08 },
+    ].forEach(({ freq, gain }) => {
+      const drone = ctx.createOscillator();
+      drone.type = 'sine';
+      drone.frequency.value = freq;
+      const droneGain = ctx.createGain();
+      droneGain.gain.value = gain;
+      drone.connect(droneGain);
+      droneGain.connect(master);
+      drone.start();
+      dronesRef.current.push(drone);
+    });
 
     // Procedural chiptune arpeggio
     const notes = [220, 261.63, 329.63, 392, 440, 329.63, 293.66, 220]; // A minor / pentatonic feel
@@ -73,12 +81,12 @@ export function MusicProvider({ children }: { children: ReactNode }) {
       osc.frequency.value = freq;
       const gain = ctx.createGain();
       gain.gain.setValueAtTime(0, t);
-      gain.gain.linearRampToValueAtTime(0.05, t + 0.01);
-      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.18);
+      gain.gain.linearRampToValueAtTime(0.18, t + 0.01);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t + 0.28);
       osc.connect(gain);
       gain.connect(master);
       osc.start(t);
-      osc.stop(t + 0.2);
+      osc.stop(t + 0.3);
     };
 
     ctx.resume().catch(() => {});
