@@ -8,6 +8,7 @@ import CreateHackathon from './pages/CreateHackathon';
 import HackathonDetail from './pages/HackathonDetail';
 import HackathonTeams from './pages/HackathonTeams';
 import Submit from './pages/Submit';
+import Leaderboard from './pages/Leaderboard';
 import PrivateRoute from './components/PrivateRoute';
 
 function App() {
@@ -22,6 +23,7 @@ function App() {
           <Route path="/hackathons/new" element={<CreateHackathon />} />
           <Route path="/hackathons/:id" element={<HackathonDetail />} />
           <Route path="/hackathons/:id/teams" element={<HackathonTeams />} />
+          <Route path="/hackathons/:id/leaderboard" element={<Leaderboard />} />
           <Route path="/hackathons/:hackathonId/submit/:teamId/:problemStatementId" element={<Submit />} />
         </Route>
         <Route path="*" element={<Navigate to="/dashboard" replace />} />

@@ -90,6 +90,14 @@ def test_evaluate_tech(auth_client, client, fake_repo, fake_llm):
     score_b = r.json()["total_score"]
     assert score_b != score_a
 
+    # Leaderboard should list both, sorted, with distinct scores
+    r = auth_client.get(f"/api/leaderboard/{hackathon_id}")
+    assert r.status_code == 200
+    board = r.json()
+    assert len(board) == 2
+    assert board[0]["total_score"] >= board[1]["total_score"]
+    assert board[0]["total_score"] != board[1]["total_score"]
+
 
 def test_evaluate_non_tech(auth_client, fake_llm):
     r = auth_client.post("/api/hackathons", json={"name": "Doc Hack", "description": "x"})

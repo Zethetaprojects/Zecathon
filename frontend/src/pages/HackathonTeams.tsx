@@ -2,24 +2,30 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { teamsApi } from '../api/teams';
-import { Hackathon, Team, ProblemStatement } from '../types';
+import { submissionsApi } from '../api/teams';
+import { Hackathon, Team, ProblemStatement, Submission } from '../types';
 
 export default function HackathonTeams() {
   const { id } = useParams<{ id: string }>();
   const hackathonId = Number(id);
   const [hackathon, setHackathon] = useState<Hackathon | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
+  const [submissionsByTeam, setSubmissionsByTeam] = useState<Record<number, Submission[]>>({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [teamName, setTeamName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [evaluating, setEvaluating] = useState<Record<number, boolean>>({});
   const navigate = useNavigate();
 
-  const fetch = () => {
+  const fetchHackathon = () => {
     hackathonsApi
       .get(hackathonId)
       .then((res) => setHackathon(res.data))
       .catch((err) => setError(err.response?.data?.detail || 'Failed to load hackathon'));
+  };
+
+  const fetchTeams = () => {
     teamsApi
       .list(hackathonId)
       .then((res) => setTeams(res.data))
@@ -27,9 +33,27 @@ export default function HackathonTeams() {
       .finally(() => setLoading(false));
   };
 
+  const fetchSubmissions = (currentTeams: Team[]) => {
+    if (currentTeams.length === 0) return;
+    Promise.all(currentTeams.map((t) => submissionsApi.listByTeam(t.id)))
+      .then((results) => {
+        const map: Record<number, Submission[]> = {};
+        results.forEach((res, i) => {
+          map[currentTeams[i].id] = res.data;
+        });
+        setSubmissionsByTeam(map);
+      })
+      .catch((err) => setError(err.response?.data?.detail || 'Failed to load submissions'));
+  };
+
   useEffect(() => {
-    fetch();
+    fetchHackathon();
+    fetchTeams();
   }, [hackathonId]);
+
+  useEffect(() => {
+    fetchSubmissions(teams);
+  }, [teams]);
 
   const createTeam = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -39,7 +63,7 @@ export default function HackathonTeams() {
     try {
       await teamsApi.create(hackathonId, teamName);
       setTeamName('');
-      fetch();
+      fetchTeams();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to create team');
     } finally {
@@ -51,7 +75,7 @@ export default function HackathonTeams() {
     setError('');
     try {
       await teamsApi.join(teamId);
-      fetch();
+      fetchTeams();
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to join team');
     }
@@ -59,6 +83,23 @@ export default function HackathonTeams() {
 
   const submitFor = (teamId: number, ps: ProblemStatement) => {
     navigate(`/hackathons/${hackathonId}/submit/${teamId}/${ps.id}`);
+  };
+
+  const evaluate = async (submission: Submission) => {
+    setEvaluating({ ...evaluating, [submission.id]: true });
+    setError('');
+    try {
+      if (submission.type === 'tech') {
+        await submissionsApi.evaluateTech(submission.id);
+      } else {
+        await submissionsApi.evaluateNonTech(submission.id);
+      }
+      fetchSubmissions(teams);
+    } catch (err: any) {
+      setError(err.response?.data?.detail || 'Evaluation failed');
+    } finally {
+      setEvaluating({ ...evaluating, [submission.id]: false });
+    }
   };
 
   if (loading) return <div className="p-8">Loading...</div>;
@@ -72,7 +113,15 @@ export default function HackathonTeams() {
             ← Back to hackathon
           </Link>
         </div>
-        <h1 className="text-3xl font-bold mb-2">{hackathon.name}</h1>
+        <div className="flex justify-between items-center mb-2">
+          <h1 className="text-3xl font-bold">{hackathon.name}</h1>
+          <Link
+            to={`/hackathons/${hackathonId}/leaderboard`}
+            className="bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          >
+            Leaderboard
+          </Link>
+        </div>
         <p className="text-gray-700 mb-6">Teams & submissions</p>
         {error && <div className="mb-4 text-red-600 text-sm">{error}</div>}
 
@@ -98,15 +147,41 @@ export default function HackathonTeams() {
                       Join
                     </button>
                   </div>
-                  {hackathon.problem_statements?.map((ps) => (
-                    <button
-                      key={ps.id}
-                      onClick={() => submitFor(team.id, ps)}
-                      className="mt-2 mr-2 text-sm bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
-                    >
-                      Submit for {ps.title}
-                    </button>
-                  ))}
+                  <div className="mt-3 space-y-2">
+                    {hackathon.problem_statements?.map((ps) => {
+                      const sub = submissionsByTeam[team.id]?.find((s) => s.problem_statement_id === ps.id);
+                      return (
+                        <div key={ps.id} className="flex items-center gap-2 text-sm">
+                          <span className="text-gray-700">{ps.title}:</span>
+                          {sub ? (
+                            <>
+                              <span className="capitalize">{sub.status.replace('_', '-')}</span>
+                              {sub.evaluation ? (
+                                <span className="font-semibold text-blue-700">
+                                  {sub.evaluation.total_score} — {sub.evaluation.verdict}
+                                </span>
+                              ) : (
+                                <button
+                                  onClick={() => evaluate(sub)}
+                                  disabled={evaluating[sub.id]}
+                                  className="bg-purple-600 text-white px-3 py-1 rounded hover:bg-purple-700 disabled:opacity-50"
+                                >
+                                  {evaluating[sub.id] ? 'Evaluating...' : 'Evaluate'}
+                                </button>
+                              )}
+                            </>
+                          ) : (
+                            <button
+                              onClick={() => submitFor(team.id, ps)}
+                              className="bg-blue-600 text-white px-3 py-1 rounded hover:bg-blue-700"
+                            >
+                              Submit
+                            </button>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
                 </li>
               ))}
             </ul>

@@ -13,7 +13,8 @@
 - [x] Phase 4: teams and submissions + commit (done)
 - [x] Phase 5: tech evaluation API (done)
 - [x] Phase 6: non-tech evaluation API (done)
-- [ ] Phase 7: leaderboard and discrete scoring frontend + commit (in progress)
+- [x] Phase 7: leaderboard and discrete scoring frontend + commit (done)
+- [ ] Phase 8: integration, E2E smoke test, polish, final commit (in progress)
 - [ ] Phase 2: frontend foundation + commit
 - [ ] Phase 3: hackathons & problem statements + commit
 - [ ] Phase 4: teams & submissions + commit

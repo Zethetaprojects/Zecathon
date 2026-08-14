@@ -63,12 +63,18 @@ export default function HackathonDetail() {
         <h1 className="text-3xl font-bold mb-2">{hackathon.name}</h1>
         <p className="text-gray-700 mb-6">{hackathon.description}</p>
 
-        <div className="mb-6">
+        <div className="mb-6 flex gap-3">
           <Link
             to={`/hackathons/${id}/teams`}
             className="inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
           >
             Manage teams & submissions
+          </Link>
+          <Link
+            to={`/hackathons/${id}/leaderboard`}
+            className="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700"
+          >
+            Leaderboard
           </Link>
         </div>
 

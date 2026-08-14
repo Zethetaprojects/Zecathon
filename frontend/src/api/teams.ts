@@ -1,5 +1,5 @@
 import api from './client';
-import { Team, Submission } from '../types';
+import { Team, Submission, Evaluation } from '../types';
 
 export const teamsApi = {
   list: (hackathonId: number) => api.get<Team[]>(`/teams?hackathon_id=${hackathonId}`),
@@ -14,4 +14,7 @@ export const submissionsApi = {
       headers: { 'Content-Type': 'multipart/form-data' },
     }),
   get: (id: number) => api.get<Submission>(`/submissions/${id}`),
+  listByTeam: (teamId: number) => api.get<Submission[]>(`/submissions?team_id=${teamId}`),
+  evaluateTech: (id: number) => api.post<Evaluation>(`/evaluate/tech/${id}`),
+  evaluateNonTech: (id: number) => api.post<Evaluation>(`/evaluate/non-tech/${id}`),
 };
