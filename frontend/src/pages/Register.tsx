@@ -91,14 +91,14 @@ export default function Register() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded neon-btn neon-btn-primary py-3 text-sm disabled:opacity-50"
+            className="w-full rounded neon-btn neon-btn-primary micro-lift micro-pop py-3 text-sm disabled:opacity-50"
           >
             {busy ? 'Creating...' : 'Register'}
           </button>
 
           <p className="text-center text-sm text-slate-400">
             Already have an account?{' '}
-            <Link to="/login" className="text-neon-cyan hover:text-white transition">
+            <Link to="/login" className="text-neon-cyan hover:text-white transition micro-shift">
               Log in
             </Link>
           </p>

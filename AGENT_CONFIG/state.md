@@ -4,6 +4,13 @@
 - **Repo**: full-stack hackathon evaluation platform with RBAC, Gemini integration, and ZECATHON landing page
 - **AGENT_CONFIG**: created; context, plan, state, and todo maintained.
 - **Phase**: Space music toggle + auth-aware landing page / navbar complete and validated.
+- **Micro-interactions & custom cursor**:
+  - New `CustomCursor.tsx` using `frontend/public/pngegg.png` as the cursor image with a purple neon glow and a trailing ghost cursor.
+  - Hides default cursor on desktop; disabled on touch devices.
+  - Cursor scales and rotates on hover/click of interactive elements.
+  - Added CSS micro-interaction utilities: `micro-lift`, `micro-pop`, `micro-glow`, `micro-tilt`, `micro-shake`, `micro-shift`.
+  - Applied hover/click animations to navbar, landing page cards/stats/steps, footer links, dashboard cards, login/register buttons.
+  - Added `ScrollReveal` component and `reveal`/`reveal-zoom` scroll-triggered fade-up animations on landing page sections.
 - **Space music**:
   - New cinematic ambient engine in `MusicProvider.tsx`.
   - Slow chord progression (Am7 → Fmaj7 → Cmaj7 → G6) at 66 BPM, ~55 seconds long before repeating.

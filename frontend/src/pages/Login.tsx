@@ -72,14 +72,14 @@ export default function Login() {
           <button
             type="submit"
             disabled={busy}
-            className="w-full rounded neon-btn neon-btn-primary py-3 text-sm disabled:opacity-50"
+            className="w-full rounded neon-btn neon-btn-primary micro-lift micro-pop py-3 text-sm disabled:opacity-50"
           >
             {busy ? 'Authenticating...' : 'Log in'}
           </button>
 
           <p className="text-center text-sm text-slate-400">
             No account?{' '}
-            <Link to="/register" className="text-neon-cyan hover:text-white transition">
+            <Link to="/register" className="text-neon-cyan hover:text-white transition micro-shift">
               Register
             </Link>
           </p>

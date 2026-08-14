@@ -24,7 +24,7 @@ function ActionCard({
   return (
     <Link
       to={to}
-      className={`block p-6 glass-panel border-t-4 transition-all duration-300 hover:-translate-y-1 ${accent}`}
+      className={`micro-lift micro-glow block p-6 glass-panel border-t-4 transition-all duration-300 hover:-translate-y-1 ${accent}`}
     >
       <h2 className="font-pixel text-xs text-white mb-3">{title}</h2>
       <p className="text-sm text-slate-300">{desc}</p>
@@ -50,7 +50,7 @@ export default function Dashboard() {
           </div>
           <button
             onClick={logout}
-            className="px-4 py-2 rounded neon-btn neon-btn-ghost text-xs"
+            className="micro-lift micro-pop px-4 py-2 rounded neon-btn neon-btn-ghost text-xs"
           >
             Log out
           </button>

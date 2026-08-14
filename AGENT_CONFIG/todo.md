@@ -61,6 +61,8 @@
 - [x] Modern SaaS-style glass pill navbar with centered Features dropdown
 - [x] Procedural space/chiptune music with navbar toggle
 - [x] Auth-aware UI: logged-in-only features hidden from guests in navbar, landing page, and footer
+- [x] Custom purple cursor from `pngegg.png` with trail and hover/click feedback
+- [x] Micro-interactions (lift, pop, glow, tilt, shift, scroll reveal) across pages
 - [x] Build passes (`npm run build`)
 - [x] Full-flow validation passes (`validate_flow.py`)
 - [x] Update `AGENT_CONFIG` state and todo

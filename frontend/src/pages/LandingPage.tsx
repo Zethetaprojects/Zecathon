@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { isOrganizer } from '../utils/role';
+import { ScrollReveal } from '../hooks/useInView';
 import PageLayout from '../components/PageLayout';
 import Footer from '../components/Footer';
 
@@ -26,7 +27,7 @@ function FeatureCard({
 }) {
   return (
     <div
-      className={`glass-panel p-6 border-t-4 transition-all duration-300 hover:-translate-y-1 ${colorAccent[color]}`}
+      className={`micro-lift micro-glow glass-panel p-6 border-t-4 transition-all duration-300 hover:-translate-y-1 ${colorAccent[color]}`}
     >
       <div className="w-10 h-10 rounded-lg bg-white/5 flex items-center justify-center text-neon-cyan mb-4">
         {icon}
@@ -39,7 +40,7 @@ function FeatureCard({
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="glass-panel px-6 py-5 text-center">
+    <div className="micro-lift micro-glow glass-panel px-6 py-5 text-center">
       <p className="font-pixel text-xl text-neon-cyan mb-2">{value}</p>
       <p className="text-xs text-slate-400 uppercase tracking-wider">{label}</p>
     </div>
@@ -58,7 +59,7 @@ function Step({
   icon: React.ReactNode;
 }) {
   return (
-    <div className="relative glass-panel p-6 border-l-4 border-neon-cyan hover:border-neon-pink transition">
+    <div className="micro-lift micro-glow relative glass-panel p-6 border-l-4 border-neon-cyan hover:border-neon-pink transition">
       <div className="absolute -top-3 -left-3 w-8 h-8 rounded-lg bg-neon-pink text-space-900 font-pixel text-xs flex items-center justify-center shadow-neon-pink">
         {number}
       </div>
@@ -78,7 +79,8 @@ export default function LandingPage() {
     <PageLayout>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Hero */}
-        <section className="pt-16 pb-20 text-center">
+        <ScrollReveal zoom>
+          <section className="pt-16 pb-20 text-center">
           <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full glass-panel border border-neon-cyan/20 mb-8">
             <span className="w-2 h-2 rounded-full bg-neon-cyan animate-pulse-glow" />
             <span className="text-xs text-slate-300 tracking-wide">AI-powered hackathon evaluation</span>
@@ -106,21 +108,21 @@ export default function LandingPage() {
           <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
             {user ? (
               <>
-                <Link to="/hackathons" className="px-8 py-4 rounded neon-btn neon-btn-primary text-sm">
+                <Link to="/hackathons" className="px-8 py-4 rounded neon-btn neon-btn-primary micro-lift micro-pop text-sm">
                   Enter the Arena
                 </Link>
                 {isOrganizer(user.role) && (
-                  <Link to="/hackathons/new" className="px-8 py-4 rounded neon-btn neon-btn-ghost text-sm">
+                  <Link to="/hackathons/new" className="px-8 py-4 rounded neon-btn neon-btn-ghost micro-lift micro-pop text-sm">
                     Host a Hackathon
                   </Link>
                 )}
               </>
             ) : (
               <>
-                <Link to="/register" className="px-8 py-4 rounded neon-btn neon-btn-primary text-sm">
+                <Link to="/register" className="px-8 py-4 rounded neon-btn neon-btn-primary micro-lift micro-pop text-sm">
                   Join the Arena
                 </Link>
-                <Link to="/login" className="px-8 py-4 rounded neon-btn neon-btn-ghost text-sm">
+                <Link to="/login" className="px-8 py-4 rounded neon-btn neon-btn-ghost micro-lift micro-pop text-sm">
                   Log in
                 </Link>
               </>
@@ -135,9 +137,11 @@ export default function LandingPage() {
             <Stat value="∞" label="Hackathons hosted" />
           </div>
         </section>
+        </ScrollReveal>
 
         {/* Features */}
-        <section className="py-20">
+        <ScrollReveal>
+          <section className="py-20">
           <div className="text-center mb-14">
             <p className="text-neon-pink text-xs pixel-caps mb-3">Platform Features</p>
             <h2 className="font-pixel text-xl sm:text-2xl text-white text-shadow-neon mb-4">
@@ -211,9 +215,11 @@ export default function LandingPage() {
             />
           </div>
         </section>
+        </ScrollReveal>
 
         {/* How it works */}
-        <section className="py-20">
+        <ScrollReveal>
+          <section className="py-20">
           <div className="text-center mb-14">
             <p className="text-neon-cyan text-xs pixel-caps mb-3">How it works</p>
             <h2 className="font-pixel text-xl sm:text-2xl text-white text-shadow-neon mb-4">
@@ -264,9 +270,11 @@ export default function LandingPage() {
             />
           </div>
         </section>
+        </ScrollReveal>
 
         {/* CTA */}
-        <section className="py-20">
+        <ScrollReveal zoom>
+          <section className="py-20">
           <div className="glass-panel relative overflow-hidden p-10 sm:p-16 text-center border border-neon-purple/30">
             <div className="absolute inset-0 bg-gradient-to-br from-neon-purple/10 to-neon-pink/10 pointer-events-none" />
             <div className="relative">
@@ -280,24 +288,24 @@ export default function LandingPage() {
                 {user ? (
                   <>
                     {isOrganizer(user.role) ? (
-                      <Link to="/hackathons/new" className="px-8 py-4 rounded neon-btn neon-btn-cyan text-sm">
+                      <Link to="/hackathons/new" className="px-8 py-4 rounded neon-btn neon-btn-cyan micro-lift micro-pop text-sm">
                         Host a Hackathon
                       </Link>
                     ) : (
-                      <Link to="/hackathons" className="px-8 py-4 rounded neon-btn neon-btn-cyan text-sm">
+                      <Link to="/hackathons" className="px-8 py-4 rounded neon-btn neon-btn-cyan micro-lift micro-pop text-sm">
                         Explore Hackathons
                       </Link>
                     )}
-                    <Link to="/hackathons" className="px-8 py-4 rounded neon-btn neon-btn-ghost text-sm">
+                    <Link to="/hackathons" className="px-8 py-4 rounded neon-btn neon-btn-ghost micro-lift micro-pop text-sm">
                       Explore Hackathons
                     </Link>
                   </>
                 ) : (
                   <>
-                    <Link to="/register" className="px-8 py-4 rounded neon-btn neon-btn-cyan text-sm">
+                    <Link to="/register" className="px-8 py-4 rounded neon-btn neon-btn-cyan micro-lift micro-pop text-sm">
                       Create your account
                     </Link>
-                    <Link to="/login" className="px-8 py-4 rounded neon-btn neon-btn-ghost text-sm">
+                    <Link to="/login" className="px-8 py-4 rounded neon-btn neon-btn-ghost micro-lift micro-pop text-sm">
                       Log in
                     </Link>
                   </>
@@ -306,6 +314,7 @@ export default function LandingPage() {
             </div>
           </div>
         </section>
+        </ScrollReveal>
       </div>
 
       <Footer />

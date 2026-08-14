@@ -9,7 +9,7 @@ function SocialIcon({ href, label, children }: { href: string; label: string; ch
       aria-label={label}
       target="_blank"
       rel="noreferrer"
-      className="w-9 h-9 rounded-lg glass-panel flex items-center justify-center text-slate-400 hover:text-neon-cyan hover:border-neon-cyan/50 transition"
+      className="micro-lift micro-glow w-9 h-9 rounded-lg glass-panel flex items-center justify-center text-slate-400 hover:text-neon-cyan hover:border-neon-cyan/50 transition"
     >
       {children}
     </a>
@@ -18,7 +18,7 @@ function SocialIcon({ href, label, children }: { href: string; label: string; ch
 
 function FooterLink({ to, children }: { to: string; children: React.ReactNode }) {
   return (
-    <Link to={to} className="block text-sm text-slate-400 hover:text-neon-cyan transition">
+    <Link to={to} className="micro-shift block text-sm text-slate-400 hover:text-neon-cyan transition">
       {children}
     </Link>
   );
@@ -36,7 +36,7 @@ export default function Footer() {
               <img
                 src="/ZeTheta%20Logo.png"
                 alt="Zetheta logo"
-                className="w-10 h-10 object-contain group-hover:scale-110 transition"
+                className="w-10 h-10 object-contain transition group-hover:scale-110 group-hover:rotate-6"
               />
               <div className="leading-none">
                 <span className="font-pixel text-sm tracking-widest text-white group-hover:text-neon-cyan transition">
@@ -120,10 +120,10 @@ export default function Footer() {
             © {new Date().getFullYear()} ZECATHON by Zetheta Algorithms. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
-            <Link to="/" className="text-xs text-slate-500 hover:text-slate-300 transition">
+            <Link to="/" className="micro-shift text-xs text-slate-500 hover:text-slate-300 transition">
               Privacy Policy
             </Link>
-            <Link to="/" className="text-xs text-slate-500 hover:text-slate-300 transition">
+            <Link to="/" className="micro-shift text-xs text-slate-500 hover:text-slate-300 transition">
               Terms of Service
             </Link>
           </div>
