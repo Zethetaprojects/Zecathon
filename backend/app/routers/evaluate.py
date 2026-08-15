@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
+import logging
 from app.auth import get_current_active_user, require_judge
 from app.database import get_db
 from app.models import Evaluation, ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User
@@ -10,6 +11,7 @@ from app.services.scoring.non_tech_evaluator import evaluate_non_tech
 from app.services.scoring.tech_evaluator import evaluate_tech
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _get_problem_statement_text(ps: ProblemStatement) -> str:
@@ -26,18 +28,22 @@ def _get_problem_statement_text(ps: ProblemStatement) -> str:
 def _run_tech_evaluation(db: Session, submission: Submission) -> Evaluation:
     ps = db.query(ProblemStatement).filter(ProblemStatement.id == submission.problem_statement_id).first()
     problem_text = _get_problem_statement_text(ps)
+    logger.info("Starting tech evaluation for submission id=%s team_id=%s", submission.id, submission.team_id)
     try:
         return evaluate_tech(db, submission, problem_text)
     except Exception as exc:
+        logger.exception("Tech evaluation failed for submission id=%s: %s", submission.id, exc)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
 
 
 def _run_non_tech_evaluation(db: Session, submission: Submission) -> Evaluation:
     ps = db.query(ProblemStatement).filter(ProblemStatement.id == submission.problem_statement_id).first()
     problem_text = _get_problem_statement_text(ps)
+    logger.info("Starting non-tech evaluation for submission id=%s team_id=%s", submission.id, submission.team_id)
     try:
         return evaluate_non_tech(db, submission, problem_text)
     except Exception as exc:
+        logger.exception("Non-tech evaluation failed for submission id=%s: %s", submission.id, exc)
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
 
 
@@ -54,9 +60,12 @@ async def evaluate_tech_endpoint(
         raise HTTPException(status_code=400, detail="Submission is not a tech submission")
 
     if submission.evaluation:
+        logger.info("Returning cached tech evaluation for submission id=%s", submission.id)
         return submission.evaluation
 
-    return _run_tech_evaluation(db, submission)
+    evaluation = _run_tech_evaluation(db, submission)
+    logger.info("Tech evaluation completed for submission id=%s score=%s verdict=%s", evaluation.submission_id, evaluation.total_score, evaluation.verdict)
+    return evaluation
 
 
 @router.post("/non-tech/{submission_id}", response_model=EvaluationOut)
@@ -72,9 +81,12 @@ async def evaluate_non_tech_endpoint(
         raise HTTPException(status_code=400, detail="Submission is not a non-tech submission")
 
     if submission.evaluation:
+        logger.info("Returning cached non-tech evaluation for submission id=%s", submission.id)
         return submission.evaluation
 
-    return _run_non_tech_evaluation(db, submission)
+    evaluation = _run_non_tech_evaluation(db, submission)
+    logger.info("Non-tech evaluation completed for submission id=%s score=%s verdict=%s", evaluation.submission_id, evaluation.total_score, evaluation.verdict)
+    return evaluation
 
 
 def _reset_evaluation(db: Session, submission: Submission):
@@ -98,7 +110,10 @@ async def retry_evaluate_tech(
         raise HTTPException(status_code=400, detail="Submission is not a tech submission")
 
     _reset_evaluation(db, submission)
-    return _run_tech_evaluation(db, submission)
+    logger.info("Tech evaluation retry requested for submission id=%s by user id=%s", submission.id, current_user.id)
+    evaluation = _run_tech_evaluation(db, submission)
+    logger.info("Tech evaluation retry completed for submission id=%s score=%s verdict=%s", evaluation.submission_id, evaluation.total_score, evaluation.verdict)
+    return evaluation
 
 
 @router.post("/non-tech/{submission_id}/retry", response_model=EvaluationOut)
@@ -114,4 +129,7 @@ async def retry_evaluate_non_tech(
         raise HTTPException(status_code=400, detail="Submission is not a non-tech submission")
 
     _reset_evaluation(db, submission)
-    return _run_non_tech_evaluation(db, submission)
+    logger.info("Non-tech evaluation retry requested for submission id=%s by user id=%s", submission.id, current_user.id)
+    evaluation = _run_non_tech_evaluation(db, submission)
+    logger.info("Non-tech evaluation retry completed for submission id=%s score=%s verdict=%s", evaluation.submission_id, evaluation.total_score, evaluation.verdict)
+    return evaluation

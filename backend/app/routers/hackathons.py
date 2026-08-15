@@ -1,5 +1,6 @@
 from typing import List
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy import func
 from sqlalchemy.orm import Session, contains_eager
@@ -11,6 +12,7 @@ from app.schemas import HackathonCreate, HackathonOut, HackathonDetail, Hackatho
 from app.services.file_storage import save_upload
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 @router.get("", response_model=List[HackathonOut])
@@ -54,6 +56,7 @@ async def create_hackathon(
     db.add(hackathon)
     db.commit()
     db.refresh(hackathon)
+    logger.info("Hackathon created id=%s name=%s by user id=%s", hackathon.id, hackathon.name, current_user.id)
     return hackathon
 
 
@@ -80,6 +83,7 @@ async def update_hackathon(
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
     if current_user.role != UserRole.admin and hackathon.created_by != current_user.id:
+        logger.warning("User id=%s role=%s denied update on hackathon id=%s owned by %s", current_user.id, current_user.role, hackathon_id, hackathon.created_by)
         raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can update this hackathon")
 
     if payload.name is not None:
@@ -95,6 +99,7 @@ async def update_hackathon(
 
     db.commit()
     db.refresh(hackathon)
+    logger.info("Hackathon updated id=%s by user id=%s", hackathon.id, current_user.id)
     return hackathon
 
 
@@ -111,6 +116,7 @@ async def create_problem_statement(
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
     if hackathon.created_by != current_user.id and current_user.role != UserRole.admin:
+        logger.warning("User id=%s role=%s denied problem statement creation on hackathon id=%s", current_user.id, current_user.role, hackathon_id)
         raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can add problem statements")
 
     file_path = None
@@ -126,6 +132,7 @@ async def create_problem_statement(
     db.add(ps)
     db.commit()
     db.refresh(ps)
+    logger.info("Problem statement created id=%s hackathon_id=%s by user id=%s", ps.id, hackathon_id, current_user.id)
     return ps
 
 
@@ -139,8 +146,10 @@ async def delete_hackathon(
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
     if current_user.role != UserRole.admin and hackathon.created_by != current_user.id:
+        logger.warning("User id=%s role=%s denied delete on hackathon id=%s owned by %s", current_user.id, current_user.role, hackathon_id, hackathon.created_by)
         raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can delete this hackathon")
 
+    logger.info("Deleting hackathon id=%s name=%s by user id=%s", hackathon.id, hackathon.name, current_user.id)
     # Explicitly delete children in dependency order to keep reports/leaderboard consistent.
     teams = db.query(Team).filter(Team.hackathon_id == hackathon_id).all()
     for team in teams:
@@ -158,4 +167,5 @@ async def delete_hackathon(
 
     db.delete(hackathon)
     db.commit()
+    logger.info("Hackathon id=%s deleted by user id=%s", hackathon_id, current_user.id)
     return None

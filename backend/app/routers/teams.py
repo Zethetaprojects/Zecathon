@@ -1,5 +1,6 @@
 from typing import List
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
@@ -9,6 +10,7 @@ from app.models import Evaluation, Hackathon, Submission, Team, TeamMember, User
 from app.schemas import TeamCreate, TeamOut
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _is_manager(user: User) -> bool:
@@ -46,6 +48,7 @@ async def create_team(
     db.add(TeamMember(team_id=team.id, user_id=current_user.id, role="leader"))
     db.commit()
     db.refresh(team)
+    logger.info("Team created id=%s name=%s hackathon_id=%s by user id=%s", team.id, team.name, payload.hackathon_id, current_user.id)
     return team
 
 
@@ -99,8 +102,10 @@ async def delete_team(
 
     hackathon = db.query(Hackathon).filter(Hackathon.id == team.hackathon_id).first()
     if current_user.role != UserRole.admin and hackathon.created_by != current_user.id:
+        logger.warning("User id=%s role=%s denied delete on team id=%s hackathon_id=%s owned by %s", current_user.id, current_user.role, team_id, team.hackathon_id, hackathon.created_by)
         raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can delete this team")
 
+    logger.info("Deleting team id=%s name=%s hackathon_id=%s by user id=%s", team.id, team.name, team.hackathon_id, current_user.id)
     # Delete submissions and evaluations first to avoid FK/ORM cascade conflicts
     for submission in team.submissions:
         if submission.evaluation:
@@ -110,4 +115,5 @@ async def delete_team(
         db.delete(member)
     db.delete(team)
     db.commit()
+    logger.info("Team id=%s deleted by user id=%s", team_id, current_user.id)
     return None

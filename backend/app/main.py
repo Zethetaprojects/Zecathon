@@ -1,3 +1,4 @@
+import logging
 import os
 from contextlib import asynccontextmanager
 
@@ -7,14 +8,19 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import engine, Base
+from app.logger import setup_logging
 from app.routers import auth, hackathons, problem_statements, teams, submissions, evaluate, leaderboard, reports
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setup_logging()
     Base.metadata.create_all(bind=engine)
     os.makedirs(settings.upload_dir, exist_ok=True)
+    logger = logging.getLogger("app.main")
+    logger.info("ZECATHON backend startup complete")
     yield
+    logger.info("ZECATHON backend shutdown")
 
 
 app = FastAPI(

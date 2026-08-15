@@ -1,5 +1,6 @@
 from typing import List
 
+import logging
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
@@ -10,6 +11,7 @@ from app.schemas import SubmissionCreate, SubmissionDetail, SubmissionOut
 from app.services.file_storage import save_upload
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 def _is_manager(user: User) -> bool:
@@ -28,6 +30,7 @@ def _ensure_team_member_or_judge(team_id: int, user: User, db: Session) -> Team:
         return team
     member = db.query(TeamMember).filter(TeamMember.team_id == team_id, TeamMember.user_id == user.id).first()
     if not member:
+        logger.warning("User id=%s role=%s denied access to team id=%s", user.id, user.role, team_id)
         raise HTTPException(status_code=403, detail="You are not a member of this team")
     return team
 
@@ -107,6 +110,7 @@ async def create_submission(
     db.add(submission)
     db.commit()
     db.refresh(submission)
+    logger.info("Submission created id=%s type=%s team_id=%s ps_id=%s by user id=%s", submission.id, submission.type, team_id, problem_statement_id, current_user.id)
     return submission
 
 

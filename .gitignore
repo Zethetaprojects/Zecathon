@@ -43,6 +43,10 @@ Thumbs.db
 *.db
 uploads/
 
+# Logs
+logs/
+*.log
+
 # Validation artifacts
 _validate_flow.db
 _validate_uploads/
