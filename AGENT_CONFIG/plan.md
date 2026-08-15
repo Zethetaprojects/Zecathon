@@ -108,8 +108,8 @@
 - Extend `MusicProvider` with a master `enabled` toggle and a `ClickEngine` that plays a short click on every button/link/role=button interaction.
 - Make the navbar speaker icon toggle the entire sound system (music + effects).
 - Add Mermaid architecture/auth/lifecycle/evaluation/RBAC diagrams to `README.md` and update env var docs for Gemini.
-- Validate: `npm run build` ✅, `pytest backend/tests` ✅ 12 passed, `validate_flow.py` ✅ all flows passed.
-- Commit and push to `git@github.com:Zethetaprojects/Zecathon.git` branch `main` without adding any new author metadata.
+- Validate: `npm run build` ✅, `pytest backend/tests` ✅ 12 passed, `validate_flow.py` ✅ all flows passed, reports endpoints verified.
+- Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main` without adding any new author metadata.
 
 ## Leftovers / next steps
 - User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations.

@@ -36,16 +36,21 @@
 - `pytest backend/tests` ✅ 12 passed
 - `validate_flow.py` ✅ all flows passed, generated reports and leaderboards shown
 - `npm run build` ✅ production build succeeded
+- Reports endpoints `GET /api/reports` and `GET /api/reports/{id}` verified with an admin token
 - Dev servers should be started with `start-dev.sh` / `start-dev.ps1` (backend on `http://127.0.0.1:8000`, frontend on `http://localhost:5173`)
 
 ## Default test account (local dev DB)
 - `admin1` / `TestPass1!` (role promoted to `admin` in the current dev DB).
 - New registrations must use a password with ≥8 chars, one letter, one digit, and one symbol.
 
+## Repository
+- Pushed to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
+- SSH was unavailable, so the remote URL was switched to HTTPS; the push succeeded using existing Git credentials.
+- No new author metadata was added; commits retain the existing `user.name`/`user.email` from the global git config.
+
 ## Next action
-- Push the current commit to `git@github.com:Zethetaprojects/Zecathon.git` branch `main`.
-- If SSH push fails, fall back to HTTPS or ask the user for a GitHub token / deploy key.
 - User review in browser; hard-refresh `localhost:5173` after starting `start-dev.sh`.
+- If `localhost:8000` is still occupied by an orphaned uvicorn socket from earlier test runs, restart the machine or wait for the socket to clear; then start the dev servers.
 - Add a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations; until then the deterministic fallback produces plausible reports.
 
 ## Blockers
