@@ -90,6 +90,14 @@
 - [x] Full E2E validation with generated reports
 - [x] Commit
 
+## Phase 12 — Visible Easter Egg Hunt + Gemini key check
+- [x] Verify `GEMINI_API_KEY` in `backend/.env` (key is present but invalid; report to user).
+- [x] Build global `EasterEggHunt` panel in navbar with hints, progress, secret codes, and reset.
+- [x] Add floating `EggMascot` (Z-bot) and make the controller button global in `PageLayout`.
+- [x] Wire into `Navbar` and `LandingPage`, add Tailwind animations for bob/wobble/slide/shake.
+- [x] Validate: `npm run build` ✅, `pytest backend/tests` ✅ 12 passed, `validate_flow.py` ✅ all flows passed.
+- [x] Commit.
+
 ## Leftovers / next steps
 - [ ] User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations
 - [ ] Promote existing users to organizer/judge via admin endpoint or set_role script

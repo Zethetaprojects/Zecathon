@@ -4,6 +4,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useMusic } from './MusicProvider';
 import { useEasterEggs } from '../hooks/useEasterEggs';
 import { isAdmin } from '../utils/role';
+import EasterEggHunt from './EasterEggHunt';
 
 function ChevronDown({ open }: { open: boolean }) {
   return (
@@ -206,6 +207,7 @@ export default function Navbar() {
 
           {/* Right auth + sound toggle */}
           <div className="flex items-center gap-3">
+            <EasterEggHunt />
             <SoundToggle />
             {user ? (
               <>

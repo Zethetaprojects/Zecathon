@@ -22,8 +22,8 @@
 - **CreateHackathon**: rubric editor for tech/non-tech categories.
 - **Submit**: optional supporting GitHub URL for non-tech submissions.
 - **Leaderboard**: copy share link button; judges can retry an evaluation from the teams page.
-- **Easter eggs**: Konami code, hidden words (`zecathon`, `gemini`, `hacker`, `admin`, `matrix`, `godmode`), clickable stars, hidden controller/teddy, logo rapid-click, copyright triple-click, dashboard title triple-click, social icon clicks, hero logo/stat clicks, and username `hacker` on login.
-- **Landing page**: ZECATHON hero, features, how-it-works, footer, custom cursor, cinematic music toggle.
+- **Easter eggs**: Konami code, hidden words (`zecathon`, `gemini`, `hacker`, `admin`, `matrix`, `godmode`), clickable stars, hidden controller/teddy, logo rapid-click, copyright triple-click, dashboard title triple-click, social icon clicks, hero logo/stat clicks, username `hacker` on login, **global Egg Hunt panel in navbar, floating Z-bot mascot, global controller button**.
+- **Gemini key**: the `GEMINI_API_KEY` currently in `backend/.env` is set but **invalid** (Generative Language API returns `API_KEY_INVALID`). Replace it with a real key from Google AI Studio for live LLM evaluations; the deterministic fallback still produces reports and passes all tests.
 - **Theme**: dark space/pixel styling preserved.
 
 ## Validation
