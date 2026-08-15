@@ -36,12 +36,28 @@
 - `pytest backend/tests` ✅ 12 passed
 - `validate_flow.py` ✅ all flows passed, generated reports and leaderboards shown
 - `npm run build` ✅ production build succeeded
-- Reports endpoints `GET /api/reports` and `GET /api/reports/{id}` verified with an admin token
+- Reports endpoints `GET /api/reports` and `GET /api/reports/{id}` verified with an admin/organizer token; a live report was generated from the validated hackathon
 - Dev servers should be started with `start-dev.sh` / `start-dev.ps1` (backend on `http://127.0.0.1:8000`, frontend on `http://localhost:5173`)
 
-## Default test account (local dev DB)
-- `admin1` / `TestPass1!` (role promoted to `admin` in the current dev DB).
+## Default test accounts (local dev DB)
+- `admin1` / `TestPass1!` (role promoted to `admin`).
+- `flowuser` / `FlowPass1!` (role `organizer`, created by `validate_flow.py`).
+- `flowuser2` / `FlowPass1!` (role `participant`, created by `validate_flow.py`).
 - New registrations must use a password with ≥8 chars, one letter, one digit, and one symbol.
+
+## Sample generated report (from `Flow Validation Hack`)
+- **Problem statements**: 1
+- **Teams**: 2
+- **Submissions**: 2
+- **Evaluated**: 2
+- **Average score**: 153.0
+- **Top team**: `Doc Dynamos` — 192 pts
+- **Verdict breakdown**: 2 × NEEDS WORK
+- **Type breakdown**: 1 tech, 1 non-tech
+- **Team entries**:
+  - Tech Titans — tech — 114 pts — NEEDS WORK — needs review
+  - Doc Dynamos — non-tech — 192 pts — NEEDS WORK — needs review
+- **Access**: the `/reports` page and `/api/reports/*` endpoints are visible only to `admin`/`organizer`; `participant` accounts are blocked and only see leaderboards.
 
 ## Repository
 - Pushed to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
