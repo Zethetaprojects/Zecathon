@@ -59,6 +59,8 @@ def evaluate_tech(db: Session, submission: Submission, problem_statement: str) -
         multiplier=authenticity["multiplier"],
         authenticity_band=authenticity["band"],
         category_scores=category_scores,
+        category_max_points=rubric,
+        category_explanations=result.get("category_explanations", {}) if isinstance(result.get("category_explanations", {}), dict) else {},
         review_flags=result.get("red_flags", []) if isinstance(result.get("red_flags"), list) else [],
         judge_questions=result.get("judge_questions", []) if isinstance(result.get("judge_questions"), list) else [],
         needs_review=verdict == "NEEDS WORK" or authenticity["band"] in ("PREDOMINANTLY_ASSISTED", "NO_DISCERNIBLE_HUMAN_INPUT"),
@@ -81,6 +83,8 @@ def _persist_not_assessable(db: Session, submission: Submission, reason: str) ->
         multiplier=0.0,
         authenticity_band="NO_DISCERNIBLE_HUMAN_INPUT",
         category_scores={},
+        category_max_points={},
+        category_explanations={},
         review_flags=[reason],
         judge_questions=[
             "Can you explain why the submission does not address the problem statement?",

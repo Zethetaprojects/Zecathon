@@ -81,6 +81,8 @@ export interface Evaluation {
   multiplier: number;
   authenticity_band: string;
   category_scores: Record<string, number>;
+  category_max_points?: Record<string, number>;
+  category_explanations?: Record<string, string>;
   review_flags: string[];
   needs_review: boolean;
   evaluated_at: string;

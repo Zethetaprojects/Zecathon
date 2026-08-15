@@ -1,0 +1,483 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>ZECATHON Evaluation Report — {{ team_name }}</title>
+  <style>
+    @page {
+      size: A4;
+      margin: 18mm 15mm 20mm 15mm;
+      @bottom-center {
+        content: "ZECATHON by Zetheta Algorithms | Page " counter(page) " of " counter(pages);
+        font-size: 8pt;
+        color: #64748b;
+      }
+    }
+
+    :root {
+      --primary: #0f172a;
+      --accent-cyan: #06b6d4;
+      --accent-purple: #8b5cf6;
+      --accent-pink: #ec4899;
+      --text: #1e293b;
+      --muted: #64748b;
+      --light: #f8fafc;
+      --border: #e2e8f0;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: "Helvetica Neue", Helvetica, Arial, sans-serif;
+      color: var(--text);
+      line-height: 1.5;
+      margin: 0;
+      padding: 0;
+      background: #fff;
+      font-size: 10pt;
+    }
+
+    .header {
+      background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+      color: #fff;
+      padding: 18px 20px;
+      border-radius: 8px;
+      margin-bottom: 18px;
+    }
+
+    .header-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 12px;
+    }
+
+    .brand {
+      font-size: 18pt;
+      font-weight: 800;
+      letter-spacing: 1px;
+      margin: 0;
+    }
+
+    .brand-tag {
+      font-size: 8pt;
+      color: #94a3b8;
+      margin-top: 2px;
+    }
+
+    .report-type {
+      background: rgba(255, 255, 255, 0.12);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: 6px;
+      padding: 6px 12px;
+      font-size: 8pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .meta-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 12px;
+    }
+
+    .meta-item {
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 6px;
+      padding: 10px 12px;
+    }
+
+    .meta-label {
+      font-size: 7pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #94a3b8;
+      margin-bottom: 3px;
+    }
+
+    .meta-value {
+      font-size: 10pt;
+      font-weight: 600;
+      color: #fff;
+      word-break: break-word;
+    }
+
+    .section {
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: 11pt;
+      font-weight: 700;
+      color: var(--primary);
+      margin: 0 0 10px 0;
+      padding-bottom: 6px;
+      border-bottom: 2px solid var(--accent-cyan);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .score-cards {
+      display: grid;
+      grid-template-columns: 1fr 1fr 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 16px;
+    }
+
+    .score-card {
+      background: var(--light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+      text-align: center;
+    }
+
+    .score-label {
+      font-size: 7pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+
+    .score-value {
+      font-size: 18pt;
+      font-weight: 800;
+      color: var(--accent-cyan);
+    }
+
+    .score-value.verdict {
+      font-size: 12pt;
+    }
+
+    .score-value.verdict-outstanding { color: #f59e0b; }
+    .score-value.verdict-excellent { color: var(--accent-cyan); }
+    .score-value.verdict-satisfactory { color: var(--accent-purple); }
+    .score-value.verdict-needs-work { color: var(--accent-pink); }
+    .score-value.verdict-not-assessable { color: var(--muted); }
+
+    .band-pill {
+      display: inline-block;
+      background: #e0f2fe;
+      color: #0369a1;
+      border: 1px solid #bae6fd;
+      border-radius: 12px;
+      padding: 3px 10px;
+      font-size: 8pt;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .rubric-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 8px;
+    }
+
+    .rubric-table th {
+      background: var(--primary);
+      color: #fff;
+      font-size: 8pt;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 8px 10px;
+      text-align: left;
+    }
+
+    .rubric-table td {
+      border-bottom: 1px solid var(--border);
+      padding: 10px;
+      vertical-align: top;
+    }
+
+    .rubric-table tr:nth-child(even) {
+      background: var(--light);
+    }
+
+    .category-name {
+      font-weight: 700;
+      font-size: 9.5pt;
+      margin-bottom: 4px;
+    }
+
+    .category-explanation {
+      font-size: 8.5pt;
+      color: var(--muted);
+      line-height: 1.4;
+    }
+
+    .score-cell {
+      white-space: nowrap;
+      text-align: center;
+      width: 90px;
+    }
+
+    .score-bar-bg {
+      background: var(--border);
+      border-radius: 4px;
+      height: 8px;
+      overflow: hidden;
+      margin-top: 4px;
+      width: 70px;
+    }
+
+    .score-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent-cyan), var(--accent-purple));
+      border-radius: 4px;
+    }
+
+    .score-number {
+      font-weight: 700;
+      font-size: 10pt;
+      color: var(--primary);
+    }
+
+    .two-column {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .box {
+      background: var(--light);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 12px;
+    }
+
+    .box-title {
+      font-size: 9pt;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin: 0 0 8px 0;
+      color: var(--primary);
+    }
+
+    .box.red { border-left: 4px solid var(--accent-pink); }
+    .box.yellow { border-left: 4px solid #f59e0b; }
+    .box.cyan { border-left: 4px solid var(--accent-cyan); }
+    .box.purple { border-left: 4px solid var(--accent-purple); }
+
+    ul {
+      margin: 0;
+      padding-left: 16px;
+    }
+
+    li {
+      margin-bottom: 5px;
+      font-size: 9.5pt;
+    }
+
+    .questions-list {
+      counter-reset: question;
+      list-style: none;
+      padding: 0;
+    }
+
+    .questions-list li {
+      position: relative;
+      padding-left: 28px;
+      margin-bottom: 8px;
+      font-size: 9.5pt;
+    }
+
+    .questions-list li::before {
+      counter-increment: question;
+      content: counter(question) ".";
+      position: absolute;
+      left: 0;
+      top: 0;
+      font-weight: 700;
+      color: var(--accent-purple);
+    }
+
+    .assessment-text {
+      font-size: 9.5pt;
+      line-height: 1.6;
+    }
+
+    .footer-note {
+      font-size: 7.5pt;
+      color: var(--muted);
+      margin-top: 20px;
+      padding-top: 10px;
+      border-top: 1px solid var(--border);
+    }
+
+    .page-break {
+      page-break-before: always;
+    }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <div class="header-top">
+      <div>
+        <div class="brand">ZECATHON</div>
+        <div class="brand-tag">by Zetheta Algorithms</div>
+      </div>
+      <div class="report-type">Evaluation Report</div>
+    </div>
+    <div class="meta-grid">
+      <div class="meta-item">
+        <div class="meta-label">Team</div>
+        <div class="meta-value">{{ team_name }}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Problem Statement</div>
+        <div class="meta-value">{{ problem_statement_title }}</div>
+      </div>
+      <div class="meta-item">
+        <div class="meta-label">Submission Type</div>
+        <div class="meta-value">{{ type.replace('_', '-').title() }}</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="section">
+    <div class="score-cards">
+      <div class="score-card">
+        <div class="score-label">Total Score</div>
+        <div class="score-value">{{ evaluation.total_score }}</div>
+      </div>
+      <div class="score-card">
+        <div class="score-label">Percentage</div>
+        <div class="score-value">{{ "%.1f"|format(evaluation.percentage) }}%</div>
+      </div>
+      <div class="score-card">
+        <div class="score-label">Verdict</div>
+        <div class="score-value verdict verdict-{{ evaluation.verdict.lower().replace(' ', '-') }}">{{ evaluation.verdict }}</div>
+      </div>
+      <div class="score-card">
+        <div class="score-label">Authenticity</div>
+        <div style="margin-top: 8px;">
+          <span class="band-pill">{{ evaluation.authenticity_band.replace('_', ' ').title() }}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  {% if evaluation.overall_assessment %}
+  <div class="section">
+    <h2 class="section-title">Overall Assessment</h2>
+    <p class="assessment-text">{{ evaluation.overall_assessment }}</p>
+  </div>
+  {% endif %}
+
+  <div class="section">
+    <h2 class="section-title">Rubric Breakdown</h2>
+    <table class="rubric-table">
+      <thead>
+        <tr>
+          <th>Category</th>
+          <th style="width: 90px;">Score</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for category, score in evaluation.category_scores.items() %}
+        {% set max_points = evaluation.category_max_points.get(category, 0) %}
+        {% set explanation = evaluation.category_explanations.get(category, '') %}
+        <tr>
+          <td>
+            <div class="category-name">{{ category }}</div>
+            {% if explanation %}
+            <div class="category-explanation">{{ explanation }}</div>
+            {% endif %}
+          </td>
+          <td class="score-cell">
+            <div class="score-number">{{ score }} / {{ max_points }}</div>
+            {% if max_points > 0 %}
+            <div class="score-bar-bg">
+              <div class="score-bar-fill" style="width: {{ (score / max_points * 100)|int }}%;"></div>
+            </div>
+            {% endif %}
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% if evaluation.key_strengths or evaluation.areas_for_improvement %}
+  <div class="section">
+    <div class="two-column">
+      {% if evaluation.key_strengths %}
+      <div class="box cyan">
+        <h3 class="box-title">Key Strengths</h3>
+        <ul>
+          {% for item in evaluation.key_strengths %}
+          <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      {% if evaluation.areas_for_improvement %}
+      <div class="box purple">
+        <h3 class="box-title">Areas for Improvement</h3>
+        <ul>
+          {% for item in evaluation.areas_for_improvement %}
+          <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if evaluation.red_flags or evaluation.review_flags %}
+  <div class="section">
+    <div class="two-column">
+      {% if evaluation.red_flags %}
+      <div class="box red">
+        <h3 class="box-title">Red Flags</h3>
+        <ul>
+          {% for item in evaluation.red_flags %}
+          <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+      {% if evaluation.review_flags %}
+      <div class="box yellow">
+        <h3 class="box-title">Review Flags</h3>
+        <ul>
+          {% for item in evaluation.review_flags %}
+          <li>{{ item }}</li>
+          {% endfor %}
+        </ul>
+      </div>
+      {% endif %}
+    </div>
+  </div>
+  {% endif %}
+
+  {% if evaluation.recommendation %}
+  <div class="section">
+    <h2 class="section-title">Recommendation</h2>
+    <div class="box">
+      <p class="assessment-text">{{ evaluation.recommendation }}</p>
+    </div>
+  </div>
+  {% endif %}
+
+  {% if evaluation.judge_questions %}
+  <div class="section">
+    <h2 class="section-title">Suggested Judge Questions</h2>
+    <ol class="questions-list">
+      {% for question in evaluation.judge_questions %}
+      <li>{{ question }}</li>
+      {% endfor %}
+    </ol>
+  </div>
+  {% endif %}
+
+  <div class="footer-note">
+    This report was generated by the ZECATHON AI evaluation platform. Scores are out of 1000 and have been reconciled to ensure discrete leaderboard placement. Submissions flagged as "needs review" should be manually validated by the judging panel.
+  </div>
+</body>
+</html>

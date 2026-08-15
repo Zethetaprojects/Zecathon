@@ -85,6 +85,11 @@ export default function EvaluationReport({ evaluation }: EvaluationReportProps) 
                       style={{ width: `${width}%` }}
                     />
                   </div>
+                  {evaluation.category_explanations?.[category] && (
+                    <p className="text-[11px] text-slate-400 mt-1 leading-relaxed">
+                      {evaluation.category_explanations[category]}
+                    </p>
+                  )}
                 </div>
               );
             })}

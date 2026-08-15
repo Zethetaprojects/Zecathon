@@ -2,12 +2,14 @@ from collections import defaultdict
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
+from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
 from app.auth import require_organizer
 from app.database import get_db
 from app.models import Evaluation, Hackathon, ProblemStatement, Submission, Team, User, UserRole
 from app.schemas import HackathonReportDetail, HackathonReportSummary, SubmissionReport, TeamReportEntry, EvaluationOut
+from app.services.pdf_generator import generate_pdf
 
 router = APIRouter()
 
@@ -145,6 +147,15 @@ async def get_submission_report(
     if current_user.role != UserRole.admin and hackathon and hackathon.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can view this report")
 
+    return _build_submission_report(submission, team, problem_statement, hackathon)
+
+
+def _build_submission_report(
+    submission: Submission,
+    team: Team | None,
+    problem_statement: ProblemStatement | None,
+    hackathon: Hackathon | None,
+) -> SubmissionReport:
     return SubmissionReport(
         id=submission.id,
         team_id=submission.team_id,
@@ -160,6 +171,68 @@ async def get_submission_report(
         problem_statement_title=problem_statement.title if problem_statement else "",
         hackathon_name=hackathon.name if hackathon else "",
         evaluation=EvaluationOut.model_validate(submission.evaluation) if submission.evaluation else None,
+    )
+
+
+@router.get("/submission/{submission_id}", response_model=SubmissionReport)
+async def get_submission_report(
+    submission_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_organizer),
+):
+    submission = (
+        db.query(Submission)
+        .filter(Submission.id == submission_id)
+        .first()
+    )
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    team = db.query(Team).filter(Team.id == submission.team_id).first()
+    problem_statement = db.query(ProblemStatement).filter(ProblemStatement.id == submission.problem_statement_id).first()
+    hackathon = db.query(Hackathon).filter(Hackathon.id == team.hackathon_id).first() if team else None
+
+    if current_user.role != UserRole.admin and hackathon and hackathon.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can view this report")
+
+    return _build_submission_report(submission, team, problem_statement, hackathon)
+
+
+@router.get("/submission/{submission_id}/pdf")
+async def download_submission_report_pdf(
+    submission_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_organizer),
+):
+    submission = (
+        db.query(Submission)
+        .filter(Submission.id == submission_id)
+        .first()
+    )
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+
+    team = db.query(Team).filter(Team.id == submission.team_id).first()
+    problem_statement = db.query(ProblemStatement).filter(ProblemStatement.id == submission.problem_statement_id).first()
+    hackathon = db.query(Hackathon).filter(Hackathon.id == team.hackathon_id).first() if team else None
+
+    if current_user.role != UserRole.admin and hackathon and hackathon.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can view this report")
+
+    report = _build_submission_report(submission, team, problem_statement, hackathon)
+
+    try:
+        pdf_bytes = generate_pdf(report)
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {exc}")
+
+    safe_team_name = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in (team.name if team else "team")).lower()
+    filename = f"{safe_team_name}-report.pdf"
+
+    return StreamingResponse(
+        iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={filename}"},
     )
 
 

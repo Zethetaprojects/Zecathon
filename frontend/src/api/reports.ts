@@ -5,4 +5,8 @@ export const reportsApi = {
   list: () => api.get('/reports'),
   detail: (id: number) => api.get(`/reports/${id}`),
   submission: (id: number) => api.get<SubmissionReport>(`/reports/submission/${id}`),
+  downloadPdf: (id: number) =>
+    api.get(`/reports/submission/${id}/pdf`, {
+      responseType: 'blob',
+    }),
 };

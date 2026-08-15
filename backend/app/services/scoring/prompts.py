@@ -65,7 +65,7 @@ AUTHENTICITY GATE (you will classify, but the final score is multiplied server-s
 Classify the apparent human effort as one of: HIGH_HUMAN_INPUT, MIXED, PREDOMINANTLY_ASSISTED, NO_DISCERNIBLE_HUMAN_INPUT.
 
 JUDGE QUESTIONS
-Generate 3-5 specific questions the judging panel could ask the team to probe their thinking and validate their work. Base them on the repository and the problem statement.
+Generate 3-5 specific questions the judging panel could ask the team. Each question MUST explicitly reference both (1) a requirement or constraint from the problem statement and (2) a concrete element of the submitted repository (file, function, commit pattern, README claim, architecture choice, or test). The goal is to validate that the team understands their own implementation and its limits.
 
 Return ONLY valid JSON. No markdown, no extra commentary.
 
@@ -75,6 +75,7 @@ OUTPUT FORMAT
   "percentage": <float>,
   "verdict": "<OUTSTANDING|EXCELLENT|SATISFACTORY|NEEDS_WORK>",
   "category_scores": {{{", ".join(f'"{cat}": <int>' for cat in categories)}}},
+  "category_explanations": {{{", ".join(f'"{cat}": "<1-2 sentence explanation referencing specific evidence from the submission and problem statement>"' for cat in categories)}}},
   "authenticity_band": "<HIGH_HUMAN_INPUT|MIXED|PREDOMINANTLY_ASSISTED|NO_DISCERNIBLE_HUMAN_INPUT>",
   "overall_assessment": "<2-4 sentences>",
   "key_strengths": ["..."],
@@ -126,7 +127,7 @@ AUTHENTICITY GATE (classify only; final multiplier applied server-side)
 Classify the apparent human effort as one of: HIGH_HUMAN_INPUT, MIXED, PREDOMINANTLY_ASSISTED, NO_DISCERNIBLE_HUMAN_INPUT.
 
 JUDGE QUESTIONS
-Generate 3-5 specific questions the judging panel could ask the team to probe their reasoning, evidence, and design choices.
+Generate 3-5 specific questions the judging panel could ask the team. Each question MUST explicitly reference both (1) a requirement or constraint from the problem statement and (2) a concrete element of the submitted document or optional materials (claim, chart, number, design choice, GitHub link, or PPT slide). The goal is to probe whether the team owns their analysis and can defend their decisions.
 
 Return ONLY valid JSON. No markdown, no extra commentary.
 
@@ -136,6 +137,7 @@ OUTPUT FORMAT
   "percentage": <float>,
   "verdict": "<OUTSTANDING|EXCELLENT|SATISFACTORY|NEEDS_WORK>",
   "category_scores": {{{", ".join(f'"{cat}": <int>' for cat in categories)}}},
+  "category_explanations": {{{", ".join(f'"{cat}": "<1-2 sentence explanation referencing specific evidence from the submission and problem statement>"' for cat in categories)}}},
   "authenticity_band": "<HIGH_HUMAN_INPUT|MIXED|PREDOMINANTLY_ASSISTED|NO_DISCERNIBLE_HUMAN_INPUT>",
   "overall_assessment": "<2-4 sentences>",
   "key_strengths": ["..."],

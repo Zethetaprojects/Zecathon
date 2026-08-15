@@ -39,6 +39,10 @@ Thumbs.db
 *.tmp
 *.bak
 
+# SQLite / uploads at repo root (dev defaults)
+*.db
+uploads/
+
 # Validation artifacts
 _validate_flow.db
 _validate_uploads/

@@ -177,6 +177,8 @@ class EvaluationOut(BaseModel):
     multiplier: float
     authenticity_band: str
     category_scores: Dict[str, Any]
+    category_max_points: Dict[str, int] = {}
+    category_explanations: Dict[str, str] = {}
     review_flags: List[str]
     needs_review: bool
     judge_questions: List[str] = []

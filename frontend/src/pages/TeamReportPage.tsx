@@ -22,8 +22,23 @@ export default function TeamReportPage() {
       .finally(() => setLoading(false));
   }, [submissionId]);
 
-  const handlePrint = () => {
-    window.print();
+  const handleDownloadPdf = async () => {
+    if (!report) return;
+    try {
+      const response = await reportsApi.downloadPdf(submissionId);
+      const blob = new Blob([response.data], { type: 'application/pdf' });
+      const url = window.URL.createObjectURL(blob);
+      const safeName = report.team_name.replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `${safeName || 'team'}-report.pdf`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError(formatError(err, 'Failed to download PDF'));
+    }
   };
 
   if (loading) {
@@ -67,10 +82,10 @@ export default function TeamReportPage() {
             </button>
           </div>
           <button
-            onClick={handlePrint}
+            onClick={handleDownloadPdf}
             className="px-5 py-2.5 rounded neon-btn neon-btn-cyan text-xs micro-lift micro-pop"
           >
-            Download / Print PDF
+            Download PDF
           </button>
         </div>
 

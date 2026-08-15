@@ -129,6 +129,8 @@ class Evaluation(Base):
     multiplier = Column(Float, nullable=False)
     authenticity_band = Column(String, nullable=False)
     category_scores = Column(JSON, default=dict)
+    category_max_points = Column(JSON, default=dict)  # max points per rubric category
+    category_explanations = Column(JSON, default=dict)  # per-rubric explanation text
     review_flags = Column(JSON, default=list)
     judge_questions = Column(JSON, default=list)  # suggested questions for the judging panel
     needs_review = Column(Boolean, default=False)

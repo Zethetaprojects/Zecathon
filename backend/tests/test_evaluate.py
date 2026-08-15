@@ -142,3 +142,10 @@ def test_evaluate_non_tech(auth_client, participant_client, fake_llm):
     assert report["team_name"] == "Doc Team"
     assert report["problem_statement_title"] == "Reduce campus food waste"
     assert report["evaluation"]["total_score"] == data["total_score"]
+
+    # PDF report should be downloadable and return a valid PDF byte stream
+    r = auth_client.get(f"/api/reports/submission/{sub_id}/pdf")
+    assert r.status_code == 200, r.text
+    assert r.headers.get("content-type") == "application/pdf"
+    assert len(r.content) > 0
+    assert r.content[:4] == b"%PDF"
