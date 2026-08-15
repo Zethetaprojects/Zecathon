@@ -135,17 +135,18 @@
 - [x] Commit.
 - [ ] Push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main` (SSH failed; need a GitHub token or deploy key).
 
-## Phase 18 — Counts, RBAC cleanup, deletions, per-team reports, UI polish
+## Phase 18 — Counts, RBAC cleanup, deletions, per-team reports, UI polish, and upload path resolution
 - [x] Backend counts on `GET /api/hackathons`
 - [x] Participant-only team/submission actions
 - [x] Delete hackathon and team endpoints with cascade
 - [x] Per-team printable report (`/reports/submission/:id`) with judge questions
 - [x] Admin role select arrow style fix
 - [x] README RBAC/API updates and `seed_dev.py` idempotency
+- [x] Upload path fix: `save_upload` → `/uploads/{filename}`; `document_extractor` resolves `/uploads/...` back to local `upload_dir`
 - [x] `pytest backend/tests` ✅ 13 passed
 - [x] `npm run build` ✅
 - [x] `seed_dev.py` idempotency ✅
-- [ ] Commit and push
+- [x] Commit and push
 
 ## Leftovers / next steps
 - [ ] User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations

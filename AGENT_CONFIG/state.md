@@ -71,8 +71,8 @@
 - No new author metadata is added; commits retain the existing `user.name`/`user.email` from the global git config.
 
 ## Next action
-- Commit this phase and push to the configured origin.
-- User can then start the dev stack (`start-dev.sh` or `start-dev.ps1`), seed once, and review the updated UI.
+- Phase 18 complete and pushed to `origin main`.
+- User can start the dev stack (`start-dev.sh` or `start-dev.ps1`), seed once, and review the updated UI.
 - If real LLM evaluations are needed, add a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env`.
 
 ## Blockers
