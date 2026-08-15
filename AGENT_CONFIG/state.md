@@ -20,6 +20,8 @@
 - **New routes**: `/admin` (admin-only), `/public/leaderboard/:id` (shareable), `/reports` (organiser/admin only).
 - **New components**: `AdminDashboard`, `AdminRoute`, `OrganizerRoute`, `EvaluationReport`, `PublicLeaderboard`, `EasterEggOverlay`, `EasterEggProvider`, global `Footer` in `PageLayout`, `ReportsPage`.
 - **Role-aware UI**: dashboard cards adapt to admin/organizer/judge/participant; admin and reports links in navbar for the appropriate roles; registration role selector (Student / Organizer).
+- **Navbar cleanup**: removed the non-functional **Features** dropdown and the **Leaderboards** top-level link; kept Hackathons, Dashboard, Admin (admin), Reports (organizer/admin).
+- **Dashboard cleanup**: removed redundant `Join a Team` and `Evaluate Projects` cards that duplicated the Hackathons link; kept Browse Hackathons, Host Hackathon, Reports, Admin Panel.
 - **Reports page**: summary cards for each hackathon with team/submission/evaluation stats; expandable detail with verdict breakdown, submission-type breakdown, and a team-level table.
 - **CreateHackathon**: rubric editor for tech/non-tech categories.
 - **Submit**: optional supporting GitHub URL for non-tech submissions.
@@ -37,9 +39,12 @@
 - `validate_flow.py` ✅ all flows passed, generated reports and leaderboards shown
 - `npm run build` ✅ production build succeeded
 - Reports endpoints `GET /api/reports` and `GET /api/reports/{id}` verified with an admin/organizer token; a live report was generated from the validated hackathon
-- Dev servers should be started with `start-dev.sh` / `start-dev.ps1` (backend on `http://127.0.0.1:8000`, frontend on `http://localhost:5173`)
+- Dev servers should be started with `start-dev.sh` / `start-dev.ps1` (backend on `http://127.0.0.1:8002`, frontend on `http://localhost:5173`)
 
-## Default test accounts (local dev DB)
+## Dev workflow
+- Dev backend port moved to `8002` (`start-dev.sh`, `start-dev.ps1`, `frontend/vite.config.ts`, `README.md`) because the previous `8000` socket was orphaned by an old uvicorn process and could not be reclaimed.
+- Added `seed_dev.py` to create a demo hackathon (`ZECATHON Demo Hack`), two teams, one tech and one non-tech submission, and evaluate both using the deterministic fallback. After seeding, the `/reports` page shows a live report.
+- Demo account: `demoorganizer` / `DemoPass1!` (role `organizer`).
 - `admin1` / `TestPass1!` (role promoted to `admin`).
 - `flowuser` / `FlowPass1!` (role `organizer`, created by `validate_flow.py`).
 - `flowuser2` / `FlowPass1!` (role `participant`, created by `validate_flow.py`).
@@ -65,8 +70,7 @@
 - No new author metadata was added; commits retain the existing `user.name`/`user.email` from the global git config.
 
 ## Next action
-- User review in browser; hard-refresh `localhost:5173` after starting `start-dev.sh`.
-- If `localhost:8000` is still occupied by an orphaned uvicorn socket from earlier test runs, restart the machine or wait for the socket to clear; then start the dev servers.
+- User review in browser; hard-refresh `localhost:5173` after starting `start-dev.sh` / `start-dev.ps1`. The dev backend now runs on port `8002` to avoid the orphaned `8000` socket from earlier test runs.
 - Add a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations; until then the deterministic fallback produces plausible reports.
 
 ## Blockers

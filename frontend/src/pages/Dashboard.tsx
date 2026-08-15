@@ -3,7 +3,7 @@ import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import PageLayout from '../components/PageLayout';
 import { useEasterEggs } from '../hooks/useEasterEggs';
-import { isOrganizer, isJudge, isAdmin } from '../utils/role';
+import { isOrganizer, isAdmin } from '../utils/role';
 
 function ActionCard({
   to,
@@ -93,28 +93,12 @@ export default function Dashboard() {
               color="purple"
             />
           )}
-          {user?.role === 'participant' && (
-            <ActionCard
-              to="/hackathons"
-              title="Join a Team"
-              desc="Browse hackathons and join a team to start competing."
-              color="yellow"
-            />
-          )}
           {isOrganizer(user?.role) && (
             <ActionCard
               to="/hackathons/new"
               title="Host Hackathon"
               desc="Launch a new hackathon with problem statements and teams."
               color="cyan"
-            />
-          )}
-          {isJudge(user?.role) && (
-            <ActionCard
-              to="/hackathons"
-              title="Evaluate Projects"
-              desc="Score tech or non-tech projects against rubrics."
-              color="purple"
             />
           )}
         </div>

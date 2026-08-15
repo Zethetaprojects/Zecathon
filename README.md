@@ -118,7 +118,7 @@ python -m venv venv
 venv\Scripts\activate
 pip install -r requirements.txt
 cp .env.example .env   # edit with your secret key / LLM endpoint
-uvicorn app.main:app --reload --port 8000
+uvicorn app.main:app --reload --port 8002
 ```
 
 ### 2. Frontend

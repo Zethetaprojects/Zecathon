@@ -111,6 +111,15 @@
 - Validate: `npm run build` ✅, `pytest backend/tests` ✅ 12 passed, `validate_flow.py` ✅ all flows passed, reports endpoints verified.
 - Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main` without adding any new author metadata.
 
+## Phase 17 — Navbar/dashboard cleanup, dev port fix, and demo seed
+- Remove the non-functional **Features** dropdown from the navbar (Tech Evaluation / Non-Tech Evaluation / Live Leaderboards all pointed to `/hackathons`).
+- Remove the **Leaderboards** top-level navbar link.
+- Remove redundant dashboard action cards (`Join a Team`, `Evaluate Projects`) that duplicated the Hackathons link.
+- Change dev backend port from `8000` to `8002` in `start-dev.sh`, `start-dev.ps1`, `frontend/vite.config.ts`, and `README.md` to avoid the orphaned `8000` socket from earlier test runs.
+- Add `seed_dev.py` to populate the dev database with a demo hackathon, two evaluated submissions, and a working report.
+- Validate: `npm run build` ✅, `pytest backend/tests` ✅ 12 passed, dev server on `8002` serves the reports page with seeded data.
+- Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
+
 ## Leftovers / next steps
 - User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations.
 - Promote existing users to organizer/judge via admin endpoint or set_role script.

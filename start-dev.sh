@@ -6,7 +6,7 @@ set -e
 
 cd backend
 source venv/Scripts/activate 2>/dev/null || source venv/bin/activate
-uvicorn app.main:app --reload --port 8000 &
+uvicorn app.main:app --reload --port 8002 &
 BACKEND_PID=$!
 
 cd ../frontend

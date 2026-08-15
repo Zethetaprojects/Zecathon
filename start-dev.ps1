@@ -2,7 +2,7 @@
 $backendJob = Start-Job -ScriptBlock {
     Set-Location -Path backend
     .\venv\Scripts\Activate.ps1
-    uvicorn app.main:app --reload --port 8000
+    uvicorn app.main:app --reload --port 8002
 }
 
 $frontendJob = Start-Job -ScriptBlock {
