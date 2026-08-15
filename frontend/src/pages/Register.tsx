@@ -4,15 +4,26 @@ import { authApi } from '../api/auth';
 import { useAuth } from '../hooks/useAuth';
 import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
+import type { UserRole } from '../types';
+
+const REGISTER_ROLES: { value: UserRole; label: string }[] = [
+  { value: 'participant', label: 'Student (Participant)' },
+  { value: 'organizer', label: 'Organizer' },
+];
 
 export default function Register() {
-  const [form, setForm] = useState({ username: '', email: '', password: '' });
+  const [form, setForm] = useState({
+    username: '',
+    email: '',
+    password: '',
+    role: 'participant' as UserRole,
+  });
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
   };
 
@@ -86,6 +97,22 @@ export default function Register() {
               className="w-full rounded px-4 py-3 neon-input"
               placeholder="••••••••"
             />
+          </div>
+
+          <div>
+            <label className="block text-xs pixel-caps text-slate-300 mb-2">I am joining as</label>
+            <select
+              name="role"
+              value={form.role}
+              onChange={handleChange}
+              className="w-full rounded px-4 py-3 neon-input"
+            >
+              {REGISTER_ROLES.map((r) => (
+                <option key={r.value} value={r.value}>
+                  {r.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <button

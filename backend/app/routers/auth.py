@@ -34,7 +34,7 @@ async def register(
         username=payload.username,
         email=payload.email,
         hashed_password=get_password_hash(payload.password),
-        role=UserRole.participant,
+        role=payload.role,
     )
     db.add(user)
     db.commit()

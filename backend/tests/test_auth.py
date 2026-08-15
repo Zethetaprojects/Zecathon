@@ -35,3 +35,24 @@ def test_login_wrong_password(client):
     })
     r = client.post("/api/auth/login", data={"username": "alice", "password": "wrong"})
     assert r.status_code == 400
+
+
+def test_register_organizer_role(client):
+    r = client.post("/api/auth/register", json={
+        "username": "org1",
+        "email": "org1@example.com",
+        "password": "Secret123!",
+        "role": "organizer"
+    })
+    assert r.status_code == 201
+    assert r.json()["role"] == "organizer"
+
+
+def test_register_admin_blocked(client):
+    r = client.post("/api/auth/register", json={
+        "username": "hacker",
+        "email": "hacker@example.com",
+        "password": "Secret123!",
+        "role": "admin"
+    })
+    assert r.status_code == 422

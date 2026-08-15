@@ -92,18 +92,18 @@ export default function HackathonTeams() {
     navigate(`/hackathons/${hackathonId}/submit/${teamId}/${ps.id}`);
   };
 
-  const evaluate = async (submission: Submission) => {
+  const evaluate = async (submission: Submission, retry = false) => {
     setEvaluating((prev) => ({ ...prev, [submission.id]: true }));
     setError('');
     try {
       if (submission.type === 'tech') {
-        await submissionsApi.evaluateTech(submission.id);
+        retry ? await submissionsApi.retryTech(submission.id) : await submissionsApi.evaluateTech(submission.id);
       } else {
-        await submissionsApi.evaluateNonTech(submission.id);
+        retry ? await submissionsApi.retryNonTech(submission.id) : await submissionsApi.evaluateNonTech(submission.id);
       }
       fetchSubmissions(teams);
     } catch (err: any) {
-      setError(formatError(err, 'Evaluation failed'));
+      setError(formatError(err, retry ? 'Retry failed' : 'Evaluation failed'));
     } finally {
       setEvaluating((prev) => ({ ...prev, [submission.id]: false }));
     }
@@ -223,12 +223,23 @@ export default function HackathonTeams() {
                                   {sub.status.replace('_', '-')}
                                 </span>
                                 {sub.evaluation ? (
-                                  <button
-                                    onClick={() => setReport(sub.evaluation || null)}
-                                    className="text-sm font-semibold text-neon-cyan hover:text-white transition micro-lift"
-                                  >
-                                    {sub.evaluation.total_score} pts — {sub.evaluation.verdict}
-                                  </button>
+                                  <div className="flex items-center gap-2">
+                                    <button
+                                      onClick={() => setReport(sub.evaluation || null)}
+                                      className="text-sm font-semibold text-neon-cyan hover:text-white transition micro-lift"
+                                    >
+                                      {sub.evaluation.total_score} pts — {sub.evaluation.verdict}
+                                    </button>
+                                    {canEvaluate && (
+                                      <button
+                                        onClick={() => evaluate(sub, true)}
+                                        disabled={evaluating[sub.id]}
+                                        className="px-2 py-1 rounded border border-white/10 text-[10px] text-slate-400 hover:text-neon-pink hover:border-neon-pink/50 transition disabled:opacity-50"
+                                      >
+                                        {evaluating[sub.id] ? '...' : 'Retry'}
+                                      </button>
+                                    )}
+                                  </div>
                                 ) : canEvaluate ? (
                                   <button
                                     onClick={() => evaluate(sub)}

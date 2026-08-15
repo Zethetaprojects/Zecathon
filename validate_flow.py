@@ -73,7 +73,7 @@ def main():
     TEST_DB.unlink(missing_ok=True)
     shutil.rmtree(UPLOAD_DIR, ignore_errors=True)
 
-    backend_cmd = [str(BACKEND_DIR / "venv/Scripts/python"), "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8000"]
+    backend_cmd = [str(BACKEND_DIR / "venv/Scripts/python"), "-m", "uvicorn", "app.main:app", "--host", "127.0.0.1", "--port", "8001"]
     frontend_cmd = "npm run dev"
 
     print("Starting backend...")
@@ -83,7 +83,7 @@ def main():
 
     try:
         print("\nWaiting for backend health...")
-        if not wait_for("http://127.0.0.1:8000/api/health", timeout=30):
+        if not wait_for("http://127.0.0.1:8001/api/health", timeout=30):
             print("Backend did not start in time")
             print(backend.stdout.read(2000))
             sys.exit(1)
@@ -96,7 +96,7 @@ def main():
             sys.exit(1)
         print("Frontend OK")
 
-        base = "http://127.0.0.1:8000/api"
+        base = "http://127.0.0.1:8001/api"
         steps = []
 
         # 1. Register organiser

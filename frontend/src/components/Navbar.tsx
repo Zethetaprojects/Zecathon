@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useMusic } from './MusicProvider';
+import { useEasterEggs } from '../hooks/useEasterEggs';
 import { isAdmin } from '../utils/role';
 
 function ChevronDown({ open }: { open: boolean }) {
@@ -71,6 +72,8 @@ export default function Navbar() {
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const { discover, setMode } = useEasterEggs();
+  const logoClicksRef = useRef<number[]>([]);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
@@ -85,12 +88,30 @@ export default function Navbar() {
     navigate('/');
   };
 
+  const handleLogoClick = () => {
+    const now = Date.now();
+    logoClicksRef.current = logoClicksRef.current.filter((t) => now - t < 2000);
+    logoClicksRef.current.push(now);
+    if (logoClicksRef.current.length >= 5) {
+      logoClicksRef.current = [];
+      discover('logo-fan', 'Logo fanatic! Disco mode unlocked 🎉', 'pink');
+      setMode('disco');
+    }
+  };
+
   return (
     <nav className="sticky top-4 z-50 mx-4 sm:mx-8">
       <div className="max-w-7xl mx-auto glass-panel rounded-2xl px-4 sm:px-6 py-3 border border-white/10">
         <div className="flex items-center justify-between gap-6">
           {/* Logo */}
-          <Link to="/" className="flex items-center gap-3 group">
+          <Link
+            to="/"
+            onClick={handleLogoClick}
+            className="flex items-center gap-3 group"
+            data-egg-trigger="logo-click"
+            data-egg-message="Click the logo 5 times fast for a surprise"
+            data-egg-color="cyan"
+          >
             <img
               src="/ZeTheta%20Logo.png"
               alt="Zetheta logo"

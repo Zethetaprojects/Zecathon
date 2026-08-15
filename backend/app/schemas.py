@@ -10,6 +10,7 @@ class UserCreate(BaseModel):
     username: str
     email: EmailStr
     password: str
+    role: UserRole = UserRole.participant
 
     @field_validator("password")
     @classmethod
@@ -22,6 +23,13 @@ class UserCreate(BaseModel):
             raise ValueError("Password must contain at least one digit")
         if not any(c in "!@#$%^&*()_+-=[]{}|;':\",./<>?" for c in v):
             raise ValueError("Password must contain at least one symbol")
+        return v
+
+    @field_validator("role")
+    @classmethod
+    def validate_role(cls, v: UserRole) -> UserRole:
+        if v not in (UserRole.participant, UserRole.organizer):
+            raise ValueError("Registration is only allowed for participant or organizer roles")
         return v
 
 

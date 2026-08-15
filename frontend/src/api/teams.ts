@@ -17,4 +17,6 @@ export const submissionsApi = {
   listByTeam: (teamId: number) => api.get<Submission[]>(`/submissions?team_id=${teamId}`),
   evaluateTech: (id: number) => api.post<Evaluation>(`/evaluate/tech/${id}`),
   evaluateNonTech: (id: number) => api.post<Evaluation>(`/evaluate/non-tech/${id}`),
+  retryTech: (id: number) => api.post<Evaluation>(`/evaluate/tech/${id}/retry`),
+  retryNonTech: (id: number) => api.post<Evaluation>(`/evaluate/non-tech/${id}/retry`),
 };

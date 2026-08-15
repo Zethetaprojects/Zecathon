@@ -78,11 +78,14 @@
 
 ## Phase 11 — Deployment-ready hardening
 - [x] Admin dashboard and role-specific UI
+- [x] Registration role selector (Student / Organizer only; no admin)
 - [x] Dynamic per-hackathon rubrics (default + editable)
 - [x] Judge questions in evaluation reports
 - [x] Non-tech optional GitHub URL
+- [x] Evaluation retry endpoint + UI button
 - [x] Stronger login security (password policy, bcrypt rounds, rate limiting)
 - [x] Shareable public leaderboard link
+- [x] Easter eggs throughout the app
 - [x] GCP deployment artifacts (Dockerfiles, docker-compose, README)
 - [x] Full E2E validation with generated reports
 - [x] Commit

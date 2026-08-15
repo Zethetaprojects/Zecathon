@@ -86,11 +86,14 @@
 
 ## Phase 11 — Deployment-ready platform hardening
 - **Admin / super-admin views**: dedicated admin dashboard, admin-only user management, role-specific dashboard cards for participant/organizer/judge/admin.
+- **Registration role selector**: register as Student (participant) or Organizer; admin/judge roles are not selectable at signup.
 - **Dynamic rubrics**: per-hackathon custom rubrics with sensible defaults; tech and non-tech categories can be overridden, backend falls back to defaults when absent.
 - **Rich evaluation reports**: scoring metrics + suggested judge questions derived from the project content by the LLM.
+- **Evaluation retry**: backend retry endpoints and frontend Retry button for judges.
 - **Non-tech GitHub support**: non-tech submissions may optionally include a supporting GitHub URL for deeper analysis.
 - **Secure login**: stronger password policy, bcrypt rounds, and rate limiting on auth endpoints.
 - **Shareable live leaderboards**: public, unauthenticated leaderboard link that stays live as scores are updated.
+- **Easter eggs**: hidden interactions throughout the app (Konami code, secret words, clickable stars, hidden controller/teddy, rapid logo clicks, social icon secrets, dashboard/login surprises, etc.).
 - **GCP deployment**: Dockerfiles, Cloud Run config, frontend static hosting guidance, and deployment docs.
 - **Full end-to-end validation**: create a hackathon, add problem statements, submit tech and non-tech projects, evaluate with real LLM or deterministic fallback, and inspect the generated reports and leaderboard.
 - Validate: `pytest backend/tests`, `validate_flow.py`, `npm run build`, and API smoke tests all pass.

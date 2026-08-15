@@ -1,24 +1,5 @@
-import { useState, useCallback } from 'react';
-
-function playCoinSound() {
-  const AC = (window as any).AudioContext || (window as any).webkitAudioContext;
-  if (!AC) return;
-  const ctx = new AC();
-  const t = ctx.currentTime;
-  const osc = ctx.createOscillator();
-  const gain = ctx.createGain();
-  osc.type = 'square';
-  osc.frequency.setValueAtTime(523.25, t);
-  osc.frequency.exponentialRampToValueAtTime(1046.5, t + 0.1);
-  gain.gain.setValueAtTime(0.15, t);
-  gain.gain.exponentialRampToValueAtTime(0.001, t + 0.25);
-  osc.connect(gain);
-  gain.connect(ctx.destination);
-  osc.start(t);
-  osc.stop(t + 0.3);
-  ctx.resume().catch(() => {});
-  setTimeout(() => ctx.close().catch(() => {}), 400);
-}
+import { useCallback, useState } from 'react';
+import { useEasterEggs } from '../hooks/useEasterEggs';
 
 function ControllerIcon({ className }: { className?: string }) {
   return (
@@ -30,13 +11,14 @@ function ControllerIcon({ className }: { className?: string }) {
 }
 
 export default function EasterEgg() {
+  const { discover } = useEasterEggs();
   const [showToast, setShowToast] = useState(false);
 
   const handleClick = useCallback(() => {
-    playCoinSound();
+    discover('controller', 'Hidden controller found! +100 XP', 'cyan');
     setShowToast(true);
     window.setTimeout(() => setShowToast(false), 2500);
-  }, []);
+  }, [discover]);
 
   return (
     <>

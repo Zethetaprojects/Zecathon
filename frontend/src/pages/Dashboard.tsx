@@ -1,6 +1,8 @@
+import { useState } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import PageLayout from '../components/PageLayout';
+import { useEasterEggs } from '../hooks/useEasterEggs';
 import { isOrganizer, isJudge, isAdmin } from '../utils/role';
 
 function ActionCard({
@@ -34,13 +36,25 @@ function ActionCard({
 
 export default function Dashboard() {
   const { user, logout } = useAuth();
+  const { discover } = useEasterEggs();
+  const [titleClicks, setTitleClicks] = useState(0);
+
+  const handleTitleClick = () => {
+    const next = titleClicks + 1;
+    setTitleClicks(next);
+    if (next === 3) {
+      discover('command-deck', 'Captain on the deck! +75 XP', 'cyan');
+    }
+  };
 
   return (
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         <div className="glass-panel p-6 mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
-            <h1 className="font-pixel text-lg text-white text-shadow-neon mb-1">COMMAND DECK</h1>
+            <h1 onClick={handleTitleClick} className="font-pixel text-lg text-white text-shadow-neon mb-1 cursor-pointer select-none">
+              COMMAND DECK
+            </h1>
             <p className="text-slate-400 text-sm">
               Welcome back, <span className="text-neon-cyan font-semibold">{user?.username}</span>
               <span className="ml-2 px-2 py-0.5 rounded bg-neon-purple/20 text-neon-purple text-xs uppercase tracking-wider">

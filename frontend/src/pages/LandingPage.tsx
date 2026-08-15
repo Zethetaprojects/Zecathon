@@ -40,7 +40,12 @@ function FeatureCard({
 
 function Stat({ value, label }: { value: string; label: string }) {
   return (
-    <div className="micro-lift micro-glow glass-panel px-6 py-5 text-center">
+    <div
+      className="micro-lift micro-glow glass-panel px-6 py-5 text-center cursor-pointer"
+      data-egg-trigger="stat-click"
+      data-egg-message="Numbers are fun. +25 XP"
+      data-egg-color="yellow"
+    >
       <p className="font-pixel text-xl text-neon-cyan mb-2">{value}</p>
       <p className="text-xs text-slate-400 uppercase tracking-wider">{label}</p>
     </div>
@@ -90,7 +95,10 @@ export default function LandingPage() {
             <img
               src="/ZeTheta%20Logo.png"
               alt="ZECATHON logo"
-              className="w-32 h-32 sm:w-40 sm:h-40 animate-float drop-shadow-[0_0_20px_rgba(255,255,255,0.15)]"
+              className="w-32 h-32 sm:w-40 sm:h-40 animate-float drop-shadow-[0_0_20px_rgba(255,255,255,0.15)] cursor-pointer"
+              data-egg-trigger="hero-logo"
+              data-egg-message="The logo sees you. +25 XP"
+              data-egg-color="purple"
             />
           </div>
 
