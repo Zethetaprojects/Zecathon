@@ -3,6 +3,7 @@ import { adminApi } from '../api/admin';
 import { User, UserRole } from '../types';
 import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
+import BackButton from '../components/BackButton';
 
 const ROLES: UserRole[] = ['admin', 'organizer', 'judge', 'participant'];
 
@@ -41,6 +42,9 @@ export default function AdminDashboard() {
   return (
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
+        <div className="mb-4">
+          <BackButton to="/dashboard" label="Back to dashboard" />
+        </div>
         <div className="glass-panel p-6 mb-8">
           <h1 className="font-pixel text-lg text-white text-shadow-neon mb-2">ADMIN PANEL</h1>
           <p className="text-slate-400 text-sm">Manage platform users and roles.</p>

@@ -44,9 +44,17 @@ def test_create_team_and_submit(auth_client, participant_client, client):
     )
     assert r.status_code == 400
 
-    # organiser/admin should not be allowed to create teams or submit
+    # organiser/admin can also create teams and submit on behalf of a team
     r = auth_client.post("/api/teams", json={"hackathon_id": hackathon_id, "name": "Organiser Team"})
-    assert r.status_code == 403
+    assert r.status_code == 201
+    organiser_team_id = r.json()["id"]
+
+    r = auth_client.post(
+        "/api/submissions",
+        data={"team_id": organiser_team_id, "problem_statement_id": ps_id, "type": "tech", "submission_url": "https://github.com/example/admin-repo"},
+    )
+    assert r.status_code == 201
+    assert r.json()["type"] == "tech"
 
 
 def test_join_team(auth_client, participant_client, client):

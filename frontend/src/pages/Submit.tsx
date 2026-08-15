@@ -4,9 +4,10 @@ import { hackathonsApi } from '../api/hackathons';
 import { submissionsApi } from '../api/teams';
 import { Hackathon, Team, ProblemStatement } from '../types';
 import { formatError } from '../utils/formatError';
-import { isParticipant } from '../utils/role';
+import { isParticipant, isOrganizer } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
 import PageLayout from '../components/PageLayout';
+import BackButton from '../components/BackButton';
 
 export default function Submit() {
   const { hackathonId, teamId, problemStatementId } = useParams<{
@@ -17,6 +18,7 @@ export default function Submit() {
   const navigate = useNavigate();
   const { user } = useAuth();
   const isParticipantUser = isParticipant(user?.role);
+  const canSubmit = isParticipantUser || isOrganizer(user?.role);
   const [hackathon, setHackathon] = useState<Hackathon | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
   const [ps, setPs] = useState<ProblemStatement | null>(null);
@@ -94,12 +96,12 @@ export default function Submit() {
     );
   }
 
-  if (!isParticipantUser) {
+  if (!canSubmit) {
     return (
       <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto glass-panel p-8 text-center">
-          <h2 className="font-pixel text-lg text-neon-pink mb-2">PARTICIPANTS ONLY</h2>
-          <p className="text-slate-300 mb-4">Only participants can submit projects. Organisers and admins manage hackathons and evaluations.</p>
+          <h2 className="font-pixel text-lg text-neon-pink mb-2">NOT ALLOWED</h2>
+          <p className="text-slate-300 mb-4">Only participants can submit their own projects. Organisers and admins can submit on behalf of a team they manage.</p>
           <Link to={`/hackathons/${hackathonId}/teams`} className="text-neon-cyan hover:text-white text-sm">
             ← Back to teams
           </Link>
@@ -112,12 +114,7 @@ export default function Submit() {
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
         <div className="mb-4">
-          <Link
-            to={`/hackathons/${hackathonId}/teams`}
-            className="text-neon-cyan hover:text-white text-sm transition"
-          >
-            ← Back to teams
-          </Link>
+          <BackButton to={`/hackathons/${hackathonId}/teams`} label="Back to teams" />
         </div>
 
         <div className="glass-panel p-6 sm:p-8">

@@ -138,6 +138,25 @@
 - Validate: `pytest backend/tests` ✅ 13 passed, `npm run build` ✅, `seed_dev.py` idempotent ✅, `validate_flow.py` ✅ all flows passed.
 - Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
 
+## Phase 19 — Reports availability, admin team management, navigation, and PWA polish
+- Fix reports "Not Found" by clearing stale backend processes (the `/api/reports/submission/{id}` route is present in current code; old uvicorn instances bound to port 8002 were serving an older app version).
+- Allow organisers and admins to create teams and submit projects on behalf of teams:
+  - Backend: `POST /api/teams` and `POST /api/submissions` accept `admin`/`organizer` roles in addition to `participant`.
+  - Managers bypass the team-membership check when creating a submission.
+  - Frontend `HackathonTeams` and `Submit` pages expose create-team and submit controls to managers.
+- Navigation improvements:
+  - Put **Dashboard** before **Hackathons** in the navbar.
+  - Add a mobile hamburger menu with all role-aware links.
+- Add a reusable `BackButton` component and back navigation to every submenu page (`CreateHackathon`, `HackathonDetail`, `HackathonTeams`, `Submit`, `Leaderboard`, `ReportsPage`, `AdminDashboard`).
+- PWA / mobile-friendly baseline:
+  - Add `public/manifest.json` and `public/sw.js`.
+  - Register the service worker and add theme-color / apple-mobile-web-app meta tags in `index.html`.
+  - Update viewport for `viewport-fit=cover` and safe-area support.
+- Update backend tests to reflect the new manager-create-team/submit behavior.
+- Validate: `pytest backend/tests` ✅ 13 passed, `npm run build` ✅, admin create-team/submit and reports endpoints verified via a fresh backend process.
+- Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
+- User action: fully restart the dev stack (close the PowerShell window, kill lingering python/node processes, or reboot) so the new backend starts cleanly on port 8002.
+
 ## Leftovers / next steps
 - User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations.
 - Promote existing users to organizer/judge via admin endpoint or set_role script.

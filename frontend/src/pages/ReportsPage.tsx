@@ -4,6 +4,7 @@ import { reportsApi } from '../api/reports';
 import PageLayout from '../components/PageLayout';
 import { HackathonReportSummary, HackathonReportDetail, TeamReportEntry } from '../types';
 import { formatError } from '../utils/formatError';
+import BackButton from '../components/BackButton';
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
@@ -110,6 +111,9 @@ export default function ReportsPage() {
   return (
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
+        <div className="mb-4">
+          <BackButton to="/dashboard" label="Back to dashboard" />
+        </div>
         <div className="mb-8">
           <h1 className="font-pixel text-lg text-white text-shadow-neon mb-2">REPORTS</h1>
           <p className="text-slate-400 text-sm">Hackathon analytics for organisers and admins. Students only see leaderboards.</p>

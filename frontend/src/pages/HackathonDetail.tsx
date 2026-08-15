@@ -6,6 +6,7 @@ import { formatError } from '../utils/formatError';
 import { isOrganizer } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
 import PageLayout from '../components/PageLayout';
+import BackButton from '../components/BackButton';
 
 export default function HackathonDetail() {
   const { id } = useParams<{ id: string }>();
@@ -133,9 +134,7 @@ export default function HackathonDetail() {
         <div className="max-w-4xl mx-auto glass-panel p-8 text-center">
           <h2 className="font-pixel text-lg text-neon-pink mb-2">MISSION NOT FOUND</h2>
           <p className="text-slate-300 mb-4">The hackathon you are looking for does not exist.</p>
-          <Link to="/hackathons" className="text-neon-cyan hover:text-white text-sm">
-            ← Back to hackathons
-          </Link>
+          <BackButton to="/hackathons" label="Back to hackathons" />
         </div>
       </PageLayout>
     );
@@ -145,9 +144,7 @@ export default function HackathonDetail() {
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         <div className="mb-4">
-          <Link to="/hackathons" className="text-neon-cyan hover:text-white text-sm transition">
-            ← Back to hackathons
-          </Link>
+          <BackButton to="/hackathons" label="Back to hackathons" />
         </div>
 
         <div className="glass-panel p-6 sm:p-8 mb-8">

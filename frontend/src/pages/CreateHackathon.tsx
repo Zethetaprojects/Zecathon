@@ -3,6 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
+import BackButton from '../components/BackButton';
 
 function parseRubricJson(value: string): Record<string, number> | null {
   const trimmed = value.trim();
@@ -74,9 +75,7 @@ export default function CreateHackathon() {
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
         <div className="mb-6">
-          <Link to="/hackathons" className="text-neon-cyan hover:text-white text-sm transition">
-            ← Back to hackathons
-          </Link>
+          <BackButton to="/hackathons" label="Back to hackathons" />
         </div>
 
         <div className="glass-panel p-6 sm:p-8">

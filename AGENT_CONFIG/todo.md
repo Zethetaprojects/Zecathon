@@ -137,7 +137,7 @@
 
 ## Phase 18 — Counts, RBAC cleanup, deletions, per-team reports, UI polish, and upload path resolution
 - [x] Backend counts on `GET /api/hackathons`
-- [x] Participant-only team/submission actions
+- [x] Role-based team/submission actions (participants + managers can create teams/submit on behalf of teams)
 - [x] Delete hackathon and team endpoints with cascade
 - [x] Per-team printable report (`/reports/submission/:id`) with judge questions
 - [x] Admin role select arrow style fix
@@ -147,6 +147,19 @@
 - [x] `npm run build` ✅
 - [x] `seed_dev.py` idempotency ✅
 - [x] Commit and push
+
+## Phase 19 — Reports availability, admin team management, navigation, and PWA polish
+- [x] Identify stale backend processes hiding the `/api/reports/submission/{id}` route
+- [x] Allow admins/organizers to create teams and submit on behalf of teams (backend + frontend)
+- [x] Reorder navbar: Dashboard before Hackathons
+- [x] Add mobile hamburger menu
+- [x] Add `BackButton` component and back buttons to all submenu pages
+- [x] Add PWA manifest, service worker, and mobile-friendly meta tags
+- [x] `pytest backend/tests` ✅ 13 passed
+- [x] `npm run build` ✅
+- [x] Admin create-team/submit and reports verified via API on a fresh backend process
+- [x] Commit and push
+- [ ] User fully restarts the dev stack to clear stale port 8002 processes
 
 ## Leftovers / next steps
 - [ ] User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations

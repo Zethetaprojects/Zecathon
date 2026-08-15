@@ -8,6 +8,7 @@ import { isJudge, isParticipant, isOrganizer } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
 import PageLayout from '../components/PageLayout';
 import EvaluationReport from '../components/EvaluationReport';
+import BackButton from '../components/BackButton';
 
 export default function HackathonTeams() {
   const { id } = useParams<{ id: string }>();
@@ -16,6 +17,7 @@ export default function HackathonTeams() {
   const canEvaluate = isJudge(user?.role);
   const isParticipantUser = isParticipant(user?.role);
   const canManage = isOrganizer(user?.role);
+  const canActOnTeams = isParticipantUser || canManage;
   const [hackathon, setHackathon] = useState<Hackathon | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [submissionsByTeam, setSubmissionsByTeam] = useState<Record<number, Submission[]>>({});
@@ -155,9 +157,7 @@ export default function HackathonTeams() {
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         <div className="mb-4">
-          <Link to={`/hackathons/${hackathonId}`} className="text-neon-cyan hover:text-white text-sm transition">
-            ← Back to hackathon
-          </Link>
+          <BackButton to={`/hackathons/${hackathonId}`} label="Back to hackathon" />
         </div>
 
         <div className="glass-panel p-6 sm:p-8 mb-6">
@@ -292,7 +292,7 @@ export default function HackathonTeams() {
                                 )}
                               </>
                             ) : (
-                              isParticipantUser && (
+                              canActOnTeams && (
                                 <button
                                   onClick={() => submitFor(team.id, ps)}
                                   className="px-3 py-1.5 rounded neon-btn neon-btn-cyan text-xs"
@@ -314,7 +314,7 @@ export default function HackathonTeams() {
             )}
           </div>
 
-          {isParticipantUser && (
+          {canActOnTeams && (
             <div className="glass-panel p-6 h-fit">
               <h3 className="font-pixel text-xs text-white mb-4">CREATE TEAM</h3>
               <form onSubmit={createTeam} className="space-y-4">

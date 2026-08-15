@@ -4,6 +4,7 @@ import { leaderboardApi } from '../api/leaderboard';
 import { LeaderboardEntry } from '../types';
 import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
+import BackButton from '../components/BackButton';
 
 const verdictColor: Record<string, string> = {
   OUTSTANDING: 'text-neon-yellow',
@@ -44,9 +45,7 @@ export default function Leaderboard() {
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
-          <Link to={`/hackathons/${hackathonId}`} className="text-neon-cyan hover:text-white text-sm transition">
-            ← Back to hackathon
-          </Link>
+          <BackButton to={`/hackathons/${hackathonId}`} label="Back to hackathon" />
         </div>
 
         <div className="glass-panel p-6 sm:p-8">

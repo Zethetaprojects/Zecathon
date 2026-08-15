@@ -3,13 +3,17 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_active_user, require_participant
+from app.auth import get_current_active_user
 from app.database import get_db
 from app.models import ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User, UserRole
 from app.schemas import SubmissionCreate, SubmissionDetail, SubmissionOut
 from app.services.file_storage import save_upload
 
 router = APIRouter()
+
+
+def _is_manager(user: User) -> bool:
+    return user.role in (UserRole.admin, UserRole.organizer)
 
 
 def _is_judge(user: User) -> bool:
@@ -38,14 +42,22 @@ async def create_submission(
     submission_file: UploadFile = File(None),
     ppt_file: UploadFile = File(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_participant),
+    current_user: User = Depends(get_current_active_user),
 ):
     try:
         sub_type = SubmissionType(type)
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid submission type")
 
-    team = _ensure_team_member_or_judge(team_id, current_user, db)
+    if current_user.role not in (UserRole.participant, UserRole.admin, UserRole.organizer):
+        raise HTTPException(status_code=403, detail="Only participants, organizers, or admins can submit")
+
+    if _is_manager(current_user):
+        team = db.query(Team).filter(Team.id == team_id).first()
+    else:
+        team = _ensure_team_member_or_judge(team_id, current_user, db)
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
 
     ps = db.query(ProblemStatement).filter(ProblemStatement.id == problem_statement_id).first()
     if not ps:

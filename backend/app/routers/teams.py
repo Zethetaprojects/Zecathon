@@ -3,12 +3,16 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_active_user, require_participant, require_organizer
+from app.auth import get_current_active_user, require_organizer, require_participant
 from app.database import get_db
 from app.models import Evaluation, Hackathon, Submission, Team, TeamMember, User, UserRole
 from app.schemas import TeamCreate, TeamOut
 
 router = APIRouter()
+
+
+def _is_manager(user: User) -> bool:
+    return user.role in (UserRole.admin, UserRole.organizer)
 
 
 def _user_team_in_hackathon(user_id: int, hackathon_id: int, db: Session) -> Team | None:
@@ -24,12 +28,16 @@ def _user_team_in_hackathon(user_id: int, hackathon_id: int, db: Session) -> Tea
 async def create_team(
     payload: TeamCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_participant),
+    current_user: User = Depends(get_current_active_user),
 ):
     hackathon = db.query(Hackathon).filter(Hackathon.id == payload.hackathon_id).first()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    if _user_team_in_hackathon(current_user.id, payload.hackathon_id, db):
+
+    if current_user.role not in (UserRole.participant, UserRole.admin, UserRole.organizer):
+        raise HTTPException(status_code=403, detail="Only participants, organizers, or admins can create teams")
+
+    if not _is_manager(current_user) and _user_team_in_hackathon(current_user.id, payload.hackathon_id, db):
         raise HTTPException(status_code=400, detail="You are already in a team for this hackathon")
 
     team = Team(hackathon_id=payload.hackathon_id, name=payload.name)

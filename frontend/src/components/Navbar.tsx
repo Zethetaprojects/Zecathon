@@ -1,4 +1,4 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useMusic } from './MusicProvider';
@@ -36,6 +36,7 @@ export default function Navbar() {
   const navigate = useNavigate();
   const { discover, setMode } = useEasterEggs();
   const logoClicksRef = useRef<number[]>([]);
+  const [menuOpen, setMenuOpen] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -52,6 +53,15 @@ export default function Navbar() {
       setMode('disco');
     }
   };
+
+  const navLinks = user
+    ? [
+        { to: '/dashboard', label: 'Dashboard' },
+        { to: '/hackathons', label: 'Hackathons' },
+        ...(isAdmin(user.role) ? [{ to: '/admin', label: 'Admin' }] : []),
+        ...(isOrganizer(user.role) ? [{ to: '/reports', label: 'Reports' }] : []),
+      ]
+    : [];
 
   return (
     <nav className="sticky top-4 z-50 mx-4 sm:mx-8">
@@ -78,41 +88,22 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Center nav — logged-in only */}
+          {/* Center nav — logged-in only (desktop) */}
           {user && (
             <div className="hidden md:flex items-center gap-1">
-              <Link
-                to="/hackathons"
-                className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition micro-lift"
-              >
-                Hackathons
-              </Link>
-              <Link
-                to="/dashboard"
-                className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition micro-lift"
-              >
-                Dashboard
-              </Link>
-              {isAdmin(user.role) && (
+              {navLinks.map((link) => (
                 <Link
-                  to="/admin"
+                  key={link.to}
+                  to={link.to}
                   className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition micro-lift"
                 >
-                  Admin
+                  {link.label}
                 </Link>
-              )}
-              {isOrganizer(user.role) && (
-                <Link
-                  to="/reports"
-                  className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition micro-lift"
-                >
-                  Reports
-                </Link>
-              )}
+              ))}
             </div>
           )}
 
-          {/* Right auth + sound toggle */}
+          {/* Right auth + sound toggle + mobile menu */}
           <div className="flex items-center gap-3">
             <EasterEggHunt />
             <SoundToggle />
@@ -147,8 +138,46 @@ export default function Navbar() {
                 </Link>
               </>
             )}
+
+            {/* Mobile hamburger */}
+            {user && (
+              <button
+                type="button"
+                onClick={() => setMenuOpen((prev) => !prev)}
+                className="md:hidden w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white flex items-center justify-center transition"
+                aria-label="Toggle menu"
+              >
+                {menuOpen ? (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                  </svg>
+                )}
+              </button>
+            )}
           </div>
         </div>
+
+        {/* Mobile nav dropdown */}
+        {user && menuOpen && (
+          <div className="md:hidden mt-3 pt-3 border-t border-white/10">
+            <div className="flex flex-col gap-1">
+              {navLinks.map((link) => (
+                <Link
+                  key={link.to}
+                  to={link.to}
+                  onClick={() => setMenuOpen(false)}
+                  className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition"
+                >
+                  {link.label}
+                </Link>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </nav>
   );

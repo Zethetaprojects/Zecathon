@@ -1,7 +1,7 @@
 # Current State
 
 - **Date**: 2026-08-15
-- **Repo**: full-stack hackathon evaluation platform (ZECATHON) with RBAC, Gemini integration, dynamic rubrics, judge questions, evaluation retry, easter eggs, and GCP deployment artifacts.
+- **Repo**: full-stack hackathon evaluation platform (ZECATHON) with RBAC, Gemini integration, dynamic rubrics, judge questions, evaluation retry, easter eggs, PWA baseline, mobile-friendly navigation, and GCP deployment artifacts.
 - **AGENT_CONFIG**: created; context, plan, state, and todo maintained.
 
 ## Backend (completed)
@@ -9,9 +9,9 @@
 - **Schemas**: `UserCreate` password validator (8 chars, letter, digit, symbol), role validator (only `participant` or `organizer` allowed at registration), `HackathonCreate` rubric, `SubmissionCreate` github_url, `EvaluationOut` judge_questions, `SubmissionReport` with team/problem/hackathon names.
 - **Auth**: bcrypt rounds 12, sliding-window rate limiter on `/api/auth/register` and `/api/auth/login`, `require_participant` dependency added.
 - **Registration**: new users can register as **Student (participant)** or **Organizer**; `admin` and `judge` are not selectable at registration.
-- **Hackathons**: `GET /api/hackathons` returns `problem_statement_count` and `team_count`; `DELETE /api/hackathons/{id}` deletes all children (teams, submissions, evaluations, problem statements) for organisers/admins.
-- **Teams**: `POST /api/teams` and `POST /api/teams/{id}/join` are participant-only; `DELETE /api/teams/{id}` is organiser/admin-only.
-- **Submissions**: `POST /api/submissions` is participant-only; non-tech submissions accept a document file, a submission URL, and an optional GitHub URL; optional PPT upload supported.
+- **Hackathons**: `GET /api/hackathons` returns `problem_statement_count` and `team_count`; `DELETE /api/hackathons/{id}` deletes all children (teams, submissions, evaluations, problem statements) for organisers/admins; `PUT /api/hackathons/{id}` supports custom rubrics.
+- **Teams**: `POST /api/teams` allows `participant`, `organizer`, and `admin` roles (organizers/admins can create teams on behalf of a hackathon); `POST /api/teams/{id}/join` remains participant-only; `DELETE /api/teams/{id}` is organiser/admin-only.
+- **Submissions**: `POST /api/submissions` allows `participant`, `organizer`, and `admin` roles; managers bypass the team-membership check so they can submit on behalf of any team. Non-tech submissions accept a document file, a submission URL, and an optional GitHub URL; optional PPT upload supported.
 - **Evaluators**: tech and non-tech prompts request `judge_questions`, use per-hackathon custom rubrics (or defaults), and store suggested questions in the evaluation.
 - **Evaluation retry**: `POST /api/evaluate/tech/{id}/retry` and `POST /api/evaluate/non-tech/{id}/retry` delete the old evaluation and re-run it.
 - **Leaderboard**: public, unauthenticated endpoint `GET /api/leaderboard/public/{hackathon_id}`; scores are discrete after anti-clustering.
@@ -20,11 +20,14 @@
 
 ## Frontend (completed)
 - **New routes**: `/admin` (admin-only), `/public/leaderboard/:id` (shareable), `/reports` (organiser/admin only), `/reports/submission/:id` (printable per-team report).
-- **New components**: `AdminDashboard`, `AdminRoute`, `OrganizerRoute`, `EvaluationReport`, `PublicLeaderboard`, `EasterEggOverlay`, `EasterEggProvider`, global `Footer` in `PageLayout`, `ReportsPage`, `TeamReportPage`.
+- **New components**: `AdminDashboard`, `AdminRoute`, `OrganizerRoute`, `EvaluationReport`, `PublicLeaderboard`, `EasterEggOverlay`, `EasterEggProvider`, global `Footer` in `PageLayout`, `ReportsPage`, `TeamReportPage`, `BackButton`.
 - **Role-aware UI**: dashboard cards adapt to admin/organizer/judge/participant; admin and reports links in navbar for the appropriate roles; registration role selector (Student / Organizer).
+- **Navigation**: Dashboard now appears before Hackathons in the navbar; a mobile hamburger menu exposes all role-aware links on small screens.
+- **Back buttons**: every submenu page (`CreateHackathon`, `HackathonDetail`, `HackathonTeams`, `Submit`, `Leaderboard`, `ReportsPage`, `AdminDashboard`) has a consistent back button.
 - **Hackathons page**: uses backend counts; organisers/admins can delete hackathons from the card.
-- **Team page**: Create Team / Join / Submit are hidden for non-participants; organisers/admins can delete teams and view per-team reports.
-- **Submit page**: shows a participants-only message for organisers/admins.
+- **Team page**: participants can create/join/submit; organisers/admins can also create teams and submit on behalf of a team, delete teams, and view per-team reports.
+- **Submit page**: participants submit their own projects; organisers/admins can submit on behalf of the selected team.
+- **PWA**: `manifest.json`, `sw.js`, registered service worker, theme-color / apple-mobile-web-app meta tags, and `viewport-fit=cover` viewport.
 - **Reports page team entries**: each evaluated row now has a **View report** button that opens the printable per-team report.
 - **Printable report**: `TeamReportPage` renders evaluation details including judge questions; has a Download/Print PDF button; print CSS hides navbar/footer and uses light background.
 - **Admin dashboard**: role `<select>` uses `.neon-select` with a custom space-themed chevron and no awkward right padding.
@@ -44,14 +47,15 @@
 - `npm run build` ✅ production build succeeded
 - `seed_dev.py` ✅ idempotent; re-running creates a single demo hackathon with two evaluated submissions and a populated leaderboard
 - `validate_flow.py` ✅ all flows passed with the new participant-only team/submission rules
-- Reports endpoints verified; per-team printable report accessible to organisers/admins
+- Reports endpoints verified on a fresh backend process; per-team printable report accessible to organisers/admins
+- Admin create-team/submit flow verified via API on a fresh backend process
 - Dev servers should be started with `start-dev.sh` / `start-dev.ps1` (backend on `http://127.0.0.1:8002`, frontend on `http://localhost:5173`)
 
 ## Dev workflow
 - Dev backend port moved to `8002` (`start-dev.sh`, `start-dev.ps1`, `frontend/vite.config.ts`, `README.md`) to avoid orphaned `8000` sockets.
 - `start-dev.ps1` uses `$PSScriptRoot` so `Start-Job` blocks start from the project root.
 - `seed_dev.py` is idempotent and cleans up previous demo hackathons before re-seeding.
-- `admin1` / `TestPass1!` (admin) and `demoorganizer` / `DemoPass1!` (organizer) can view reports and delete hackathons/teams.
+- `admin1` / `TestPass1!` (admin) and `demoorganizer` / `DemoPass1!` (organizer) can view reports, delete hackathons/teams, and now create teams and submit on behalf of teams.
 - New registrations must use a password with ≥8 chars, one letter, one digit, and one symbol.
 
 ## Sample generated report (from `ZECATHON Demo Hack`)
@@ -71,8 +75,8 @@
 - No new author metadata is added; commits retain the existing `user.name`/`user.email` from the global git config.
 
 ## Next action
-- Phase 18 complete and pushed to `origin main`.
-- User can start the dev stack (`start-dev.sh` or `start-dev.ps1`), seed once, and review the updated UI.
+- Phase 19 complete and pushed to `origin main`.
+- User should fully restart the dev stack (close the running PowerShell window, kill all lingering python/node processes, or reboot) so the backend starts cleanly on port 8002 with the current code. Stale uvicorn instances were holding the old app version, which caused the reports route to be missing.
 - If real LLM evaluations are needed, add a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env`.
 
 ## Blockers
