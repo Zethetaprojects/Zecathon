@@ -134,3 +134,11 @@ def test_evaluate_non_tech(auth_client, participant_client, fake_llm):
     data = r.json()
     assert data["total_score"] > 0
     assert data["verdict"]
+
+    # printable per-team report should be reachable for organisers/admins
+    r = auth_client.get(f"/api/reports/submission/{sub_id}")
+    assert r.status_code == 200, r.text
+    report = r.json()
+    assert report["team_name"] == "Doc Team"
+    assert report["problem_statement_title"] == "Reduce campus food waste"
+    assert report["evaluation"]["total_score"] == data["total_score"]

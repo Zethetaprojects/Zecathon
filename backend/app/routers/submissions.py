@@ -5,18 +5,24 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user, require_participant
 from app.database import get_db
-from app.models import ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User
+from app.models import ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User, UserRole
 from app.schemas import SubmissionCreate, SubmissionDetail, SubmissionOut
 from app.services.file_storage import save_upload
 
 router = APIRouter()
 
 
-def _ensure_team_member(team_id: int, user_id: int, db: Session) -> Team:
+def _is_judge(user: User) -> bool:
+    return user.role in (UserRole.admin, UserRole.organizer, UserRole.judge)
+
+
+def _ensure_team_member_or_judge(team_id: int, user: User, db: Session) -> Team:
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
-    member = db.query(TeamMember).filter(TeamMember.team_id == team_id, TeamMember.user_id == user_id).first()
+    if _is_judge(user):
+        return team
+    member = db.query(TeamMember).filter(TeamMember.team_id == team_id, TeamMember.user_id == user.id).first()
     if not member:
         raise HTTPException(status_code=403, detail="You are not a member of this team")
     return team
@@ -39,7 +45,7 @@ async def create_submission(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid submission type")
 
-    team = _ensure_team_member(team_id, current_user.id, db)
+    team = _ensure_team_member_or_judge(team_id, current_user, db)
 
     ps = db.query(ProblemStatement).filter(ProblemStatement.id == problem_statement_id).first()
     if not ps:
@@ -101,7 +107,7 @@ async def get_submission(
     submission = db.query(Submission).filter(Submission.id == submission_id).first()
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
-    _ensure_team_member(submission.team_id, current_user.id, db)
+    _ensure_team_member_or_judge(submission.team_id, current_user, db)
     return submission
 
 
@@ -111,5 +117,5 @@ async def list_submissions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    _ensure_team_member(team_id, current_user.id, db)
+    _ensure_team_member_or_judge(team_id, current_user, db)
     return db.query(Submission).filter(Submission.team_id == team_id).order_by(Submission.created_at.desc()).all()

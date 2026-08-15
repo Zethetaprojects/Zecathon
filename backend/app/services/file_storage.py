@@ -30,4 +30,4 @@ async def save_upload(file: UploadFile) -> str:
         raise HTTPException(status_code=413, detail="File too large")
     with open(dest, "wb") as f:
         f.write(contents)
-    return str(dest)
+    return f"/uploads/{name}"

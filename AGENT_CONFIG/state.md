@@ -15,7 +15,7 @@
 - **Evaluators**: tech and non-tech prompts request `judge_questions`, use per-hackathon custom rubrics (or defaults), and store suggested questions in the evaluation.
 - **Evaluation retry**: `POST /api/evaluate/tech/{id}/retry` and `POST /api/evaluate/non-tech/{id}/retry` delete the old evaluation and re-run it.
 - **Leaderboard**: public, unauthenticated endpoint `GET /api/leaderboard/public/{hackathon_id}`; scores are discrete after anti-clustering.
-- **Reports**: `GET /api/reports`, `GET /api/reports/{hackathon_id}`, and `GET /api/reports/submission/{submission_id}`; protected to organisers and admins; admin sees all hackathons, organiser sees only their own.
+- **Reports**: route order fixed so `/api/reports/submission/{id}` is matched before `/{hackathon_id}`; added `EvaluationOut` import; test added for the printable per-team report.
 - **Docker/GCP**: `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx/default.conf`, `docker-compose.yml`, `gcp/README.md`.
 
 ## Frontend (completed)
@@ -39,6 +39,7 @@
 - **Theme**: dark space/pixel styling preserved.
 
 ## Validation
+- Backend upload path fix: `save_upload` returns `/uploads/{filename}`; `document_extractor` resolves `/uploads/...` back to the local `upload_dir` before reading, so non-tech evaluations and problem-statement extraction work from public URLs and local tests.
 - `pytest backend/tests` ✅ 13 passed
 - `npm run build` ✅ production build succeeded
 - `seed_dev.py` ✅ idempotent; re-running creates a single demo hackathon with two evaluated submissions and a populated leaderboard

@@ -1,7 +1,17 @@
 from pathlib import Path
 
+from app.config import settings
+
+
+def _resolve_path(file_path: str) -> str:
+    """Convert public /uploads/... paths to local filesystem paths."""
+    if file_path.startswith("/uploads/"):
+        return str(Path(settings.upload_dir) / file_path[len("/uploads/"):])
+    return file_path
+
 
 def extract_text(file_path: str) -> str:
+    file_path = _resolve_path(file_path)
     ext = Path(file_path).suffix.lower()
     if ext == ".pdf":
         return _extract_pdf(file_path)

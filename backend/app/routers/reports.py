@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.auth import require_organizer
 from app.database import get_db
 from app.models import Evaluation, Hackathon, ProblemStatement, Submission, Team, User, UserRole
-from app.schemas import HackathonReportDetail, HackathonReportSummary, SubmissionReport, TeamReportEntry
+from app.schemas import HackathonReportDetail, HackathonReportSummary, SubmissionReport, TeamReportEntry, EvaluationOut
 
 router = APIRouter()
 
@@ -124,20 +124,6 @@ async def list_reports(
     return reports
 
 
-@router.get("/{hackathon_id}", response_model=HackathonReportDetail)
-async def get_report(
-    hackathon_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_organizer),
-):
-    hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
-    if not hackathon:
-        raise HTTPException(status_code=404, detail="Hackathon not found")
-    if current_user.role != UserRole.admin and hackathon.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can view this report")
-    return _build_report(db, hackathon)
-
-
 @router.get("/submission/{submission_id}", response_model=SubmissionReport)
 async def get_submission_report(
     submission_id: int,
@@ -175,3 +161,17 @@ async def get_submission_report(
         hackathon_name=hackathon.name if hackathon else "",
         evaluation=EvaluationOut.model_validate(submission.evaluation) if submission.evaluation else None,
     )
+
+
+@router.get("/{hackathon_id}", response_model=HackathonReportDetail)
+async def get_report(
+    hackathon_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_organizer),
+):
+    hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+    if current_user.role != UserRole.admin and hackathon.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can view this report")
+    return _build_report(db, hackathon)

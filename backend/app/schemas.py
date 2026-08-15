@@ -75,6 +75,16 @@ class HackathonCreate(HackathonBase):
     pass
 
 
+class HackathonUpdate(HackathonBase):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    rubric: Optional[Dict[str, Any]] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class HackathonOut(HackathonBase):
     id: int
     created_by: int
