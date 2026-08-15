@@ -48,19 +48,42 @@ def client(db):
     app.dependency_overrides.clear()
 
 
-@pytest.fixture
-def auth_client(client, db):
-    r = client.post("/api/auth/register", json={
-        "username": "testuser",
-        "email": "testuser@example.com",
+def _make_authenticated_client(db, username: str, email: str, role: UserRole = None):
+    def override_get_db():
+        yield db
+
+    app.dependency_overrides[get_db] = override_get_db
+    c = TestClient(app)
+    r = c.post("/api/auth/register", json={
+        "username": username,
+        "email": email,
         "password": "Secret123!"
     })
-    assert r.status_code == 201
-    user = db.query(User).filter(User.username == "testuser").first()
-    user.role = UserRole.organizer
-    db.commit()
-    r = client.post("/api/auth/login", data={"username": "testuser", "password": "Secret123!"})
-    assert r.status_code == 200
+    assert r.status_code == 201, r.text
+    if role:
+        user = db.query(User).filter(User.username == username).first()
+        user.role = role
+        db.commit()
+    r = c.post("/api/auth/login", data={"username": username, "password": "Secret123!"})
+    assert r.status_code == 200, r.text
     token = r.json()["access_token"]
-    client.headers["Authorization"] = f"Bearer {token}"
-    return client
+    c.headers["Authorization"] = f"Bearer {token}"
+    return c
+
+
+@pytest.fixture
+def participant_client(db):
+    c = _make_authenticated_client(db, "participant", "participant@example.com")
+    try:
+        yield c
+    finally:
+        app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def auth_client(db):
+    c = _make_authenticated_client(db, "testuser", "testuser@example.com", UserRole.organizer)
+    try:
+        yield c
+    finally:
+        app.dependency_overrides.clear()

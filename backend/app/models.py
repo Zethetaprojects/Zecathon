@@ -53,7 +53,7 @@ class ProblemStatement(Base):
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 
     hackathon = relationship("Hackathon", back_populates="problem_statements")
-    submissions = relationship("Submission", back_populates="problem_statement")
+    submissions = relationship("Submission", back_populates="problem_statement", cascade="all, delete-orphan")
 
 
 class Team(Base):

@@ -80,6 +80,7 @@ def require_role(*roles: UserRole):
 require_admin = require_role(UserRole.admin)
 require_organizer = require_role(UserRole.admin, UserRole.organizer)
 require_judge = require_role(UserRole.admin, UserRole.organizer, UserRole.judge)
+require_participant = require_role(UserRole.participant)
 
 
 class RateLimiter:

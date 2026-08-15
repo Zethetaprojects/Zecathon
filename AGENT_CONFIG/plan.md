@@ -121,6 +121,22 @@
 - Validate: `npm run build` ✅, `pytest backend/tests` ✅ 12 passed, dev server on `8002` serves the reports page with seeded data.
 - Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
 
+## Phase 18 — Counts, RBAC cleanup, deletions, per-team reports, and UI polish
+- Backend: expose `problem_statement_count` and `team_count` on `HackathonOut`; compute them with `func.count` in `GET /api/hackathons`.
+- Backend RBAC: add `require_participant`; restrict `POST /api/teams`, `POST /api/teams/{id}/join`, and `POST /api/submissions` to participants only.
+- Backend deletion: add `DELETE /api/hackathons/{id}` and `DELETE /api/teams/{id}` restricted to the hackathon organiser or admin; cascade children explicitly in the endpoint.
+- Backend reports: add `GET /api/reports/submission/{submission_id}` returning `SubmissionReport` (team name, problem statement title, hackathon name, evaluation) for organisers/admins.
+- Frontend types: add `problem_statement_count`, `team_count`, and `SubmissionReport` to `frontend/src/types/index.ts`.
+- Frontend hackathons list: use the new counts; add a delete button for organisers/admins.
+- Frontend team page: hide Create Team / Join / Submit for non-participants; add a delete-team button for organisers/admins; add a "View report" link for evaluated submissions.
+- Frontend printable report: add `TeamReportPage` at `/reports/submission/:id` with a print/PDF button, protected behind `OrganizerRoute`; print CSS hides navbar/footer and darkens the page.
+- Frontend admin dashboard: fix the role `<select>` arrow with a custom `.neon-select` style (no awkward right padding, space-themed chevron).
+- README: update RBAC matrix (participants only for teams/submissions, organisers/admins for deletion/reports); add new API endpoints; fix docs port to `8002`.
+- `seed_dev.py`: make idempotent by deleting previously seeded demo hackathons before re-creating.
+- Tests: add `participant_client` fixture; update team/submission/evaluation tests to use participant clients; add tests for delete endpoints.
+- Validate: `pytest backend/tests` ✅ 13 passed, `npm run build` ✅, `seed_dev.py` idempotent ✅.
+- Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
+
 ## Leftovers / next steps
 - User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations.
 - Promote existing users to organizer/judge via admin endpoint or set_role script.

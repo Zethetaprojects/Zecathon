@@ -5,6 +5,7 @@ export const hackathonsApi = {
   list: () => api.get<Hackathon[]>('/hackathons'),
   create: (data: Partial<Hackathon>) => api.post<Hackathon>('/hackathons', data),
   get: (id: number) => api.get<Hackathon>(`/hackathons/${id}`),
+  delete: (id: number) => api.delete(`/hackathons/${id}`),
 };
 
 export const problemStatementsApi = {

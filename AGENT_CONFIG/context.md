@@ -17,14 +17,14 @@ Build a web application for running hackathons where:
 - **RBAC** is enforced across the API and UI:
   - Roles: `admin`, `organizer`, `judge`, `participant`.
   - New registrations default to `participant`.
-  - Only `organizer` or `admin` can create hackathons and upload problem statements.
+  - Only `organizer` or `admin` can create hackathons, upload problem statements, delete hackathons/teams, and view per-team evaluation reports.
   - Only `judge`, `organizer`, or `admin` can evaluate submissions.
-  - All authenticated users can create/join teams and submit projects.
+  - Only `participant` can create/join teams and submit projects.
   - Admins can list users and change roles via `GET /api/auth/admin/users` and `PUT /api/auth/users/{id}/role`.
 - **Dynamic rubrics**: each hackathon can override the default tech/non-tech scoring rubrics. Defaults are used when no custom rubric is provided.
 - **Judge questions**: evaluation reports include 3–5 suggested questions for the judging panel based on the submission.
 - **Login security**: strong password policy, bcrypt rounds 12, and sliding-window rate limiting on auth endpoints.
-- **LLM evaluator** uses Google Gemini 2.5 Flash when `GEMINI_API_KEY` is provided, otherwise falls back to a generic `AI_BACKEND_URL`, then a deterministic mock.
+- **LLM evaluator** uses Google Gemini (`gemini-3.5-flash-lite` by default) when `GEMINI_API_KEY` is provided, otherwise falls back to a generic `AI_BACKEND_URL`, then a deterministic mock.
 
 ## Input contract for the evaluator APIs
 Payload is implicit via the submission record:

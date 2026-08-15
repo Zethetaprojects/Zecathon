@@ -20,6 +20,38 @@ os.environ.setdefault("AI_BACKEND_URL", "")  # use deterministic fallback evalua
 
 TECH_REPO = "https://github.com/octocat/Spoon-Knife"
 API_BASE = "http://127.0.0.1:8002/api"
+DEMO_HACKATHON_NAME = "ZECATHON Demo Hack"
+
+
+def cleanup_demo_hackathons(db_path: str):
+    """Remove previously seeded demo hackathons so the script is idempotent."""
+    con = sqlite3.connect(db_path)
+    try:
+        con.execute("PRAGMA foreign_keys = OFF")
+        cur = con.cursor()
+        cur.execute("SELECT id FROM hackathons WHERE name = ?", (DEMO_HACKATHON_NAME,))
+        ids = [row[0] for row in cur.fetchall()]
+        for hid in ids:
+            cur.execute(
+                "DELETE FROM evaluations WHERE submission_id IN ("
+                "SELECT id FROM submissions WHERE team_id IN ("
+                "SELECT id FROM teams WHERE hackathon_id = ?))",
+                (hid,),
+            )
+            cur.execute(
+                "DELETE FROM submissions WHERE team_id IN (SELECT id FROM teams WHERE hackathon_id = ?)",
+                (hid,),
+            )
+            cur.execute(
+                "DELETE FROM team_members WHERE team_id IN (SELECT id FROM teams WHERE hackathon_id = ?)",
+                (hid,),
+            )
+            cur.execute("DELETE FROM teams WHERE hackathon_id = ?", (hid,))
+            cur.execute("DELETE FROM problem_statements WHERE hackathon_id = ?", (hid,))
+            cur.execute("DELETE FROM hackathons WHERE id = ?", (hid,))
+        con.commit()
+    finally:
+        con.close()
 
 
 def wait_for(url, timeout=30):
@@ -59,9 +91,11 @@ def main():
         print("Backend OK")
 
         # Demo organiser
+        db_path = str(BACKEND_DIR / "hackathon.db")
+        cleanup_demo_hackathons(db_path)
+
         token = register_and_login(API_BASE, "demoorganizer", "demo@zetheta.com", "DemoPass1!")
         # Promote the demo user to organiser directly in the dev DB.
-        db_path = str(BACKEND_DIR / "hackathon.db")
         con = sqlite3.connect(db_path)
         con.execute("UPDATE users SET role = 'organizer' WHERE username = ?", ("demoorganizer",))
         con.commit()

@@ -98,10 +98,11 @@ flowchart LR
 |---|---|---|---|---|
 | Create hackathon | ✅ | ✅ | ❌ | ❌ |
 | Upload problem statement | ✅ | ✅ | ❌ | ❌ |
-| Create / join team | ✅ | ✅ | ✅ | ✅ |
-| Submit project | ✅ | ✅ | ✅ | ✅ |
+| Delete hackathon / team | ✅ | ✅ | ❌ | ❌ |
+| Create / join team | ❌ | ❌ | ❌ | ✅ |
+| Submit project | ❌ | ❌ | ❌ | ✅ |
 | Evaluate submission | ✅ | ✅ | ✅ | ❌ |
-| View reports | ✅ | ✅ | ❌ | ❌ |
+| View per-team evaluation report | ✅ | ✅ | ❌ | ❌ |
 | View public leaderboard | ✅ | ✅ | ✅ | ✅ |
 
 ## Tech stack
@@ -159,7 +160,7 @@ Create `backend/.env` from `.env.example`:
 
 ## API overview
 
-FastAPI auto-generated docs: [http://localhost:8000/docs](http://localhost:8000/docs)
+FastAPI auto-generated docs: [http://localhost:8002/docs](http://localhost:8002/docs)
 
 Key endpoints:
 - `POST /api/auth/register` — create account (Student or Organiser only)
@@ -167,10 +168,12 @@ Key endpoints:
 - `GET /api/auth/admin/users` — admin user list
 - `PUT /api/auth/users/{id}/role` — admin role update
 - `POST /api/hackathons` — create hackathon (organiser/admin)
+- `DELETE /api/hackathons/{id}` — delete hackathon and all data (organiser/admin)
 - `POST /api/hackathons/{id}/problem-statements` — upload problem statement (organiser/admin)
-- `POST /api/teams` — create team
-- `POST /api/teams/{id}/join` — join a team
-- `POST /api/submissions` — submit a project
+- `POST /api/teams` — create team (participant only)
+- `POST /api/teams/{id}/join` — join a team (participant only)
+- `DELETE /api/teams/{id}` — delete team and submissions (organiser/admin)
+- `POST /api/submissions` — submit a project (participant only)
 - `POST /api/evaluate/tech/{submission_id}` — evaluate a tech submission (judge/organiser/admin)
 - `POST /api/evaluate/non-tech/{submission_id}` — evaluate a non-tech submission (judge/organiser/admin)
 - `POST /api/evaluate/tech/{id}/retry` — retry tech evaluation
@@ -179,6 +182,7 @@ Key endpoints:
 - `GET /api/leaderboard/public/{hackathon_id}` — public shareable leaderboard
 - `GET /api/reports` — list reports for organisers/admins
 - `GET /api/reports/{hackathon_id}` — detailed hackathon report
+- `GET /api/reports/submission/{submission_id}` — printable per-team evaluation report (organiser/admin)
 
 ## Evaluation details
 

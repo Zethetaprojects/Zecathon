@@ -79,6 +79,8 @@ class HackathonOut(HackathonBase):
     id: int
     created_by: int
     created_at: datetime
+    problem_statement_count: int = 0
+    team_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -175,6 +177,14 @@ class EvaluationOut(BaseModel):
 
 class SubmissionDetail(SubmissionOut):
     evaluation: Optional[EvaluationOut] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class SubmissionReport(SubmissionDetail):
+    team_name: str
+    problem_statement_title: str
+    hackathon_name: str
 
     model_config = ConfigDict(from_attributes=True)
 

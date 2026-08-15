@@ -4,7 +4,7 @@ import { hackathonsApi } from '../api/hackathons';
 import { teamsApi, submissionsApi } from '../api/teams';
 import { Hackathon, Team, ProblemStatement, Submission, Evaluation } from '../types';
 import { formatError } from '../utils/formatError';
-import { isJudge } from '../utils/role';
+import { isJudge, isParticipant, isOrganizer } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
 import PageLayout from '../components/PageLayout';
 import EvaluationReport from '../components/EvaluationReport';
@@ -14,6 +14,8 @@ export default function HackathonTeams() {
   const hackathonId = Number(id);
   const { user } = useAuth();
   const canEvaluate = isJudge(user?.role);
+  const isParticipantUser = isParticipant(user?.role);
+  const canManage = isOrganizer(user?.role);
   const [hackathon, setHackathon] = useState<Hackathon | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [submissionsByTeam, setSubmissionsByTeam] = useState<Record<number, Submission[]>>({});
@@ -21,6 +23,7 @@ export default function HackathonTeams() {
   const [error, setError] = useState('');
   const [teamName, setTeamName] = useState('');
   const [busy, setBusy] = useState(false);
+  const [deletingTeam, setDeletingTeam] = useState<Record<number, boolean>>({});
   const [evaluating, setEvaluating] = useState<Record<number, boolean>>({});
   const [report, setReport] = useState<Evaluation | null>(null);
   const navigate = useNavigate();
@@ -85,6 +88,21 @@ export default function HackathonTeams() {
       fetchTeams();
     } catch (err: any) {
       setError(formatError(err, 'Failed to join team'));
+    }
+  };
+
+  const deleteTeam = async (teamId: number) => {
+    if (!window.confirm('Delete this team and all its submissions?')) return;
+    setDeletingTeam((prev) => ({ ...prev, [teamId]: true }));
+    setError('');
+    try {
+      await teamsApi.delete(teamId);
+      fetchTeams();
+      fetchHackathon();
+    } catch (err: any) {
+      setError(formatError(err, 'Failed to delete team'));
+    } finally {
+      setDeletingTeam((prev) => ({ ...prev, [teamId]: false }));
     }
   };
 
@@ -199,12 +217,25 @@ export default function HackathonTeams() {
                         Members: {team.members?.map((m) => `${m.username} (${m.role})`).join(', ') || 'none'}
                       </p>
                     </div>
-                    <button
-                      onClick={() => joinTeam(team.id)}
-                      className="px-3 py-1.5 rounded neon-btn neon-btn-ghost text-xs"
-                    >
-                      Join
-                    </button>
+                    <div className="flex items-center gap-2">
+                      {isParticipantUser && (
+                        <button
+                          onClick={() => joinTeam(team.id)}
+                          className="px-3 py-1.5 rounded neon-btn neon-btn-ghost text-xs"
+                        >
+                          Join
+                        </button>
+                      )}
+                      {canManage && (
+                        <button
+                          onClick={() => deleteTeam(team.id)}
+                          disabled={deletingTeam[team.id]}
+                          className="px-3 py-1.5 rounded text-xs text-neon-pink border border-neon-pink/30 hover:bg-neon-pink/10 transition disabled:opacity-50"
+                        >
+                          {deletingTeam[team.id] ? '...' : 'Delete'}
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="space-y-3">
@@ -223,13 +254,21 @@ export default function HackathonTeams() {
                                   {sub.status.replace('_', '-')}
                                 </span>
                                 {sub.evaluation ? (
-                                  <div className="flex items-center gap-2">
+                                  <div className="flex items-center gap-2 flex-wrap">
                                     <button
                                       onClick={() => setReport(sub.evaluation || null)}
                                       className="text-sm font-semibold text-neon-cyan hover:text-white transition micro-lift"
                                     >
                                       {sub.evaluation.total_score} pts — {sub.evaluation.verdict}
                                     </button>
+                                    {canManage && (
+                                      <Link
+                                        to={`/reports/submission/${sub.id}`}
+                                        className="text-[10px] px-2 py-1 rounded border border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 transition"
+                                      >
+                                        View report
+                                      </Link>
+                                    )}
                                     {canEvaluate && (
                                       <button
                                         onClick={() => evaluate(sub, true)}
@@ -253,12 +292,14 @@ export default function HackathonTeams() {
                                 )}
                               </>
                             ) : (
-                              <button
-                                onClick={() => submitFor(team.id, ps)}
-                                className="px-3 py-1.5 rounded neon-btn neon-btn-cyan text-xs"
-                              >
-                                Submit
-                              </button>
+                              isParticipantUser && (
+                                <button
+                                  onClick={() => submitFor(team.id, ps)}
+                                  className="px-3 py-1.5 rounded neon-btn neon-btn-cyan text-xs"
+                                >
+                                  Submit
+                                </button>
+                              )
                             )}
                           </div>
                         </div>
@@ -273,25 +314,27 @@ export default function HackathonTeams() {
             )}
           </div>
 
-          <div className="glass-panel p-6 h-fit">
-            <h3 className="font-pixel text-xs text-white mb-4">CREATE TEAM</h3>
-            <form onSubmit={createTeam} className="space-y-4">
-              <input
-                value={teamName}
-                onChange={(e) => setTeamName(e.target.value)}
-                placeholder="Team name"
-                required
-                className="w-full rounded px-4 py-3 neon-input"
-              />
-              <button
-                type="submit"
-                disabled={busy}
-                className="w-full rounded neon-btn neon-btn-primary py-3 text-xs disabled:opacity-50"
-              >
-                {busy ? 'Creating...' : 'Create team'}
-              </button>
-            </form>
-          </div>
+          {isParticipantUser && (
+            <div className="glass-panel p-6 h-fit">
+              <h3 className="font-pixel text-xs text-white mb-4">CREATE TEAM</h3>
+              <form onSubmit={createTeam} className="space-y-4">
+                <input
+                  value={teamName}
+                  onChange={(e) => setTeamName(e.target.value)}
+                  placeholder="Team name"
+                  required
+                  className="w-full rounded px-4 py-3 neon-input"
+                />
+                <button
+                  type="submit"
+                  disabled={busy}
+                  className="w-full rounded neon-btn neon-btn-primary py-3 text-xs disabled:opacity-50"
+                >
+                  {busy ? 'Creating...' : 'Create team'}
+                </button>
+              </form>
+            </div>
+          )}
         </div>
       </div>
     </PageLayout>

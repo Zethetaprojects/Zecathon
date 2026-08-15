@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { reportsApi } from '../api/reports';
 import PageLayout from '../components/PageLayout';
 import { HackathonReportSummary, HackathonReportDetail, TeamReportEntry } from '../types';
@@ -221,7 +222,16 @@ export default function ReportsPage() {
                               {entry.total_score ?? '-'}
                             </td>
                             <td className="px-4 py-3">
-                              {entry.verdict ? <VerdictBadge verdict={entry.verdict} /> : <span className="text-slate-500">-</span>}
+                              {entry.verdict ? (
+                                <Link
+                                  to={`/reports/submission/${entry.submission_id}`}
+                                  className="hover:text-neon-cyan transition"
+                                >
+                                  <VerdictBadge verdict={entry.verdict} />
+                                </Link>
+                              ) : (
+                                <span className="text-slate-500">-</span>
+                              )}
                             </td>
                           </tr>
                         ))}

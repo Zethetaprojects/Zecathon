@@ -41,6 +41,7 @@ export default function Hackathons() {
   const [hackathons, setHackathons] = useState<Hackathon[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [deleting, setDeleting] = useState<Record<number, boolean>>({});
   const { user } = useAuth();
   const canCreate = isOrganizer(user?.role);
 
@@ -51,6 +52,20 @@ export default function Hackathons() {
       .catch((err) => setError(formatError(err, 'Failed to load hackathons')))
       .finally(() => setLoading(false));
   }, []);
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Delete this hackathon and all its teams, submissions, and reports?')) return;
+    setDeleting((prev) => ({ ...prev, [id]: true }));
+    setError('');
+    try {
+      await hackathonsApi.delete(id);
+      setHackathons((prev) => prev.filter((h) => h.id !== id));
+    } catch (err: any) {
+      setError(formatError(err, 'Failed to delete hackathon'));
+    } finally {
+      setDeleting((prev) => ({ ...prev, [id]: false }));
+    }
+  };
 
   return (
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
@@ -118,11 +133,11 @@ export default function Hackathons() {
                 <div className="grid grid-cols-2 gap-3 text-xs text-slate-400 mb-4">
                   <div className="glass-panel px-3 py-2">
                     <span className="block text-[10px] text-slate-500 uppercase tracking-wider">Problems</span>
-                    <span className="text-white font-semibold">{h.problem_statements?.length || 0}</span>
+                    <span className="text-white font-semibold">{h.problem_statement_count ?? 0}</span>
                   </div>
                   <div className="glass-panel px-3 py-2">
                     <span className="block text-[10px] text-slate-500 uppercase tracking-wider">Teams</span>
-                    <span className="text-white font-semibold">{h.teams?.length || 0}</span>
+                    <span className="text-white font-semibold">{h.team_count ?? 0}</span>
                   </div>
                 </div>
                 <div className="flex items-center justify-between text-xs">
@@ -130,9 +145,25 @@ export default function Hackathons() {
                     {formatDate(h.start_date) || 'Date TBD'}
                     {h.end_date && ` → ${formatDate(h.end_date)}`}
                   </span>
-                  <span className="text-neon-cyan group-hover:translate-x-1 transition transform">
-                    View arena →
-                  </span>
+                  <div className="flex items-center gap-3">
+                    {canCreate && (
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleDelete(h.id);
+                        }}
+                        disabled={deleting[h.id]}
+                        className="text-neon-pink hover:text-white transition disabled:opacity-50"
+                        title="Delete hackathon"
+                      >
+                        {deleting[h.id] ? '...' : 'Delete'}
+                      </button>
+                    )}
+                    <span className="text-neon-cyan group-hover:translate-x-1 transition transform">
+                      View arena →
+                    </span>
+                  </div>
                 </div>
               </Link>
             ))}

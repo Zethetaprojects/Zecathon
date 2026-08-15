@@ -25,6 +25,8 @@ export interface Hackathon {
   problem_statements?: ProblemStatement[];
   teams?: Team[];
   rubric?: Rubric;
+  problem_statement_count?: number;
+  team_count?: number;
 }
 
 export interface ProblemStatement {
@@ -114,6 +116,12 @@ export interface TeamReportEntry {
   verdict?: string;
   status?: SubmissionStatus | string;
   needs_review?: boolean;
+}
+
+export interface SubmissionReport extends Submission {
+  team_name: string;
+  problem_statement_title: string;
+  hackathon_name: string;
 }
 
 export interface HackathonReportSummary {

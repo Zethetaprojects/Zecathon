@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_active_user
+from app.auth import get_current_active_user, require_participant
 from app.database import get_db
 from app.models import ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User
 from app.schemas import SubmissionCreate, SubmissionDetail, SubmissionOut
@@ -32,7 +32,7 @@ async def create_submission(
     submission_file: UploadFile = File(None),
     ppt_file: UploadFile = File(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_participant),
 ):
     try:
         sub_type = SubmissionType(type)

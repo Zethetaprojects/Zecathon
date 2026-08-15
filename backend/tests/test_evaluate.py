@@ -45,7 +45,7 @@ def fake_llm(monkeypatch):
     monkeypatch.setattr(llm_client.LLMClient, "complete_json", _complete)
 
 
-def test_evaluate_tech(auth_client, client, fake_repo, fake_llm):
+def test_evaluate_tech(auth_client, participant_client, client, fake_repo, fake_llm):
     r = auth_client.post("/api/hackathons", json={"name": "Tech Hack", "description": "x"})
     hackathon_id = r.json()["id"]
     r = auth_client.post(
@@ -53,9 +53,9 @@ def test_evaluate_tech(auth_client, client, fake_repo, fake_llm):
         data={"title": "Build a chatbot"},
     )
     ps_id = r.json()["id"]
-    r = auth_client.post("/api/teams", json={"hackathon_id": hackathon_id, "name": "Team A"})
+    r = participant_client.post("/api/teams", json={"hackathon_id": hackathon_id, "name": "Team A"})
     team_a_id = r.json()["id"]
-    r = auth_client.post(
+    r = participant_client.post(
         "/api/submissions",
         data={"team_id": team_a_id, "problem_statement_id": ps_id, "type": "tech", "submission_url": "https://github.com/owner/repo"},
     )
@@ -99,7 +99,7 @@ def test_evaluate_tech(auth_client, client, fake_repo, fake_llm):
     assert board[0]["total_score"] != board[1]["total_score"]
 
 
-def test_evaluate_non_tech(auth_client, fake_llm):
+def test_evaluate_non_tech(auth_client, participant_client, fake_llm):
     r = auth_client.post("/api/hackathons", json={"name": "Doc Hack", "description": "x"})
     hackathon_id = r.json()["id"]
     r = auth_client.post(
@@ -107,7 +107,7 @@ def test_evaluate_non_tech(auth_client, fake_llm):
         data={"title": "Reduce campus food waste", "description": "Design a mobile app that helps students reduce food waste in campus cafeterias."},
     )
     ps_id = r.json()["id"]
-    r = auth_client.post("/api/teams", json={"hackathon_id": hackathon_id, "name": "Doc Team"})
+    r = participant_client.post("/api/teams", json={"hackathon_id": hackathon_id, "name": "Doc Team"})
     team_id = r.json()["id"]
 
     document = (
@@ -122,7 +122,7 @@ def test_evaluate_non_tech(auth_client, fake_llm):
         "This approach is original because it combines behavioral nudges with operational analytics in one integrated platform. "
         "We are confident this solution can significantly reduce food waste and save money for the university."
     )
-    r = auth_client.post(
+    r = participant_client.post(
         "/api/submissions",
         data={"team_id": team_id, "problem_statement_id": ps_id, "type": "non_tech"},
         files={"submission_file": ("report.txt", document.encode(), "text/plain")},

@@ -84,7 +84,7 @@ export default function AdminDashboard() {
                           value={u.role}
                           disabled={updating[u.id]}
                           onChange={(e) => changeRole(u.id, e.target.value as UserRole)}
-                          className="rounded px-3 py-2 text-sm neon-input disabled:opacity-50"
+                          className="rounded px-3 py-2 text-sm neon-input neon-select disabled:opacity-50"
                         >
                           {ROLES.map((role) => (
                             <option key={role} value={role}>

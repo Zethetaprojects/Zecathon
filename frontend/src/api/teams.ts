@@ -6,6 +6,7 @@ export const teamsApi = {
   create: (hackathonId: number, name: string) =>
     api.post<Team>('/teams', { hackathon_id: hackathonId, name }),
   join: (teamId: number) => api.post<Team>(`/teams/${teamId}/join`),
+  delete: (teamId: number) => api.delete(`/teams/${teamId}`),
 };
 
 export const submissionsApi = {
