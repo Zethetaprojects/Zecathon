@@ -128,7 +128,19 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:5173](http://localhost:5173) and log in.
+### 3. One-command start (optional)
+
+From the project root you can start both backend and frontend at once:
+
+```bash
+# Git Bash / WSL / Linux / macOS
+./start-dev.sh
+
+# Windows PowerShell
+.\start-dev.ps1
+```
+
+This starts the backend on `http://127.0.0.1:8002` and the Vite dev server on `http://localhost:5173`. Run `seed_dev.py` first if you want demo data in the reports page.
 
 ## Environment variables
 Create `backend/.env` from `.env.example`:

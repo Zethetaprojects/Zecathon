@@ -1,14 +1,21 @@
 # Start the backend and frontend in development mode on Windows PowerShell.
+# Run from the project root:  .\start-dev.ps1
+
+$root = $PSScriptRoot
+if (-not $root) { $root = Get-Location }
+
 $backendJob = Start-Job -ScriptBlock {
-    Set-Location -Path backend
+    param($ProjectRoot)
+    Set-Location -Path "$ProjectRoot\backend"
     .\venv\Scripts\Activate.ps1
     uvicorn app.main:app --reload --port 8002
-}
+} -ArgumentList $root
 
 $frontendJob = Start-Job -ScriptBlock {
-    Set-Location -Path frontend
+    param($ProjectRoot)
+    Set-Location -Path "$ProjectRoot\frontend"
     npm run dev
-}
+} -ArgumentList $root
 
 Write-Host "Backend job ID: $($backendJob.Id)"
 Write-Host "Frontend job ID: $($frontendJob.Id)"
