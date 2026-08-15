@@ -55,7 +55,16 @@ export default function HackathonTeams() {
         });
         setSubmissionsByTeam(map);
       })
-      .catch((err) => setError(formatError(err, 'Failed to load submissions')));
+      .catch((err: any) => {
+        // Admins and hackathon owners should not see the participant "not a member" banner;
+        // they are allowed to view all team submissions. If a genuine error occurs, still show it.
+        const msg = err?.response?.data?.detail || '';
+        if (canManage && typeof msg === 'string' && msg.toLowerCase().includes('not a member')) {
+          setSubmissionsByTeam({});
+          return;
+        }
+        setError(formatError(err, 'Failed to load submissions'));
+      });
   };
 
   useEffect(() => {
