@@ -8,7 +8,7 @@ def test_register_and_login(client):
     r = client.post("/api/auth/register", json={
         "username": "alice",
         "email": "alice@example.com",
-        "password": "secret123"
+        "password": "Secret123!"
     })
     assert r.status_code == 201
     data = r.json()
@@ -16,7 +16,7 @@ def test_register_and_login(client):
 
     r = client.post("/api/auth/login", data={
         "username": "alice",
-        "password": "secret123"
+        "password": "Secret123!"
     })
     assert r.status_code == 200
     token = r.json()["access_token"]
@@ -31,7 +31,7 @@ def test_login_wrong_password(client):
     client.post("/api/auth/register", json={
         "username": "alice",
         "email": "alice@example.com",
-        "password": "secret123"
+        "password": "Secret123!"
     })
     r = client.post("/api/auth/login", data={"username": "alice", "password": "wrong"})
     assert r.status_code == 400

@@ -54,25 +54,20 @@
 - [x] README setup + API docs
 - [x] Commit
 
-## UI/UX theme pass (current)
-- [x] ZECATHON landing page at `/` with hero, stats, features, how-it-works, CTA, footer
+## Phase 9 — UI/UX theme pass (ZECATHON landing page)
+- [x] ZECATHON landing page with hero, stats, features, how-it-works, CTA, footer
 - [x] Dark space/pixel theme across all screens
 - [x] Shared `SpaceBackground`, `Navbar`, `PageLayout`, `ErrorBoundary`, `Footer`
-- [x] Modern SaaS-style glass pill navbar with centered Features dropdown
-- [x] Procedural space/chiptune music with navbar toggle
-- [x] Auth-aware UI: logged-in-only features hidden from guests in navbar, landing page, and footer
 - [x] Custom purple cursor from `pngegg.png` with trail and hover/click feedback
-- [x] Micro-interactions (lift, pop, glow, tilt, shift, scroll reveal) across pages
-- [x] Hidden Easter Egg controller on landing page with coin sound + toast
+- [x] Micro-interactions and scroll reveal
+- [x] Easter-egg controller on landing page
 - [x] Dashboard cleaned up — Leaderboards card removed
-- [x] Build passes (`npm run build`)
-- [x] Full-flow validation passes (`validate_flow.py`)
-- [x] Update `AGENT_CONFIG` state and todo
+- [x] Build passes
+- [x] Full-flow validation passes
 - [x] Commit
 
 ## Phase 10 — RBAC + Gemini 2.5 Flash
 - [x] Add UserRole enum and role column
-- [x] Lightweight migration for existing SQLite DBs
 - [x] RBAC dependencies and route protection
 - [x] Admin endpoint + set_role script
 - [x] Gemini REST API client integration
@@ -81,10 +76,20 @@
 - [x] pytest and validate_flow.py pass
 - [x] Commit
 
+## Phase 11 — Deployment-ready hardening
+- [x] Admin dashboard and role-specific UI
+- [x] Dynamic per-hackathon rubrics (default + editable)
+- [x] Judge questions in evaluation reports
+- [x] Non-tech optional GitHub URL
+- [x] Stronger login security (password policy, bcrypt rounds, rate limiting)
+- [x] Shareable public leaderboard link
+- [x] GCP deployment artifacts (Dockerfiles, docker-compose, README)
+- [x] Full E2E validation with generated reports
+- [x] Commit
+
 ## Leftovers / next steps
-- [ ] User adds GEMINI_API_KEY to backend/.env for real evaluations
-- [ ] Promote existing users to organizer/judge via set_role script or admin endpoint
-- [ ] Optional S3 storage migration
-- [ ] User review of new theme in browser (hard-refresh localhost:5173)
-- [ ] Optional real LLM endpoint configuration
-- [ ] Optional mobile hamburger menu refinement
+- [ ] User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations
+- [ ] Promote existing users to organizer/judge via admin endpoint or set_role script
+- [ ] Deploy backend to Cloud Run and frontend to Firebase Hosting (see `gcp/README.md`)
+- [ ] Optional: migrate SQLite to Cloud SQL and local uploads to Cloud Storage for production scaling
+- [ ] Optional: mobile hamburger menu refinement

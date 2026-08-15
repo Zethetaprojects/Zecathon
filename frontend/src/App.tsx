@@ -12,7 +12,10 @@ import HackathonDetail from './pages/HackathonDetail';
 import HackathonTeams from './pages/HackathonTeams';
 import Submit from './pages/Submit';
 import Leaderboard from './pages/Leaderboard';
+import PublicLeaderboard from './pages/PublicLeaderboard';
+import AdminDashboard from './pages/AdminDashboard';
 import PrivateRoute from './components/PrivateRoute';
+import AdminRoute from './components/AdminRoute';
 
 function App() {
   return (
@@ -23,8 +26,12 @@ function App() {
             <Route path="/" element={<LandingPage />} />
             <Route path="/login" element={<Login />} />
             <Route path="/register" element={<Register />} />
+            <Route path="/public/leaderboard/:id" element={<PublicLeaderboard />} />
             <Route element={<PrivateRoute />}>
               <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/admin" element={<AdminRoute />}>
+                <Route index element={<AdminDashboard />} />
+              </Route>
               <Route path="/hackathons" element={<Hackathons />} />
               <Route path="/hackathons/new" element={<CreateHackathon />} />
               <Route path="/hackathons/:id" element={<HackathonDetail />} />

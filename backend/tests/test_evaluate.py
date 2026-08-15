@@ -40,7 +40,7 @@ def fake_repo(monkeypatch):
 
 @pytest.fixture
 def fake_llm(monkeypatch):
-    def _complete(self, prompt, temperature=0.2):
+    def _complete(self, prompt, temperature=0.2, categories=None, **kwargs):
         return _llm_response(650)
     monkeypatch.setattr(llm_client.LLMClient, "complete_json", _complete)
 
@@ -69,9 +69,9 @@ def test_evaluate_tech(auth_client, client, fake_repo, fake_llm):
     score_a = data["total_score"]
 
     # second team with same raw score must get a discrete score
-    r = client.post("/api/auth/register", json={"username": "bob", "email": "bob@example.com", "password": "secret123"})
+    r = client.post("/api/auth/register", json={"username": "bob", "email": "bob@example.com", "password": "Secret123!"})
     assert r.status_code == 201
-    r = client.post("/api/auth/login", data={"username": "bob", "password": "secret123"})
+    r = client.post("/api/auth/login", data={"username": "bob", "password": "Secret123!"})
     token = r.json()["access_token"]
     r = client.post(
         "/api/teams",

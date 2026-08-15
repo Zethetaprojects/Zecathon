@@ -9,6 +9,11 @@ export interface User {
   created_at: string;
 }
 
+export interface Rubric {
+  tech: Record<string, number>;
+  non_tech: Record<string, number>;
+}
+
 export interface Hackathon {
   id: number;
   name: string;
@@ -19,6 +24,7 @@ export interface Hackathon {
   created_at: string;
   problem_statements?: ProblemStatement[];
   teams?: Team[];
+  rubric?: Rubric;
 }
 
 export interface ProblemStatement {
@@ -56,6 +62,7 @@ export interface Submission {
   type: SubmissionType;
   submission_url: string;
   ppt_url?: string;
+  github_url?: string;
   status: SubmissionStatus;
   created_at: string;
   updated_at: string;
@@ -75,6 +82,12 @@ export interface Evaluation {
   review_flags: string[];
   needs_review: boolean;
   evaluated_at: string;
+  judge_questions?: string[];
+  overall_assessment?: string;
+  key_strengths?: string[];
+  areas_for_improvement?: string[];
+  red_flags?: string[];
+  recommendation?: string;
 }
 
 export interface LeaderboardEntry {

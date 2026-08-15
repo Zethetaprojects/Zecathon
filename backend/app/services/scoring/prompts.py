@@ -3,11 +3,29 @@ from typing import Dict, Any
 from app.services.scoring.constants import TECH_CATEGORIES, NON_TECH_CATEGORIES, verdict_for_score
 
 
-def build_tech_prompt(problem_statement: str, repo_summary: dict) -> str:
-    categories = "\n".join(
-        f"{i+1}. {name} ({max_points}) — ..."
-        for i, (name, max_points) in enumerate(TECH_CATEGORIES.items())
+def _format_rubric(categories: Dict[str, int]) -> str:
+    total = sum(categories.values())
+    lines = "\n".join(
+        f"{i+1}. {name} ({max_points})" for i, (name, max_points) in enumerate(categories.items())
     )
+    return f"RUBRIC ({len(categories)} categories, {total} points total)\n{lines}"
+
+
+def _default_sample_questions() -> str:
+    return '''"judge_questions": [
+    "Walk us through the biggest trade-off you made while building this solution.",
+    "Which part of the problem statement was hardest to address and why?",
+    "If you had one more day, what would you improve or add?"
+  ]'''
+
+
+def build_tech_prompt(
+    problem_statement: str,
+    repo_summary: dict,
+    categories: Dict[str, int] = None,
+) -> str:
+    categories = categories or TECH_CATEGORIES
+    rubric_lines = _format_rubric(categories)
 
     files = "\n".join(f"- {f}" for f in repo_summary.get("files", [])[:50])
     snippets = "\n\n".join(
@@ -34,15 +52,7 @@ README
 CODE SNIPPETS
 {snippets}
 
-RUBRIC (8 categories, 1000 points total)
-1. Problem Understanding (150) — Does the code address the specific problem statement?
-2. Implementation Completeness (200) — Features built, endpoints working, data models present.
-3. Code Quality & Architecture (150) — Structure, tests, docs, clean practices.
-4. Innovation & Creativity (150) — Novel features, not plain CRUD.
-5. Technical Feasibility (100) — Can it actually run/deploy?
-6. Documentation (100) — README, setup instructions, API docs.
-7. Commit Authenticity / Effort (100) — Spread of commits, not single-day bulk.
-8. Presentation / Demo (50) — Screenshots, demo, UI polish.
+{rubric_lines}
 
 CRITICAL SCORING RULES
 - Default to SATISFACTORY unless there is specific evidence for EXCELLENT or OUTSTANDING.
@@ -54,6 +64,9 @@ CRITICAL SCORING RULES
 AUTHENTICITY GATE (you will classify, but the final score is multiplied server-side)
 Classify the apparent human effort as one of: HIGH_HUMAN_INPUT, MIXED, PREDOMINANTLY_ASSISTED, NO_DISCERNIBLE_HUMAN_INPUT.
 
+JUDGE QUESTIONS
+Generate 3-5 specific questions the judging panel could ask the team to probe their thinking and validate their work. Base them on the repository and the problem statement.
+
 Return ONLY valid JSON. No markdown, no extra commentary.
 
 OUTPUT FORMAT
@@ -61,23 +74,35 @@ OUTPUT FORMAT
   "total_score": <int 0-1000>,
   "percentage": <float>,
   "verdict": "<OUTSTANDING|EXCELLENT|SATISFACTORY|NEEDS_WORK>",
-  "category_scores": {{"Category Name": <int>, ...}},
+  "category_scores": {{{", ".join(f'"{cat}": <int>' for cat in categories)}}},
   "authenticity_band": "<HIGH_HUMAN_INPUT|MIXED|PREDOMINANTLY_ASSISTED|NO_DISCERNIBLE_HUMAN_INPUT>",
   "overall_assessment": "<2-4 sentences>",
   "key_strengths": ["..."],
   "areas_for_improvement": ["..."],
   "red_flags": ["..."],
-  "recommendation": "<one sentence>"
+  "recommendation": "<one sentence>",
+  {_default_sample_questions()}
 }}
 """
 
 
-def build_non_tech_prompt(problem_statement: str, document_text: str, ppt_text: str = "") -> str:
-    categories = "\n".join(
-        f"{i+1}. {name} ({max_points})"
-        for i, (name, max_points) in enumerate(NON_TECH_CATEGORIES.items())
-    )
+def build_non_tech_prompt(
+    problem_statement: str,
+    document_text: str,
+    ppt_text: str = "",
+    categories: Dict[str, int] = None,
+    repo_summary: dict = None,
+) -> str:
+    categories = categories or NON_TECH_CATEGORIES
+    rubric_lines = _format_rubric(categories)
     ppt_section = f"\n\nOPTIONAL PPT CONTENT\n{ppt_text[:5000]}" if ppt_text else ""
+    repo_section = ""
+    if repo_summary and repo_summary.get("valid"):
+        repo_section = f"""\n\nOPTIONAL GITHUB REPOSITORY
+Owner/Repo: {repo_summary.get('owner')}/{repo_summary.get('repo')}
+Files: {len(repo_summary.get('files', []))}
+README: {repo_summary.get('readme', '')[:3000]}
+"""
 
     return f"""You are a rigorous senior hackathon evaluator for non-technical project submissions. Evaluate the submitted document against the problem statement.
 
@@ -87,15 +112,9 @@ PROBLEM STATEMENT
 SUBMITTED DOCUMENT
 {document_text[:12000]}
 {ppt_section}
+{repo_section}
 
-RUBRIC (7 categories, 1000 points total)
-1. Problem-Specific Grounding (150) — Engagement with this exact problem's context and friction.
-2. Solution Effectiveness (200) — How well the proposed solution solves the problem.
-3. Research & Evidence (150) — Data, methodology, validation.
-4. Feasibility & Practicality (150) — Realistic plan, budget, rollout.
-5. Communication & Clarity (100) — Logical structure, easy to follow.
-6. Innovation & Creativity (150) — Originality and insight.
-7. Presentation Quality (100) — Use of document/PPT formatting for impact.
+{rubric_lines}
 
 CRITICAL SCORING RULES
 - Default to SATISFACTORY unless specific evidence supports EXCELLENT or OUTSTANDING.
@@ -106,6 +125,9 @@ CRITICAL SCORING RULES
 AUTHENTICITY GATE (classify only; final multiplier applied server-side)
 Classify the apparent human effort as one of: HIGH_HUMAN_INPUT, MIXED, PREDOMINANTLY_ASSISTED, NO_DISCERNIBLE_HUMAN_INPUT.
 
+JUDGE QUESTIONS
+Generate 3-5 specific questions the judging panel could ask the team to probe their reasoning, evidence, and design choices.
+
 Return ONLY valid JSON. No markdown, no extra commentary.
 
 OUTPUT FORMAT
@@ -113,12 +135,13 @@ OUTPUT FORMAT
   "total_score": <int 0-1000>,
   "percentage": <float>,
   "verdict": "<OUTSTANDING|EXCELLENT|SATISFACTORY|NEEDS_WORK>",
-  "category_scores": {{"Category Name": <int>, ...}},
+  "category_scores": {{{", ".join(f'"{cat}": <int>' for cat in categories)}}},
   "authenticity_band": "<HIGH_HUMAN_INPUT|MIXED|PREDOMINANTLY_ASSISTED|NO_DISCERNIBLE_HUMAN_INPUT>",
   "overall_assessment": "<2-4 sentences>",
   "key_strengths": ["..."],
   "areas_for_improvement": ["..."],
   "red_flags": ["..."],
-  "recommendation": "<one sentence>"
+  "recommendation": "<one sentence>",
+  {_default_sample_questions()}
 }}
 """

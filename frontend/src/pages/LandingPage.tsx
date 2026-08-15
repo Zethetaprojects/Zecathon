@@ -3,7 +3,6 @@ import { useAuth } from '../hooks/useAuth';
 import { isOrganizer } from '../utils/role';
 import { ScrollReveal } from '../hooks/useInView';
 import PageLayout from '../components/PageLayout';
-import Footer from '../components/Footer';
 import EasterEgg from '../components/EasterEgg';
 
 const colorAccent = {
@@ -319,7 +318,6 @@ export default function LandingPage() {
       </div>
 
       <EasterEgg />
-      <Footer />
     </PageLayout>
   );
 }

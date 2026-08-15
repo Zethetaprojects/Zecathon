@@ -13,54 +13,39 @@ const verdictColor: Record<string, string> = {
   'NOT ASSESSABLE': 'text-slate-500',
 };
 
-export default function Leaderboard() {
+export default function PublicLeaderboard() {
   const { id } = useParams<{ id: string }>();
   const hackathonId = Number(id);
   const [entries, setEntries] = useState<LeaderboardEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [copied, setCopied] = useState(false);
 
   useEffect(() => {
     leaderboardApi
-      .get(hackathonId)
+      .getPublic(hackathonId)
       .then((res) => setEntries(res.data))
       .catch((err) => setError(formatError(err, 'Failed to load leaderboard')))
       .finally(() => setLoading(false));
   }, [hackathonId]);
 
-  const copyShareLink = async () => {
-    const url = `${window.location.origin}/public/leaderboard/${hackathonId}`;
-    try {
-      await navigator.clipboard.writeText(url);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setError('Unable to copy share link.');
-    }
-  };
-
   return (
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
-          <Link to={`/hackathons/${hackathonId}`} className="text-neon-cyan hover:text-white text-sm transition">
-            ← Back to hackathon
+          <Link to="/" className="text-neon-cyan hover:text-white text-sm transition">
+            ← Back to ZECATHON
           </Link>
         </div>
 
         <div className="glass-panel p-6 sm:p-8">
           <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
             <div>
-              <h1 className="font-pixel text-xl text-white text-shadow-neon mb-2">LEADERBOARD</h1>
+              <h1 className="font-pixel text-xl text-white text-shadow-neon mb-2">PUBLIC LEADERBOARD</h1>
               <p className="text-slate-400 text-sm">Ranked by total score — no ties, all discrete.</p>
             </div>
-            <button
-              onClick={copyShareLink}
-              className="px-4 py-2 rounded neon-btn neon-btn-ghost text-xs micro-lift micro-pop"
-            >
-              {copied ? 'Link copied!' : 'Copy share link'}
-            </button>
+            <span className="px-3 py-1.5 rounded text-xs bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 uppercase tracking-wider">
+              Public share link
+            </span>
           </div>
 
           {error && (
@@ -77,12 +62,6 @@ export default function Leaderboard() {
           ) : entries.length === 0 ? (
             <div className="text-center py-12">
               <p className="text-slate-300 mb-4">No evaluated submissions yet.</p>
-              <Link
-                to={`/hackathons/${hackathonId}/teams`}
-                className="px-5 py-2 rounded neon-btn neon-btn-cyan text-xs"
-              >
-                Evaluate projects
-              </Link>
             </div>
           ) : (
             <div className="overflow-x-auto">

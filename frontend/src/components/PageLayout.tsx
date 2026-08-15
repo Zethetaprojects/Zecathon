@@ -1,5 +1,6 @@
 import { ReactNode } from 'react';
 import Navbar from './Navbar';
+import Footer from './Footer';
 import SpaceBackground from './SpaceBackground';
 import CustomCursor from './CustomCursor';
 
@@ -15,6 +16,7 @@ export default function PageLayout({ children, className = '' }: Props) {
       <SpaceBackground />
       <Navbar />
       <main className={`flex-1 relative ${className}`}>{children}</main>
+      <Footer />
     </div>
   );
 }

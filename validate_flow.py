@@ -100,13 +100,28 @@ def main():
         steps = []
 
         # 1. Register organiser
-        token_a = _register_and_login(base, "flowuser", "flow@example.com", "secret123")
+        token_a = _register_and_login(base, "flowuser", "flow@example.com", "FlowPass1!")
         _set_role("flowuser", "organizer")
         headers_a = {"Authorization": f"Bearer {token_a}"}
         steps.append(("POST /auth/register + login (organiser)", 200, "OK"))
 
-        # 2. Create hackathon
-        r = requests.post(f"{base}/hackathons", json={"name": "Flow Validation Hack", "description": "Testing all flows"}, headers=headers_a)
+        # 2. Create hackathon with a custom rubric for non-tech
+        rubric = {
+            "non_tech": {
+                "Problem-Specific Grounding": 150,
+                "Solution Effectiveness": 200,
+                "Research & Evidence": 150,
+                "Feasibility & Practicality": 150,
+                "Communication & Clarity": 100,
+                "Innovation & Creativity": 150,
+                "Presentation Quality": 100,
+            }
+        }
+        r = requests.post(
+            f"{base}/hackathons",
+            json={"name": "Flow Validation Hack", "description": "Testing all flows", "rubric": rubric},
+            headers=headers_a,
+        )
         steps.append(("POST /hackathons", r.status_code, r.text[:200]))
         assert r.status_code == 201, r.text
         hackathon_id = r.json()["id"]
@@ -143,7 +158,7 @@ def main():
         tech_score = r.json()["total_score"]
 
         # 5. Non-tech team + submission (needs a second user because one user = one team per hackathon)
-        token_b = _register_and_login(base, "flowuser2", "flow2@example.com", "secret123")
+        token_b = _register_and_login(base, "flowuser2", "flow2@example.com", "FlowPass2!")
         _set_role("flowuser2", "participant")
         headers_b = {"Authorization": f"Bearer {token_b}"}
         steps.append(("POST /auth/register + login (second user)", 200, "OK"))
@@ -172,9 +187,16 @@ def main():
         r = requests.post(f"{base}/evaluate/non-tech/{non_tech_sub_id}", headers=headers_a)
         steps.append((f"POST /evaluate/non-tech/{non_tech_sub_id}", r.status_code, r.text[:200]))
         assert r.status_code == 200, r.text
-        non_tech_score = r.json()["total_score"]
+        non_tech_data = r.json()
+        non_tech_score = non_tech_data["total_score"]
 
-        # 6. Leaderboard
+        # 6. Public leaderboard (no auth required, shareable link)
+        r = requests.get(f"{base}/leaderboard/public/{hackathon_id}")
+        steps.append((f"GET /leaderboard/public/{hackathon_id}", r.status_code, r.text[:300]))
+        assert r.status_code == 200, r.text
+        public_board = r.json()
+
+        # 7. Private leaderboard (auth)
         r = requests.get(f"{base}/leaderboard/{hackathon_id}", headers=headers_a)
         steps.append((f"GET /leaderboard/{hackathon_id}", r.status_code, r.text[:300]))
         assert r.status_code == 200, r.text
@@ -187,12 +209,20 @@ def main():
             print(f"{name}: HTTP {status} — {snippet}")
         print(f"\nTech score:      {tech_score} / 1000")
         print(f"Non-tech score:  {non_tech_score} / 1000")
+        print(f"\nSuggested judge questions (non-tech):")
+        for q in non_tech_data.get("judge_questions", []):
+            print(f"  - {q}")
         print(f"\nLeaderboard entries: {len(board)}")
         for row in board:
             print(f"  - {row['team_name']} | {row['type']} | {row['total_score']} pts | {row['verdict']}")
 
+        print(f"\nPublic leaderboard entries: {len(public_board)}")
+        for row in public_board:
+            print(f"  - {row['team_name']} | {row['type']} | {row['total_score']} pts | {row['verdict']}")
+
         assert len(board) == 2, "Leaderboard should have 2 entries"
         assert board[0]["total_score"] != board[1]["total_score"], "Scores must be discrete"
+        assert len(public_board) == 2, "Public leaderboard should have 2 entries"
         print("\nAll flows passed.")
 
     finally:

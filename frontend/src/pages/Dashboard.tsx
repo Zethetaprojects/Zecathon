@@ -1,7 +1,7 @@
 import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import PageLayout from '../components/PageLayout';
-import { isOrganizer, isJudge } from '../utils/role';
+import { isOrganizer, isJudge, isAdmin } from '../utils/role';
 
 function ActionCard({
   to,
@@ -63,6 +63,22 @@ export default function Dashboard() {
             desc="Explore all hackathons on the platform."
             color="pink"
           />
+          {isAdmin(user?.role) && (
+            <ActionCard
+              to="/admin"
+              title="Admin Panel"
+              desc="Manage users, roles, and platform settings."
+              color="purple"
+            />
+          )}
+          {user?.role === 'participant' && (
+            <ActionCard
+              to="/hackathons"
+              title="Join a Team"
+              desc="Browse hackathons and join a team to start competing."
+              color="yellow"
+            />
+          )}
           {isOrganizer(user?.role) && (
             <ActionCard
               to="/hackathons/new"

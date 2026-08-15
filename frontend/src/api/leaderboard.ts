@@ -3,4 +3,5 @@ import { LeaderboardEntry } from '../types';
 
 export const leaderboardApi = {
   get: (hackathonId: number) => api.get<LeaderboardEntry[]>(`/leaderboard/${hackathonId}`),
+  getPublic: (hackathonId: number) => api.get<LeaderboardEntry[]>(`/leaderboard/public/${hackathonId}`),
 };

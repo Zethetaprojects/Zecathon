@@ -4,6 +4,21 @@ import { hackathonsApi } from '../api/hackathons';
 import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 
+function parseRubricJson(value: string): Record<string, number> | null {
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  try {
+    const parsed = JSON.parse(trimmed);
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) return null;
+    for (const key of Object.keys(parsed)) {
+      if (typeof parsed[key] !== 'number') return null;
+    }
+    return parsed as Record<string, number>;
+  } catch {
+    return null;
+  }
+}
+
 export default function CreateHackathon() {
   const [form, setForm] = useState({
     name: '',
@@ -11,6 +26,9 @@ export default function CreateHackathon() {
     start_date: '',
     end_date: '',
   });
+  const [techRubric, setTechRubric] = useState('');
+  const [nonTechRubric, setNonTechRubric] = useState('');
+  const [rubricError, setRubricError] = useState('');
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const navigate = useNavigate();
@@ -22,11 +40,27 @@ export default function CreateHackathon() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setRubricError('');
     setBusy(true);
+
+    const tech = parseRubricJson(techRubric);
+    const nonTech = parseRubricJson(nonTechRubric);
+
+    if ((techRubric.trim() && tech === null) || (nonTechRubric.trim() && nonTech === null)) {
+      setRubricError('Rubric JSON must be an object mapping category names to numeric scores.');
+      setBusy(false);
+      return;
+    }
+
     try {
       const payload: any = { name: form.name, description: form.description };
       if (form.start_date) payload.start_date = new Date(form.start_date).toISOString();
       if (form.end_date) payload.end_date = new Date(form.end_date).toISOString();
+      if (tech || nonTech) {
+        payload.rubric = {};
+        if (tech) payload.rubric.tech = tech;
+        if (nonTech) payload.rubric.non_tech = nonTech;
+      }
       await hackathonsApi.create(payload);
       navigate('/hackathons');
     } catch (err: any) {
@@ -100,6 +134,53 @@ export default function CreateHackathon() {
                   onChange={handleChange}
                   className="w-full rounded px-4 py-3 neon-input"
                 />
+              </div>
+            </div>
+
+            {/* Advanced rubric editor */}
+            <div className="pt-4 border-t border-white/10">
+              <div className="flex items-center gap-2 mb-4">
+                <svg className="w-4 h-4 text-neon-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
+                </svg>
+                <h2 className="font-pixel text-[10px] text-white uppercase tracking-widest">Advanced rubric (optional)</h2>
+              </div>
+              <p className="text-xs text-slate-400 mb-4">
+                Override default scoring rubrics by providing JSON objects mapping category names to max points.
+                Leave blank to use platform defaults.
+              </p>
+
+              {rubricError && (
+                <div className="mb-4 px-4 py-3 rounded bg-neon-pink/10 border border-neon-pink/30 text-neon-pink text-sm">
+                  {rubricError}
+                </div>
+              )}
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-xs pixel-caps text-slate-300 mb-2">
+                    Tech rubric <span className="text-slate-500 normal-case">JSON</span>
+                  </label>
+                  <textarea
+                    value={techRubric}
+                    onChange={(e) => setTechRubric(e.target.value)}
+                    rows={5}
+                    className="w-full rounded px-4 py-3 neon-input font-mono text-xs"
+                    placeholder='{"Problem Understanding": 150, ...}'
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs pixel-caps text-slate-300 mb-2">
+                    Non-tech rubric <span className="text-slate-500 normal-case">JSON</span>
+                  </label>
+                  <textarea
+                    value={nonTechRubric}
+                    onChange={(e) => setNonTechRubric(e.target.value)}
+                    rows={5}
+                    className="w-full rounded px-4 py-3 neon-input font-mono text-xs"
+                    placeholder='{"Research & Analysis": 150, ...}'
+                  />
+                </div>
               </div>
             </div>
 

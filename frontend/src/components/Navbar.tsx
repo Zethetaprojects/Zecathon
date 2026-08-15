@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useMusic } from './MusicProvider';
+import { isAdmin } from '../utils/role';
 
 function ChevronDown({ open }: { open: boolean }) {
   return (
@@ -171,6 +172,14 @@ export default function Navbar() {
               >
                 Dashboard
               </Link>
+              {user && isAdmin(user.role) && (
+                <Link
+                  to="/admin"
+                  className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition micro-lift"
+                >
+                  Admin
+                </Link>
+              )}
             </div>
           )}
 

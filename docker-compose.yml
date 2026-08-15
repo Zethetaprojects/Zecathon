@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  backend:
+    build: ./backend
+    container_name: zecathon-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=sqlite:///data/hackathon.db
+      - UPLOAD_DIR=/data/uploads
+      - SECRET_KEY=${SECRET_KEY:-change-me-in-production}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-2.5-flash}
+      - AI_BACKEND_URL=${AI_BACKEND_URL:-}
+      - AI_BACKEND_TOKEN=${AI_BACKEND_TOKEN:-}
+      - ACCESS_TOKEN_EXPIRE_MINUTES=60
+    volumes:
+      - zecathon_data:/data
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    container_name: zecathon-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+volumes:
+  zecathon_data:

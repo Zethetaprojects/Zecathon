@@ -52,9 +52,9 @@ def test_join_team(auth_client, client):
     team_id = r.json()["id"]
 
     # register another user
-    r = client.post("/api/auth/register", json={"username": "bob", "email": "bob@example.com", "password": "secret123"})
+    r = client.post("/api/auth/register", json={"username": "bob", "email": "bob@example.com", "password": "Secret123!"})
     assert r.status_code == 201
-    r = client.post("/api/auth/login", data={"username": "bob", "password": "secret123"})
+    r = client.post("/api/auth/login", data={"username": "bob", "password": "Secret123!"})
     token = r.json()["access_token"]
 
     r = client.post(f"/api/teams/{team_id}/join", headers={"Authorization": f"Bearer {token}"})

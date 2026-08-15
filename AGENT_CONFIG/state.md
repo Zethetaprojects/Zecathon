@@ -1,47 +1,47 @@
 # Current State
 
-- **Date**: 2026-08-14
-- **Repo**: full-stack hackathon evaluation platform with RBAC, Gemini integration, and ZECATHON landing page
+- **Date**: 2026-08-15
+- **Repo**: full-stack hackathon evaluation platform (ZECATHON) with RBAC, Gemini integration, dynamic rubrics, judge questions, and GCP deployment artifacts.
 - **AGENT_CONFIG**: created; context, plan, state, and todo maintained.
-- **Phase**: Space music toggle + auth-aware landing page / navbar complete and validated.
-- **Easter egg**:
-  - Hidden game controller icon on the landing page (semi-transparent, bottom-right corner).
-  - Clicking it plays a retro coin sound and shows a "Hidden controller found! +100 XP" toast.
-- **Dashboard**:
-  - Removed the Leaderboards action card.
-- **Micro-interactions & custom cursor**:
-  - New `CustomCursor.tsx` using `frontend/public/pngegg.png` as the cursor image with a purple neon glow and a trailing ghost cursor.
-  - Hides default cursor on desktop; disabled on touch devices.
-  - Cursor scales and rotates on hover/click of interactive elements.
-  - Added CSS micro-interaction utilities: `micro-lift`, `micro-pop`, `micro-glow`, `micro-tilt`, `micro-shake`, `micro-shift`.
-  - Applied hover/click animations to navbar, landing page cards/stats/steps, footer links, dashboard cards, login/register buttons.
-  - Added `ScrollReveal` component and `reveal`/`reveal-zoom` scroll-triggered fade-up animations on landing page sections.
-- **Space music**:
-  - New cinematic ambient engine in `MusicProvider.tsx`.
-  - Slow chord progression (Am7 → Fmaj7 → Cmaj7 → G6) at 66 BPM, ~55 seconds long before repeating.
-  - Layered pad voices, sub-bass, sparse generative melody, and a gentle harp glissando.
-  - Simple delay line for space/cinematic depth.
-  - Global toggle button in the navbar; starts only after user clicks.
-- **Auth-aware UI**:
-  - Navbar center nav (Features dropdown, Hackathons, Leaderboards, Dashboard) is hidden until login.
-  - Landing page CTAs adapt: guests see Join/Log in; logged-in users see Enter Arena + Host (organizers only).
-  - Footer platform links hidden until login; guests see Get Started links.
-- **Landing page**:
-  - Hero with ZECATHON branding, stats row, and dual CTA buttons.
-  - Features grid (AI scoring, tech repos, non-tech documents, leaderboards, RBAC, discrete scoring).
-  - How-it-works steps (Create → Assemble → Submit → Evaluate).
-  - CTA banner and new `Footer` component.
-  - Dark space/pixel theme preserved; logo from `frontend/public/ZeTheta Logo.png`.
-- **Navbar**:
-  - Dark glass pill bar with logo + "ZECATHON by Zetheta" on the left.
-  - Centered navigation with a "Features" dropdown (logged-in only).
-  - Sound toggle + auth buttons on the right.
-- **Validation**:
-  - `npm run build` ✅
-  - `pytest backend/tests` ✅
-  - `validate_flow.py` ✅
-- **Dev servers**: will restart on `http://127.0.0.1:8000` (backend) and `http://localhost:5173` (frontend).
-- **Default test account**: `flowuser` / `secret123` (organizer role; exists in `backend/hackathon.db`).
-- **Next action**: user review in browser; hard-refresh `localhost:5173` and click the speaker icon to test the space music.
-- **Blockers**: none.
-- **Leftovers**: add real `GEMINI_API_KEY` to `backend/.env` for live LLM evaluations; promote users via set_role script/admin endpoint; S3 storage migration; mobile hamburger menu refinement.
+
+## Backend (completed)
+- **Models**: `Hackathon.rubric` (JSON), `Submission.github_url`, `Evaluation.judge_questions`.
+- **Schemas**: `UserCreate` password validator (8 chars, letter, digit, symbol), `HackathonCreate` rubric, `SubmissionCreate` github_url, `EvaluationOut` judge_questions.
+- **Auth**: bcrypt rounds 12, sliding-window rate limiter on `/api/auth/register` and `/api/auth/login`, admin user list endpoint `GET /api/auth/admin/users`.
+- **Submissions**: non-tech submissions now accept a document file, a submission URL, or an optional GitHub URL.
+- **Evaluators**: tech and non-tech prompts request `judge_questions`, use per-hackathon custom rubrics (or defaults), and store suggested questions in the evaluation.
+- **Leaderboard**: public, unauthenticated endpoint `GET /api/leaderboard/public/{hackathon_id}`.
+- **Docker/GCP**: `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx/default.conf`, `docker-compose.yml`, `gcp/README.md`.
+
+## Frontend (completed by subagent)
+- **New routes**: `/admin` (admin-only), `/public/leaderboard/:id` (shareable).
+- **New components**: `AdminDashboard`, `AdminRoute`, `EvaluationReport`, `PublicLeaderboard`, global `Footer` in `PageLayout`.
+- **Role-aware UI**: dashboard cards adapt to admin/organizer/judge/participant; admin link in navbar.
+- **CreateHackathon**: rubric editor for tech/non-tech categories.
+- **Submit**: optional supporting GitHub URL for non-tech submissions.
+- **Leaderboard**: copy share link button.
+- **Landing page**: ZECATHON hero, features, how-it-works, footer, Easter-egg controller, custom cursor, cinematic music toggle.
+- **Theme**: dark space/pixel styling preserved.
+
+## Validation
+- `pytest backend/tests` ✅ 10 passed
+- `validate_flow.py` ✅ all flows passed, generated reports and leaderboards shown
+- `npm run build` ✅ production build succeeded
+- Dev servers running on `http://127.0.0.1:8000` (backend) and `http://localhost:5173` (frontend)
+
+## Default test account (local DB)
+- `admin1` / `TestPass1!` (role promoted to `admin` in the current dev DB).
+- New registrations must use a password with ≥8 chars, one letter, one digit, and one symbol.
+
+## Next action
+- Commit all backend and frontend changes with a clear release message.
+- User should add a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations; until then the deterministic fallback produces plausible reports.
+
+## Blockers
+- None.
+
+## Leftovers / future improvements
+- Swap SQLite for PostgreSQL (Cloud SQL) for production multi-instance scaling.
+- Move uploads to Cloud Storage.
+- Add mobile hamburger menu refinement.
+- Add real-time notifications for score updates (optional).

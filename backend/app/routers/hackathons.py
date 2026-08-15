@@ -28,6 +28,7 @@ async def create_hackathon(
         description=payload.description,
         start_date=payload.start_date,
         end_date=payload.end_date,
+        rubric=payload.rubric,
         created_by=current_user.id,
     )
     db.add(hackathon)

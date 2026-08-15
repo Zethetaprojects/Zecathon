@@ -1,8 +1,10 @@
 from datetime import datetime, timedelta
 from typing import Optional
+from collections import defaultdict
+import time
 
 import bcrypt
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, status, Request
 from fastapi.security import OAuth2PasswordBearer
 from jose import JWTError, jwt
 from sqlalchemy.orm import Session
@@ -21,7 +23,7 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 
 
 def get_password_hash(password: str) -> str:
-    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+    return bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt(rounds=12)).decode("utf-8")
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
@@ -78,3 +80,36 @@ def require_role(*roles: UserRole):
 require_admin = require_role(UserRole.admin)
 require_organizer = require_role(UserRole.admin, UserRole.organizer)
 require_judge = require_role(UserRole.admin, UserRole.organizer, UserRole.judge)
+
+
+class RateLimiter:
+    """Simple in-memory sliding-window rate limiter."""
+
+    _windows: defaultdict = defaultdict(list)
+
+    def __init__(self, action: str, key_func, max_requests: int = 5, window_seconds: int = 300):
+        self.action = action
+        self.key_func = key_func
+        self.max_requests = max_requests
+        self.window_seconds = window_seconds
+
+    def __call__(self, request: Request):
+        key = self.key_func(request)
+        now = time.time()
+        entries = self._windows[(key, self.action)]
+        # expire old entries
+        entries[:] = [t for t in entries if now - t < self.window_seconds]
+        if len(entries) >= self.max_requests:
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"Rate limit exceeded for {self.action}. Please try again later.",
+            )
+        entries.append(now)
+        return True
+
+
+def _client_ip(request: Request) -> str:
+    forwarded = request.headers.get("x-forwarded-for")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    return request.client.host if request.client else "unknown"

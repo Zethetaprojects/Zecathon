@@ -28,6 +28,7 @@ async def create_submission(
     problem_statement_id: int = Form(...),
     type: str = Form(...),
     submission_url: str = Form(None),
+    github_url: str = Form(None),
     submission_file: UploadFile = File(None),
     ppt_file: UploadFile = File(None),
     db: Session = Depends(get_db),
@@ -54,17 +55,26 @@ async def create_submission(
     if existing:
         raise HTTPException(status_code=400, detail="Submission already exists for this team and problem statement")
 
-    final_url = submission_url
     if sub_type == SubmissionType.tech:
         if not submission_url:
             raise HTTPException(status_code=400, detail="Tech submissions require a GitHub URL")
+        final_url = submission_url
+        final_github = None
     else:
-        if not submission_file:
-            raise HTTPException(status_code=400, detail="Non-tech submissions require a document file")
-        final_url = await save_upload(submission_file)
+        # Non-tech: accept either a document file or an optional GitHub URL (or both)
+        file_url = None
+        if submission_file and submission_file.filename:
+            file_url = await save_upload(submission_file)
+        if not file_url and not submission_url and not github_url:
+            raise HTTPException(
+                status_code=400,
+                detail="Non-tech submissions require a document file, submission URL, or GitHub URL",
+            )
+        final_url = file_url or submission_url or github_url or ""
+        final_github = github_url
 
     ppt_url = None
-    if ppt_file:
+    if ppt_file and ppt_file.filename:
         ppt_url = await save_upload(ppt_file)
 
     submission = Submission(
@@ -72,6 +82,7 @@ async def create_submission(
         problem_statement_id=problem_statement_id,
         type=sub_type,
         submission_url=final_url,
+        github_url=final_github,
         ppt_url=ppt_url,
         status=SubmissionStatus.pending,
     )

@@ -18,6 +18,7 @@ export default function Submit() {
   const [ps, setPs] = useState<ProblemStatement | null>(null);
   const [type, setType] = useState<'tech' | 'non_tech'>('tech');
   const [url, setUrl] = useState('');
+  const [githubUrl, setGithubUrl] = useState('');
   const [file, setFile] = useState<File | null>(null);
   const [ppt, setPpt] = useState<File | null>(null);
   const [loading, setLoading] = useState(true);
@@ -52,6 +53,7 @@ export default function Submit() {
         form.append('submission_url', url);
       } else if (file) {
         form.append('submission_file', file);
+        if (githubUrl.trim()) form.append('github_url', githubUrl.trim());
       }
       if (ppt) form.append('ppt_file', ppt);
       await submissionsApi.create(form);
@@ -146,14 +148,28 @@ export default function Submit() {
                 />
               </div>
             ) : (
-              <div>
-                <label className="block text-xs pixel-caps text-slate-300 mb-2">Project document</label>
-                <input
-                  type="file"
-                  onChange={(e) => setFile(e.target.files?.[0] || null)}
-                  required
-                  className="w-full text-sm text-slate-300 file:mr-4 file:px-3 file:py-2 file:rounded file:border-0 file:text-xs file:bg-neon-cyan/20 file:text-neon-cyan file:cursor-pointer"
-                />
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-xs pixel-caps text-slate-300 mb-2">Project document</label>
+                  <input
+                    type="file"
+                    onChange={(e) => setFile(e.target.files?.[0] || null)}
+                    required
+                    className="w-full text-sm text-slate-300 file:mr-4 file:px-3 file:py-2 file:rounded file:border-0 file:text-xs file:bg-neon-cyan/20 file:text-neon-cyan file:cursor-pointer"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs pixel-caps text-slate-300 mb-2">
+                    Supporting GitHub URL <span className="text-slate-500">(optional)</span>
+                  </label>
+                  <input
+                    type="url"
+                    value={githubUrl}
+                    onChange={(e) => setGithubUrl(e.target.value)}
+                    className="w-full rounded px-4 py-3 neon-input"
+                    placeholder="https://github.com/owner/repo"
+                  />
+                </div>
               </div>
             )}
 

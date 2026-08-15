@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, ConfigDict, EmailStr
+from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 
 from app.models import SubmissionType, SubmissionStatus, UserRole
 
@@ -10,6 +10,19 @@ class UserCreate(BaseModel):
     username: str
     email: EmailStr
     password: str
+
+    @field_validator("password")
+    @classmethod
+    def validate_password(cls, v: str) -> str:
+        if len(v) < 8:
+            raise ValueError("Password must be at least 8 characters long")
+        if not any(c.isalpha() for c in v):
+            raise ValueError("Password must contain at least one letter")
+        if not any(c.isdigit() for c in v):
+            raise ValueError("Password must contain at least one digit")
+        if not any(c in "!@#$%^&*()_+-=[]{}|;':\",./<>?" for c in v):
+            raise ValueError("Password must contain at least one symbol")
+        return v
 
 
 class UserLogin(BaseModel):
@@ -47,6 +60,7 @@ class HackathonBase(BaseModel):
     description: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+    rubric: Optional[Dict[str, Any]] = None
 
 
 class HackathonCreate(HackathonBase):
@@ -113,7 +127,8 @@ class TeamOut(BaseModel):
 class SubmissionCreate(BaseModel):
     problem_statement_id: int
     type: SubmissionType
-    submission_url: str
+    submission_url: Optional[str] = None
+    github_url: Optional[str] = None
     ppt_url: Optional[str] = None
 
 
@@ -123,6 +138,7 @@ class SubmissionOut(BaseModel):
     problem_statement_id: int
     type: SubmissionType
     submission_url: str
+    github_url: Optional[str]
     ppt_url: Optional[str]
     status: SubmissionStatus
     created_at: datetime
@@ -143,6 +159,7 @@ class EvaluationOut(BaseModel):
     category_scores: Dict[str, Any]
     review_flags: List[str]
     needs_review: bool
+    judge_questions: List[str] = []
     evaluated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)

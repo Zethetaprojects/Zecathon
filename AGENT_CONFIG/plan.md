@@ -54,22 +54,22 @@
 - Commit: `feat: non-tech evaluation API`
 
 ## Phase 7 — Leaderboard & discrete scoring
-- Implement `GET /api/hackathons/{id}/leaderboard`.
+- Implement `GET /api/leaderboard/{id}`.
 - Apply anti-clustering logic across all evaluated submissions for a hackathon.
 - Frontend leaderboard page with sorting, verdict badges, review flags.
 - Validate: create multiple submissions, evaluate, confirm leaderboard shows distinct scores and correct ordering.
 - Commit: `feat: leaderboard with discrete scoring`
 
 ## Phase 8 — Integration, E2E smoke tests, polish
-- Add a `docker-compose.yml` or `run.sh` for one-command startup.
+- Add `docker-compose.yml` and `start-dev.sh`/`start-dev.ps1` for one-command startup.
 - E2E smoke test script creates a hackathon, uploads a problem statement, submits a tech and non-tech project, evaluates both, and prints the leaderboard.
 - README with setup instructions, env vars, API docs.
 - Final review and commit: `release: MVP hackathon evaluation platform`
 
 ## Phase 9 — UI/UX theme & landing page (ZECATHON)
 - Add public landing page at `/` with ZECATHON branding and Zetheta Algorithms tagline.
-- Apply dark space/pixel theme (navy background, starfield, neon pink/cyan/purple accents, pixel-style fonts) across Login, Register, Dashboard, Hackathons, Create, Detail, Teams, Submit, and Leaderboard.
-- Build shared components: `SpaceBackground`, `Navbar`, `PageLayout`, `ErrorBoundary`.
+- Apply dark space/pixel theme (navy background, starfield, neon pink/cyan/purple accents, pixel-style fonts) across all pages.
+- Build shared components: `SpaceBackground`, `Navbar`, `PageLayout`, `ErrorBoundary`, `Footer`.
 - Fix blank-page causes: wrap app in `ErrorBoundary`, ensure token is stored before `/auth/me`, render themed loading/error fallbacks on every screen.
 - Validate: `npm run build` and `validate_flow.py` pass.
 - Commit: `feat: ZECATHON landing page and space/pixel theme`
@@ -77,15 +77,24 @@
 ## Phase 10 — RBAC throughout API + Gemini 2.5 Flash evaluator
 - Add `role` column to `users` with enum (`admin`, `organizer`, `judge`, `participant`); default new registrations to `participant`.
 - Lightweight migration for existing SQLite databases.
-- Add RBAC dependencies (`require_admin`, `require_organizer`, `require_judge`) and protect routers:
-  - hackathons/problem-statements → organizer/admin
-  - evaluate → judge/organizer/admin
-  - teams/submissions → authenticated users
+- Add RBAC dependencies (`require_admin`, `require_organizer`, `require_judge`) and protect routers.
 - Admin endpoint and CLI script to assign roles.
 - Integrate Google Gemini 2.5 Flash REST API in `LLMClient` with `GEMINI_API_KEY`/`GEMINI_MODEL` env vars; keep generic backend and deterministic mock fallbacks.
-- Frontend role-aware UI: hide create/upload/evaluate actions for participants.
+- Frontend role-aware UI.
 - Validate: `pytest`, `validate_flow.py`, `npm run build` pass.
 - Commit: `feat: RBAC throughout API and Gemini 2.5 Flash integration`
+
+## Phase 11 — Deployment-ready platform hardening
+- **Admin / super-admin views**: dedicated admin dashboard, admin-only user management, role-specific dashboard cards for participant/organizer/judge/admin.
+- **Dynamic rubrics**: per-hackathon custom rubrics with sensible defaults; tech and non-tech categories can be overridden, backend falls back to defaults when absent.
+- **Rich evaluation reports**: scoring metrics + suggested judge questions derived from the project content by the LLM.
+- **Non-tech GitHub support**: non-tech submissions may optionally include a supporting GitHub URL for deeper analysis.
+- **Secure login**: stronger password policy, bcrypt rounds, and rate limiting on auth endpoints.
+- **Shareable live leaderboards**: public, unauthenticated leaderboard link that stays live as scores are updated.
+- **GCP deployment**: Dockerfiles, Cloud Run config, frontend static hosting guidance, and deployment docs.
+- **Full end-to-end validation**: create a hackathon, add problem statements, submit tech and non-tech projects, evaluate with real LLM or deterministic fallback, and inspect the generated reports and leaderboard.
+- Validate: `pytest backend/tests`, `validate_flow.py`, `npm run build`, and API smoke tests all pass.
+- Commit: `release: production-ready ZECATHON platform`
 
 ## Commit cadence
 A commit is required at the end of every phase. If a phase is large, split it into intermediate commits (e.g. backend work first, frontend work second). Each commit message must be clear and phase-tagged.

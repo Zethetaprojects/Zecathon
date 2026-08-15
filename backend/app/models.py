@@ -33,6 +33,7 @@ class Hackathon(Base):
     description = Column(Text)
     start_date = Column(DateTime, nullable=True)
     end_date = Column(DateTime, nullable=True)
+    rubric = Column(JSON, nullable=True, default=None)  # custom per-hackathon scoring rubric
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 
@@ -105,6 +106,7 @@ class Submission(Base):
     problem_statement_id = Column(Integer, ForeignKey("problem_statements.id"), nullable=False)
     type = Column(Enum(SubmissionType), nullable=False)
     submission_url = Column(String, nullable=False)  # GitHub URL or uploaded file path/URL
+    github_url = Column(String, nullable=True)     # optional GitHub for non-tech submissions
     ppt_url = Column(String, nullable=True)  # optional PPT for non-tech
     status = Column(Enum(SubmissionStatus), default=SubmissionStatus.pending)
     created_at = Column(DateTime, default=dt.datetime.utcnow)
@@ -128,6 +130,7 @@ class Evaluation(Base):
     authenticity_band = Column(String, nullable=False)
     category_scores = Column(JSON, default=dict)
     review_flags = Column(JSON, default=list)
+    judge_questions = Column(JSON, default=list)  # suggested questions for the judging panel
     needs_review = Column(Boolean, default=False)
     evaluated_at = Column(DateTime, default=dt.datetime.utcnow)
 

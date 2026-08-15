@@ -2,11 +2,12 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { teamsApi, submissionsApi } from '../api/teams';
-import { Hackathon, Team, ProblemStatement, Submission } from '../types';
+import { Hackathon, Team, ProblemStatement, Submission, Evaluation } from '../types';
 import { formatError } from '../utils/formatError';
 import { isJudge } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
 import PageLayout from '../components/PageLayout';
+import EvaluationReport from '../components/EvaluationReport';
 
 export default function HackathonTeams() {
   const { id } = useParams<{ id: string }>();
@@ -21,6 +22,7 @@ export default function HackathonTeams() {
   const [teamName, setTeamName] = useState('');
   const [busy, setBusy] = useState(false);
   const [evaluating, setEvaluating] = useState<Record<number, boolean>>({});
+  const [report, setReport] = useState<Evaluation | null>(null);
   const navigate = useNavigate();
 
   const fetchHackathon = () => {
@@ -159,6 +161,28 @@ export default function HackathonTeams() {
           </div>
         )}
 
+        {report && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setReport(null);
+            }}
+          >
+            <div className="relative w-full max-w-3xl max-h-[90vh] overflow-y-auto glass-panel p-6 sm:p-8 border border-neon-cyan/20">
+              <div className="flex items-center justify-between mb-6">
+                <h2 className="font-pixel text-lg text-white text-shadow-neon">EVALUATION REPORT</h2>
+                <button
+                  onClick={() => setReport(null)}
+                  className="px-3 py-1.5 rounded text-xs text-slate-400 hover:text-white border border-white/10 hover:border-neon-cyan transition"
+                >
+                  Close
+                </button>
+              </div>
+              <EvaluationReport evaluation={report} />
+            </div>
+          </div>
+        )}
+
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             {teams.length === 0 ? (
@@ -199,9 +223,12 @@ export default function HackathonTeams() {
                                   {sub.status.replace('_', '-')}
                                 </span>
                                 {sub.evaluation ? (
-                                  <span className="text-sm font-semibold text-neon-cyan">
+                                  <button
+                                    onClick={() => setReport(sub.evaluation || null)}
+                                    className="text-sm font-semibold text-neon-cyan hover:text-white transition micro-lift"
+                                  >
                                     {sub.evaluation.total_score} pts — {sub.evaluation.verdict}
-                                  </span>
+                                  </button>
                                 ) : canEvaluate ? (
                                   <button
                                     onClick={() => evaluate(sub)}
