@@ -25,7 +25,7 @@
 - **Hackathons page**: uses backend counts; organisers/admins can delete hackathons from the card.
 - **Team page**: Create Team / Join / Submit are hidden for non-participants; organisers/admins can delete teams and view per-team reports.
 - **Submit page**: shows a participants-only message for organisers/admins.
-- **Reports page**: summary cards for each hackathon with team/submission/evaluation stats; expandable detail with verdict breakdown, submission-type breakdown, and a team-level table linked to printable reports.
+- **Reports page team entries**: each evaluated row now has a **View report** button that opens the printable per-team report.
 - **Printable report**: `TeamReportPage` renders evaluation details including judge questions; has a Download/Print PDF button; print CSS hides navbar/footer and uses light background.
 - **Admin dashboard**: role `<select>` uses `.neon-select` with a custom space-themed chevron and no awkward right padding.
 - **CreateHackathon**: rubric editor for tech/non-tech categories.

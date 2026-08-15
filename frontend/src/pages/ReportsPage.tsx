@@ -209,6 +209,7 @@ export default function ReportsPage() {
                           <th className="px-4 py-3">Status</th>
                           <th className="px-4 py-3">Score</th>
                           <th className="px-4 py-3">Verdict</th>
+                          <th className="px-4 py-3 text-right">Report</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -222,15 +223,21 @@ export default function ReportsPage() {
                               {entry.total_score ?? '-'}
                             </td>
                             <td className="px-4 py-3">
-                              {entry.verdict ? (
+                              {entry.verdict ? <VerdictBadge verdict={entry.verdict} /> : <span className="text-slate-500">-</span>}
+                            </td>
+                            <td className="px-4 py-3 text-right">
+                              {entry.submission_id && entry.total_score !== undefined ? (
                                 <Link
                                   to={`/reports/submission/${entry.submission_id}`}
-                                  className="hover:text-neon-cyan transition"
+                                  className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-semibold neon-btn neon-btn-cyan micro-lift micro-pop"
                                 >
-                                  <VerdictBadge verdict={entry.verdict} />
+                                  <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                                  </svg>
+                                  View report
                                 </Link>
                               ) : (
-                                <span className="text-slate-500">-</span>
+                                <span className="text-slate-500 text-[10px]">-</span>
                               )}
                             </td>
                           </tr>
