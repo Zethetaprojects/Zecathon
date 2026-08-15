@@ -15,7 +15,8 @@
 - **Evaluators**: tech and non-tech prompts request `judge_questions`, use per-hackathon custom rubrics (or defaults), and store suggested questions in the evaluation.
 - **Evaluation retry**: `POST /api/evaluate/tech/{id}/retry` and `POST /api/evaluate/non-tech/{id}/retry` delete the old evaluation and re-run it.
 - **Leaderboard**: public, unauthenticated endpoint `GET /api/leaderboard/public/{hackathon_id}`; scores are discrete after anti-clustering.
-- **Reports**: route order fixed so `/api/reports/submission/{id}` is matched before `/{hackathon_id}`; added `EvaluationOut` import; test added for the printable per-team report.
+- **Reports**: route order fixed so `/api/reports/submission/{id}` is matched before `/{hackathon_id}`; added `EvaluationOut` import; test added for the printable per-team report. **NEW Phase 20.1**: added `category_explanations` and `category_max_points` to `Evaluation` model/schema; tech and non-tech prompts now request per-category explanations and judge questions grounded in both the problem statement and the submission; added `GET /api/reports/submission/{id}/pdf` which generates a real backend PDF using WeasyPrint (primary) or fpdf2 (fallback) from a Jinja2 HTML template.
+- **PDF generator**: `backend/app/services/pdf_generator.py` with `templates/report.html` — professional report with ZECATHON header, score cards, rubric breakdown table with explanations, strengths/improvements/red flags, recommendation, and suggested judge questions.
 - **Docker/GCP**: `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx/default.conf`, `docker-compose.yml`, `gcp/README.md`.
 
 ## Frontend (completed)
@@ -29,7 +30,8 @@
 - **Submit page**: participants submit their own projects; organisers/admins can submit on behalf of the selected team.
 - **PWA**: `manifest.json`, `sw.js`, registered service worker, theme-color / apple-mobile-web-app meta tags, and `viewport-fit=cover` viewport.
 - **Reports page team entries**: each evaluated row now has a **View report** button that opens the printable per-team report.
-- **Printable report**: `TeamReportPage` renders evaluation details including judge questions; has a Download/Print PDF button; print CSS hides navbar/footer and uses light background.
+- **EvaluationReport component**: displays category scores as a bar chart and now shows the per-category explanation text beneath each bar when available.
+- **Printable report**: `TeamReportPage` renders evaluation details including judge questions; now has a **Download PDF** button that fetches the backend-generated PDF blob and triggers a real file download. The previous `window.print()` hack has been removed.
 - **Admin dashboard**: role `<select>` uses `.neon-select` with a custom space-themed chevron and no awkward right padding.
 - **CreateHackathon**: rubric editor for tech/non-tech categories.
 - **Leaderboard**: copy share link button; judges can retry an evaluation from the teams page.
@@ -43,8 +45,9 @@
 
 ## Validation
 - Backend upload path fix: `save_upload` returns `/uploads/{filename}`; `document_extractor` resolves `/uploads/...` back to the local `upload_dir` before reading, so non-tech evaluations and problem-statement extraction work from public URLs and local tests.
-- `pytest backend/tests` ✅ 13 passed
+- `pytest backend/tests` ✅ 13 passed (includes new PDF endpoint test)
 - `npm run build` ✅ production build succeeded
+- Backend PDF endpoint returns a valid `%PDF` byte stream for evaluated submissions; WeasyPrint is the primary engine in Docker, fpdf2 fallback works on Windows dev without GTK.
 - `seed_dev.py` ✅ idempotent; re-running creates a single demo hackathon with two evaluated submissions and a populated leaderboard
 - `validate_flow.py` ✅ all flows passed with the new participant-only team/submission rules
 - Reports endpoints verified on a fresh backend process; per-team printable report accessible to organisers/admins
@@ -75,15 +78,18 @@
 - No new author metadata is added; commits retain the existing `user.name`/`user.email` from the global git config.
 
 ## Next action
-- Phase 19 complete and pushed to `origin main`.
-- User should fully restart the dev stack (close the running PowerShell window, kill all lingering python/node processes, or reboot) so the backend starts cleanly on port 8002 with the current code. Stale uvicorn instances were holding the old app version, which caused the reports route to be missing.
-- If real LLM evaluations are needed, add a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env`.
+- Phase 20.1 committed to `main`.
+- Proceed to Phase 20.2: PostgreSQL service in Docker Compose and update database wiring.
 
 ## Blockers
 - None.
 
 ## Leftovers / future improvements
-- Swap SQLite for PostgreSQL (Cloud SQL) for production multi-instance scaling.
+- Phase 20.2: PostgreSQL in Docker Compose.
+- Phase 20.3: structured logging with rotation.
+- Phase 20.4: harden organizer/admin scope.
+- Phase 20.5: deployment-ready Docker/nginx/GCP docs.
+- Phase 20.6: PWA and mobile navbar polish.
+- Phase 20.7: full validation and commits.
 - Move uploads to Cloud Storage.
-- Add mobile hamburger menu refinement.
 - Add real-time notifications for score updates (optional).

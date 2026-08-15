@@ -161,9 +161,12 @@
 - [x] Commit and push
 - [ ] User fully restarts the dev stack to clear stale port 8002 processes
 
-## Leftovers / next steps
-- [ ] User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations
-- [ ] Promote existing users to organizer/judge via admin endpoint or set_role script
-- [ ] Deploy backend to Cloud Run and frontend to Firebase Hosting (see `gcp/README.md`)
-- [ ] Optional: migrate SQLite to Cloud SQL and local uploads to Cloud Storage for production scaling
-- [ ] Optional: mobile hamburger menu refinement
+## Phase 20 — Production hardening
+
+- [x] 20.1 Backend PDF reports + category explanations + frontend download (committed)
+- [ ] 20.2 PostgreSQL in Docker Compose
+- [ ] 20.3 Structured logging with rotation
+- [ ] 20.4 Harden organizer/admin scope
+- [ ] 20.5 Deployment-ready Docker/nginx/GCP docs
+- [ ] 20.6 PWA and mobile navbar polish
+- [ ] 20.7 Tests, validation, and commits
