@@ -12,7 +12,7 @@ class Settings(BaseSettings):
     ai_backend_url: str = "http://localhost:5000"
     ai_backend_token: str = ""
     gemini_api_key: str = ""
-    gemini_model: str = "gemini-flash-latest"
+    gemini_model: str = "gemini-3.5-flash-lite"
     github_token: str = ""
     upload_dir: str = "uploads"
     max_upload_size: int = 20 * 1024 * 1024  # 20 MB

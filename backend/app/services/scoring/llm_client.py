@@ -37,9 +37,10 @@ class LLMClient:
         # back to a known-working model alias.
         models_to_try = [
             settings.gemini_model,
-            "gemini-flash-latest",
+            "gemini-3.5-flash-lite",
             "gemini-3.5-flash",
             "gemini-3.7-flash",
+            "gemini-flash-latest",
         ]
         last_error = None
         for i, model in enumerate(models_to_try):

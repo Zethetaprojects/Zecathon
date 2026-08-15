@@ -24,7 +24,7 @@
 - **Leaderboard**: copy share link button; judges can retry an evaluation from the teams page.
 - **Easter eggs**: click-based only; the Egg Hunt modal is now a large centered dialog rendered via a React portal so it sits above the navbar and is fully clickable/scrollable.
 - **Custom cursor**: simplified to a single hardware-accelerated image with no trailing image and no `requestAnimationFrame` loop, so it should no longer hang or lag.
-- **Gemini key**: the key is **valid**. The configured model name `gemini-2.5-flash` is no longer available for new users on `generateContent`. The backend now falls back to `gemini-flash-latest` / `gemini-3.5-flash` / `gemini-3.7-flash` automatically, and the default model in `.env.example` has been updated. `validate_flow.py` now returns real Gemini-generated scores and judge questions.
+- **Gemini key**: the key is **valid**. The configured model `gemini-2.5-flash` is no longer available for new users on `generateContent`. The backend now defaults to and falls back through `gemini-3.5-flash-lite`, `gemini-3.5-flash`, `gemini-3.7-flash`, and `gemini-flash-latest`. `validate_flow.py` returns real Gemini-generated scores and judge questions.
 - **Footer resources**: real pages exist for `/docs` (How it Works), `/api-docs`, `/rubrics`, and `/support` with on-theme content.
 - **Theme**: dark space/pixel styling preserved.
 

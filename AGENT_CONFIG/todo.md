@@ -115,6 +115,13 @@
 - [x] Validate: `npm run build` ✅, `pytest backend/tests` ✅ 12 passed, `validate_flow.py` ✅ all flows passed with real Gemini output.
 - [x] Commit.
 
+## Phase 15 — Switch default Gemini model to gemini-3.5-flash-lite
+- [x] Confirm `gemini-3.5-flash-lite` works for `generateContent` with the configured key.
+- [x] Set `GEMINI_MODEL` default to `gemini-3.5-flash-lite` in `backend/app/config.py` and `backend/.env.example`.
+- [x] Reorder `LLMClient` fallback list to prefer `gemini-3.5-flash-lite`.
+- [x] Validate: `pytest backend/tests` ✅ 12 passed, real Gemini call ✅, `validate_flow.py` ✅ all flows passed.
+- [x] Commit.
+
 ## Leftovers / next steps
 - [ ] User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations
 - [ ] Promote existing users to organizer/judge via admin endpoint or set_role script
