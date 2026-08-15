@@ -137,8 +137,13 @@ def main():
         assert r.status_code == 201, r.text
         ps_id = r.json()["id"]
 
-        # 4. Tech team + submission
-        r = requests.post(f"{base}/teams", json={"hackathon_id": hackathon_id, "name": "Tech Titans"}, headers=headers_a)
+        # 4. Tech team + submission (participant-only)
+        token_b = _register_and_login(base, "flowparticipant", "flowparticipant@example.com", "FlowPass1!")
+        _set_role("flowparticipant", "participant")
+        headers_b = {"Authorization": f"Bearer {token_b}"}
+        steps.append(("POST /auth/register + login (participant)", 200, "OK"))
+
+        r = requests.post(f"{base}/teams", json={"hackathon_id": hackathon_id, "name": "Tech Titans"}, headers=headers_b)
         steps.append(("POST /teams (tech)", r.status_code, r.text[:200]))
         assert r.status_code == 201, r.text
         team_tech_id = r.json()["id"]
@@ -146,7 +151,7 @@ def main():
         r = requests.post(
             f"{base}/submissions",
             data={"team_id": team_tech_id, "problem_statement_id": ps_id, "type": "tech", "submission_url": TECH_REPO},
-            headers=headers_a,
+            headers=headers_b,
         )
         steps.append(("POST /submissions (tech)", r.status_code, r.text[:200]))
         assert r.status_code == 201, r.text
@@ -157,13 +162,13 @@ def main():
         assert r.status_code == 200, r.text
         tech_score = r.json()["total_score"]
 
-        # 5. Non-tech team + submission (needs a second user because one user = one team per hackathon)
-        token_b = _register_and_login(base, "flowuser2", "flow2@example.com", "FlowPass2!")
-        _set_role("flowuser2", "participant")
-        headers_b = {"Authorization": f"Bearer {token_b}"}
-        steps.append(("POST /auth/register + login (second user)", 200, "OK"))
+        # 5. Non-tech team + submission (needs a second participant because one user = one team per hackathon)
+        token_c = _register_and_login(base, "flowparticipant2", "flowparticipant2@example.com", "FlowPass2!")
+        _set_role("flowparticipant2", "participant")
+        headers_c = {"Authorization": f"Bearer {token_c}"}
+        steps.append(("POST /auth/register + login (second participant)", 200, "OK"))
 
-        r = requests.post(f"{base}/teams", json={"hackathon_id": hackathon_id, "name": "Doc Dynamos"}, headers=headers_b)
+        r = requests.post(f"{base}/teams", json={"hackathon_id": hackathon_id, "name": "Doc Dynamos"}, headers=headers_c)
         steps.append(("POST /teams (non-tech)", r.status_code, r.text[:200]))
         assert r.status_code == 201, r.text
         team_doc_id = r.json()["id"]
@@ -178,7 +183,7 @@ def main():
             f"{base}/submissions",
             data={"team_id": team_doc_id, "problem_statement_id": ps_id, "type": "non_tech"},
             files={"submission_file": ("report.txt", doc, "text/plain")},
-            headers=headers_b,
+            headers=headers_c,
         )
         steps.append(("POST /submissions (non-tech)", r.status_code, r.text[:200]))
         assert r.status_code == 201, r.text

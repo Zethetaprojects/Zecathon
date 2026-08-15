@@ -133,8 +133,8 @@
 - Frontend admin dashboard: fix the role `<select>` arrow with a custom `.neon-select` style (no awkward right padding, space-themed chevron).
 - README: update RBAC matrix (participants only for teams/submissions, organisers/admins for deletion/reports); add new API endpoints; fix docs port to `8002`.
 - `seed_dev.py`: make idempotent by deleting previously seeded demo hackathons before re-creating.
-- Tests: add `participant_client` fixture; update team/submission/evaluation tests to use participant clients; add tests for delete endpoints.
-- Validate: `pytest backend/tests` ✅ 13 passed, `npm run build` ✅, `seed_dev.py` idempotent ✅.
+- Tests: add `participant_client` fixture; update team/submission/evaluation tests to use participant clients; add tests for delete endpoints; update `validate_flow.py` to use participant tokens for team/submission creation.
+- Validate: `pytest backend/tests` ✅ 13 passed, `npm run build` ✅, `seed_dev.py` idempotent ✅, `validate_flow.py` ✅ all flows passed.
 - Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
 
 ## Leftovers / next steps

@@ -42,7 +42,7 @@
 - `pytest backend/tests` ✅ 13 passed
 - `npm run build` ✅ production build succeeded
 - `seed_dev.py` ✅ idempotent; re-running creates a single demo hackathon with two evaluated submissions and a populated leaderboard
-- `validate_flow.py` ✅ all flows passed in previous phase
+- `validate_flow.py` ✅ all flows passed with the new participant-only team/submission rules
 - Reports endpoints verified; per-team printable report accessible to organisers/admins
 - Dev servers should be started with `start-dev.sh` / `start-dev.ps1` (backend on `http://127.0.0.1:8002`, frontend on `http://localhost:5173`)
 
