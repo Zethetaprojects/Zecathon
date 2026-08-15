@@ -51,6 +51,9 @@ function SoundToggle() {
   return (
     <button
       onClick={toggle}
+      data-egg-trigger="sound-toggle"
+      data-egg-message="Space soundtrack unlocked! +25 XP"
+      data-egg-color="cyan"
       title={playing ? 'Mute space music' : 'Play space music'}
       className="micro-lift micro-pop w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-neon-cyan flex items-center justify-center transition"
     >
@@ -109,9 +112,6 @@ export default function Navbar() {
             to="/"
             onClick={handleLogoClick}
             className="flex items-center gap-3 group"
-            data-egg-trigger="logo-click"
-            data-egg-message="Click the logo 5 times fast for a surprise"
-            data-egg-color="cyan"
           >
             <img
               src="/ZeTheta%20Logo.png"

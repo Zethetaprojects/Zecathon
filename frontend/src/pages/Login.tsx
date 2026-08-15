@@ -1,8 +1,7 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { useAuth } from '../hooks/useAuth';
-import { useEasterEggs } from '../hooks/useEasterEggs';
 import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 
@@ -12,14 +11,7 @@ export default function Login() {
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
   const { login } = useAuth();
-  const { discover } = useEasterEggs();
   const navigate = useNavigate();
-
-  useEffect(() => {
-    if (username.toLowerCase() === 'hacker') {
-      discover('hacker-username', 'System breach attempt logged... just kidding. +50 XP', 'pink');
-    }
-  }, [username, discover]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();

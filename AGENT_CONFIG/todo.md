@@ -98,6 +98,14 @@
 - [x] Validate: `npm run build` ✅, `pytest backend/tests` ✅ 12 passed, `validate_flow.py` ✅ all flows passed.
 - [x] Commit.
 
+## Phase 13 — Usability fixes: panel size, no typing eggs, cursor performance
+- [x] Redesign `EasterEggHunt` as a large centered modal (`max-w-2xl`, `max-h-[85vh]`) with a scrollable two-column grid.
+- [x] Remove all typing/keyboard eggs from hints and triggers (Konami, secret words, username hacker, shortcut M, secret-code panel).
+- [x] Add click-based `sound-toggle` egg on the navbar music button.
+- [x] Fix `CustomCursor`: remove trailing image and `requestAnimationFrame` loop, use direct transform updates via refs.
+- [x] Validate: `npm run build` ✅, `pytest backend/tests` ✅ 12 passed, `validate_flow.py` ✅ all flows passed.
+- [x] Commit.
+
 ## Leftovers / next steps
 - [ ] User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations
 - [ ] Promote existing users to organizer/judge via admin endpoint or set_role script
