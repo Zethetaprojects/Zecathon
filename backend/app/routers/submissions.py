@@ -6,7 +6,8 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user
 from app.database import get_db
-from app.models import ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User, UserRole
+from app.models import Hackathon, ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User, UserRole
+from app.routers.common import can_access_hackathon, can_manage_hackathon
 from app.schemas import SubmissionCreate, SubmissionDetail, SubmissionOut
 from app.services.file_storage import save_upload
 
@@ -22,11 +23,18 @@ def _is_judge(user: User) -> bool:
     return user.role in (UserRole.admin, UserRole.organizer, UserRole.judge)
 
 
-def _ensure_team_member_or_judge(team_id: int, user: User, db: Session) -> Team:
+def _ensure_team_access(team_id: int, user: User, db: Session) -> Team:
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
-    if _is_judge(user):
+    if user.role == UserRole.admin:
+        return team
+    if user.role == UserRole.organizer:
+        if can_manage_hackathon(user, team.hackathon):
+            return team
+        logger.warning("Organizer id=%s denied access to team id=%s in unowned hackathon id=%s", user.id, team_id, team.hackathon_id)
+        raise HTTPException(status_code=403, detail="You do not have access to this team")
+    if user.role == UserRole.judge:
         return team
     member = db.query(TeamMember).filter(TeamMember.team_id == team_id, TeamMember.user_id == user.id).first()
     if not member:
@@ -57,8 +65,11 @@ async def create_submission(
 
     if _is_manager(current_user):
         team = db.query(Team).filter(Team.id == team_id).first()
+        if team and not can_manage_hackathon(current_user, team.hackathon):
+            logger.warning("Manager id=%s denied submission for team id=%s in unowned hackathon id=%s", current_user.id, team_id, team.hackathon_id)
+            raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
     else:
-        team = _ensure_team_member_or_judge(team_id, current_user, db)
+        team = _ensure_team_access(team_id, current_user, db)
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
 
@@ -123,7 +134,7 @@ async def get_submission(
     submission = db.query(Submission).filter(Submission.id == submission_id).first()
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
-    _ensure_team_member_or_judge(submission.team_id, current_user, db)
+    _ensure_team_access(submission.team_id, current_user, db)
     return submission
 
 
@@ -133,5 +144,5 @@ async def list_submissions(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    _ensure_team_member_or_judge(team_id, current_user, db)
+    _ensure_team_access(team_id, current_user, db)
     return db.query(Submission).filter(Submission.team_id == team_id).order_by(Submission.created_at.desc()).all()

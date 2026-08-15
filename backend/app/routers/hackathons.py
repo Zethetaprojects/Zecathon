@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session, contains_eager
 from app.auth import get_current_active_user, require_organizer
 from app.database import get_db
 from app.models import Evaluation, Hackathon, ProblemStatement, Submission, Team, TeamMember, User, UserRole
+from app.routers.common import can_access_hackathon
 from app.schemas import HackathonCreate, HackathonOut, HackathonDetail, HackathonUpdate, ProblemStatementOut
 from app.services.file_storage import save_upload
 
@@ -18,6 +19,9 @@ logger = logging.getLogger(__name__)
 @router.get("", response_model=List[HackathonOut])
 async def list_hackathons(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
     hacks = db.query(Hackathon).order_by(Hackathon.created_at.desc()).all()
+    # Organizers only see hackathons they created; admins and participants see everything.
+    if current_user.role == UserRole.organizer:
+        hacks = [h for h in hacks if h.created_by == current_user.id]
     result = []
     for h in hacks:
         ps_count = db.query(func.count(ProblemStatement.id)).filter(ProblemStatement.hackathon_id == h.id).scalar()
@@ -69,6 +73,9 @@ async def get_hackathon(
     hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
+    if not can_access_hackathon(current_user, hackathon):
+        logger.warning("User id=%s role=%s denied access to hackathon id=%s owned by %s", current_user.id, current_user.role, hackathon_id, hackathon.created_by)
+        raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
     return hackathon
 
 

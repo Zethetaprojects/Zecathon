@@ -4,7 +4,8 @@ from sqlalchemy.orm import Session
 import logging
 from app.auth import get_current_active_user, require_judge
 from app.database import get_db
-from app.models import Evaluation, ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User
+from app.models import Evaluation, Hackathon, ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User, UserRole
+from app.routers.common import can_manage_hackathon
 from app.schemas import EvaluationOut
 from app.services.document_extractor import extract_text
 from app.services.scoring.non_tech_evaluator import evaluate_non_tech
@@ -47,6 +48,22 @@ def _run_non_tech_evaluation(db: Session, submission: Submission) -> Evaluation:
         raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=str(exc))
 
 
+def _ensure_evaluation_access(submission: Submission, user: User, db: Session) -> None:
+    """Admins and judges may evaluate any submission; organisers only their own hackathons."""
+    if user.role == UserRole.admin or user.role == UserRole.judge:
+        return
+    if user.role == UserRole.organizer:
+        team = db.query(Team).filter(Team.id == submission.team_id).first()
+        hackathon = db.query(Hackathon).filter(Hackathon.id == team.hackathon_id).first() if team else None
+        if hackathon and can_manage_hackathon(user, hackathon):
+            return
+    logger.warning(
+        "User id=%s role=%s denied evaluation of submission id=%s",
+        user.id, user.role, submission.id
+    )
+    raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can evaluate this submission")
+
+
 @router.post("/tech/{submission_id}", response_model=EvaluationOut)
 async def evaluate_tech_endpoint(
     submission_id: int,
@@ -58,6 +75,7 @@ async def evaluate_tech_endpoint(
         raise HTTPException(status_code=404, detail="Submission not found")
     if submission.type != SubmissionType.tech:
         raise HTTPException(status_code=400, detail="Submission is not a tech submission")
+    _ensure_evaluation_access(submission, current_user, db)
 
     if submission.evaluation:
         logger.info("Returning cached tech evaluation for submission id=%s", submission.id)
@@ -79,6 +97,7 @@ async def evaluate_non_tech_endpoint(
         raise HTTPException(status_code=404, detail="Submission not found")
     if submission.type != SubmissionType.non_tech:
         raise HTTPException(status_code=400, detail="Submission is not a non-tech submission")
+    _ensure_evaluation_access(submission, current_user, db)
 
     if submission.evaluation:
         logger.info("Returning cached non-tech evaluation for submission id=%s", submission.id)
@@ -108,6 +127,7 @@ async def retry_evaluate_tech(
         raise HTTPException(status_code=404, detail="Submission not found")
     if submission.type != SubmissionType.tech:
         raise HTTPException(status_code=400, detail="Submission is not a tech submission")
+    _ensure_evaluation_access(submission, current_user, db)
 
     _reset_evaluation(db, submission)
     logger.info("Tech evaluation retry requested for submission id=%s by user id=%s", submission.id, current_user.id)
@@ -127,6 +147,7 @@ async def retry_evaluate_non_tech(
         raise HTTPException(status_code=404, detail="Submission not found")
     if submission.type != SubmissionType.non_tech:
         raise HTTPException(status_code=400, detail="Submission is not a non-tech submission")
+    _ensure_evaluation_access(submission, current_user, db)
 
     _reset_evaluation(db, submission)
     logger.info("Non-tech evaluation retry requested for submission id=%s by user id=%s", submission.id, current_user.id)

@@ -174,30 +174,6 @@ def _build_submission_report(
     )
 
 
-@router.get("/submission/{submission_id}", response_model=SubmissionReport)
-async def get_submission_report(
-    submission_id: int,
-    db: Session = Depends(get_db),
-    current_user: User = Depends(require_organizer),
-):
-    submission = (
-        db.query(Submission)
-        .filter(Submission.id == submission_id)
-        .first()
-    )
-    if not submission:
-        raise HTTPException(status_code=404, detail="Submission not found")
-
-    team = db.query(Team).filter(Team.id == submission.team_id).first()
-    problem_statement = db.query(ProblemStatement).filter(ProblemStatement.id == submission.problem_statement_id).first()
-    hackathon = db.query(Hackathon).filter(Hackathon.id == team.hackathon_id).first() if team else None
-
-    if current_user.role != UserRole.admin and hackathon and hackathon.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can view this report")
-
-    return _build_submission_report(submission, team, problem_statement, hackathon)
-
-
 @router.get("/submission/{submission_id}/pdf")
 async def download_submission_report_pdf(
     submission_id: int,

@@ -5,6 +5,7 @@
 - **AGENT_CONFIG**: created; context, plan, state, and todo maintained.
 
 ## Backend (completed)
+- **Phase 20.4 ( organizer/admin scope hardening)**: added `backend/app/routers/common.py` with `can_access_hackathon`/`can_manage_hackathon`/`require_hackathon_access`; scoped `GET /api/hackathons` (organizers only see their own), `GET /api/hackathons/{id}`, `GET /api/problem-statements/{id}`, `GET /api/teams`, `GET /api/teams/{id}`, `POST /api/teams`, `POST /api/teams/{id}/join`, `GET /api/submissions`, `GET /api/submissions/{id}`, `POST /api/submissions`, `POST /api/evaluate/*`, and `GET /api/leaderboard/{id}` so admins see everything, judges see everything, participants see everything, and organizers only see/control their own hackathons; removed the duplicate `/api/reports/submission/{id}` route definition; proxied `/uploads` in `frontend/vite.config.ts` and `frontend/nginx/default.conf` so uploaded problem-statement files and non-tech submissions are viewable in dev and production.
 - **Models**: `Hackathon.rubric` (JSON), `Submission.github_url`, `Evaluation.judge_questions`; `Team.submissions` and `ProblemStatement.submissions` cascades configured.
 - **Schemas**: `UserCreate` password validator (8 chars, letter, digit, symbol), role validator (only `participant` or `organizer` allowed at registration), `HackathonCreate` rubric, `SubmissionCreate` github_url, `EvaluationOut` judge_questions, `SubmissionReport` with team/problem/hackathon names.
 - **Auth**: bcrypt rounds 12, sliding-window rate limiter on `/api/auth/register` and `/api/auth/login`, `require_participant` dependency added.
@@ -17,7 +18,8 @@
 - **Leaderboard**: public, unauthenticated endpoint `GET /api/leaderboard/public/{hackathon_id}`; scores are discrete after anti-clustering.
 - **Reports**: route order fixed so `/api/reports/submission/{id}` is matched before `/{hackathon_id}`; added `EvaluationOut` import; test added for the printable per-team report. **NEW Phase 20.1**: added `category_explanations` and `category_max_points` to `Evaluation` model/schema; tech and non-tech prompts now request per-category explanations and judge questions grounded in both the problem statement and the submission; added `GET /api/reports/submission/{id}/pdf` which generates a real backend PDF using WeasyPrint (primary) or fpdf2 (fallback) from a Jinja2 HTML template.
 - **PDF generator**: `backend/app/services/pdf_generator.py` with `templates/report.html` — professional report with ZECATHON header, score cards, rubric breakdown table with explanations, strengths/improvements/red flags, recommendation, and suggested judge questions.
-- **Docker/GCP**: `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx/default.conf`, `docker-compose.yml`, `gcp/README.md`.
+- **Docker/GCP**: `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx/default.conf`, `docker-compose.yml`, `docker-compose.prod.yml`, `gcp/README.md`. **NEW Phase 20.2**: `docker-compose.yml` now includes a `postgres` service with healthcheck and named volumes; backend connects to `postgresql+psycopg2://zecathon:zecathon_secret@postgres:5432/zecathon` by default in Docker. Added `docker-compose.prod.yml` for production with external PostgreSQL/Cloud SQL. Backend Dockerfile installs WeasyPrint system libraries and creates `/app/logs`.
+- **Logging**: **NEW Phase 20.3** `backend/app/logger.py` configures console + rotating file logging (`logs/app.log`, 10 MB, 5 backups) with cleanup of stale rotated files. Wired into `main.py` lifespan startup/shutdown and key routers (`evaluate`, `hackathons`, `teams`, `submissions`). `logs/` is ignored by Git.
 
 ## Frontend (completed)
 - **New routes**: `/admin` (admin-only), `/public/leaderboard/:id` (shareable), `/reports` (organiser/admin only), `/reports/submission/:id` (printable per-team report).
@@ -45,9 +47,11 @@
 
 ## Validation
 - Backend upload path fix: `save_upload` returns `/uploads/{filename}`; `document_extractor` resolves `/uploads/...` back to the local `upload_dir` before reading, so non-tech evaluations and problem-statement extraction work from public URLs and local tests.
-- `pytest backend/tests` ✅ 13 passed (includes new PDF endpoint test)
+- `pytest backend/tests` ✅ 17 passed (includes new organizer/admin scope tests)
 - `npm run build` ✅ production build succeeded
+- `validate_flow.py` ✅ all flows passed with the new scoped access rules
 - Backend PDF endpoint returns a valid `%PDF` byte stream for evaluated submissions; WeasyPrint is the primary engine in Docker, fpdf2 fallback works on Windows dev without GTK.
+- Docker Compose files updated for PostgreSQL; backend Dockerfile includes WeasyPrint and PostgreSQL dependencies.
 - `seed_dev.py` ✅ idempotent; re-running creates a single demo hackathon with two evaluated submissions and a populated leaderboard
 - `validate_flow.py` ✅ all flows passed with the new participant-only team/submission rules
 - Reports endpoints verified on a fresh backend process; per-team printable report accessible to organisers/admins
@@ -78,16 +82,13 @@
 - No new author metadata is added; commits retain the existing `user.name`/`user.email` from the global git config.
 
 ## Next action
-- Phase 20.1 committed to `main`.
-- Proceed to Phase 20.2: PostgreSQL service in Docker Compose and update database wiring.
+- Phase 20.4 committed to `main`.
+- Proceed to Phase 20.5: deployment-ready Docker/nginx/GCP docs.
 
 ## Blockers
 - None.
 
 ## Leftovers / future improvements
-- Phase 20.2: PostgreSQL in Docker Compose.
-- Phase 20.3: structured logging with rotation.
-- Phase 20.4: harden organizer/admin scope.
 - Phase 20.5: deployment-ready Docker/nginx/GCP docs.
 - Phase 20.6: PWA and mobile navbar polish.
 - Phase 20.7: full validation and commits.

@@ -149,3 +149,29 @@ def test_evaluate_non_tech(auth_client, participant_client, fake_llm):
     assert r.headers.get("content-type") == "application/pdf"
     assert len(r.content) > 0
     assert r.content[:4] == b"%PDF"
+
+
+def test_other_organizer_cannot_evaluate(auth_client, client, participant_client, fake_repo, fake_llm):
+    r = auth_client.post("/api/hackathons", json={"name": "Eval Scope Hack", "description": "x"})
+    hackathon_id = r.json()["id"]
+    r = auth_client.post(
+        f"/api/hackathons/{hackathon_id}/problem-statements",
+        data={"title": "Build a chatbot"},
+    )
+    ps_id = r.json()["id"]
+    r = participant_client.post("/api/teams", json={"hackathon_id": hackathon_id, "name": "Eval Team"})
+    team_id = r.json()["id"]
+    r = participant_client.post(
+        "/api/submissions",
+        data={"team_id": team_id, "problem_statement_id": ps_id, "type": "tech", "submission_url": "https://github.com/owner/repo"},
+    )
+    sub_id = r.json()["id"]
+
+    # another organizer cannot evaluate
+    r = client.post("/api/auth/register", json={"username": "evalother", "email": "evalother@example.com", "password": "Secret123!", "role": "organizer"})
+    assert r.status_code == 201
+    r = client.post("/api/auth/login", data={"username": "evalother", "password": "Secret123!"})
+    other_token = r.json()["access_token"]
+
+    r = client.post(f"/api/evaluate/tech/{sub_id}", headers={"Authorization": f"Bearer {other_token}"})
+    assert r.status_code == 403

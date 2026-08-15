@@ -134,3 +134,51 @@ def test_delete_team_and_hackathon(auth_client, participant_client):
     assert r.status_code == 204
     r = auth_client.get(f"/api/hackathons/{hackathon_id}")
     assert r.status_code == 404
+
+
+def test_other_organizer_cannot_access_teams_or_submissions(auth_client, client, admin_client):
+    r = auth_client.post("/api/hackathons", json={"name": "Scoped Hack", "description": "x"})
+    hackathon_id = r.json()["id"]
+    r = auth_client.post(
+        f"/api/hackathons/{hackathon_id}/problem-statements",
+        data={"title": "Problem"},
+    )
+    ps_id = r.json()["id"]
+
+    # create a team as the owner
+    r = auth_client.post("/api/teams", json={"hackathon_id": hackathon_id, "name": "Scoped Team"})
+    team_id = r.json()["id"]
+    r = auth_client.post(
+        "/api/submissions",
+        data={"team_id": team_id, "problem_statement_id": ps_id, "type": "tech", "submission_url": "https://github.com/example/repo"},
+    )
+    assert r.status_code == 201
+    sub_id = r.json()["id"]
+
+    # another organizer cannot list teams, view submissions, or submit on behalf of the team
+    r = client.post("/api/auth/register", json={"username": "scopedother", "email": "scopedother@example.com", "password": "Secret123!", "role": "organizer"})
+    assert r.status_code == 201
+    r = client.post("/api/auth/login", data={"username": "scopedother", "password": "Secret123!"})
+    other_token = r.json()["access_token"]
+
+    r = client.get("/api/teams", params={"hackathon_id": hackathon_id}, headers={"Authorization": f"Bearer {other_token}"})
+    assert r.status_code == 403
+
+    r = client.get(f"/api/teams/{team_id}", headers={"Authorization": f"Bearer {other_token}"})
+    assert r.status_code == 403
+
+    r = client.get(f"/api/submissions/{sub_id}", headers={"Authorization": f"Bearer {other_token}"})
+    assert r.status_code == 403
+
+    r = client.post(
+        "/api/submissions",
+        data={"team_id": team_id, "problem_statement_id": ps_id, "type": "tech", "submission_url": "https://github.com/example/other-repo"},
+        headers={"Authorization": f"Bearer {other_token}"},
+    )
+    assert r.status_code == 403
+
+    # admin can access the hackathon and its submissions
+    r = admin_client.get("/api/teams", params={"hackathon_id": hackathon_id})
+    assert r.status_code == 200
+    r = admin_client.get(f"/api/submissions/{sub_id}")
+    assert r.status_code == 200

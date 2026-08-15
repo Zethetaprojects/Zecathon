@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_active_user
 from app.database import get_db
 from app.models import Evaluation, Hackathon, ProblemStatement, Submission, Team, User
+from app.routers.common import can_access_hackathon
 from app.schemas import LeaderboardEntry
 
 router = APIRouter()
@@ -47,6 +48,8 @@ async def get_leaderboard(
     hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
+    if not can_access_hackathon(current_user, hackathon):
+        raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
     return _build_leaderboard(db, hackathon_id)
 
 

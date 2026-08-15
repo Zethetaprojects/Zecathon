@@ -164,9 +164,9 @@
 ## Phase 20 — Production hardening
 
 - [x] 20.1 Backend PDF reports + category explanations + frontend download (committed)
-- [ ] 20.2 PostgreSQL in Docker Compose
-- [ ] 20.3 Structured logging with rotation
-- [ ] 20.4 Harden organizer/admin scope
+- [x] 20.2 PostgreSQL in Docker Compose (committed)
+- [x] 20.3 Structured logging with rotation (committed)
+- [x] 20.4 Harden organizer/admin scope
 - [ ] 20.5 Deployment-ready Docker/nginx/GCP docs
 - [ ] 20.6 PWA and mobile navbar polish
 - [ ] 20.7 Tests, validation, and commits

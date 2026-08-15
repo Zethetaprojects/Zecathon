@@ -7,6 +7,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_active_user, require_organizer, require_participant
 from app.database import get_db
 from app.models import Evaluation, Hackathon, Submission, Team, TeamMember, User, UserRole
+from app.routers.common import can_access_hackathon
 from app.schemas import TeamCreate, TeamOut
 
 router = APIRouter()
@@ -35,6 +36,9 @@ async def create_team(
     hackathon = db.query(Hackathon).filter(Hackathon.id == payload.hackathon_id).first()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
+    if not can_access_hackathon(current_user, hackathon):
+        logger.warning("User id=%s role=%s denied team creation on hackathon id=%s owned by %s", current_user.id, current_user.role, payload.hackathon_id, hackathon.created_by)
+        raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
 
     if current_user.role not in (UserRole.participant, UserRole.admin, UserRole.organizer):
         raise HTTPException(status_code=403, detail="Only participants, organizers, or admins can create teams")
@@ -58,6 +62,12 @@ async def list_teams(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
+    hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+    if not can_access_hackathon(current_user, hackathon):
+        logger.warning("User id=%s role=%s denied team list on hackathon id=%s owned by %s", current_user.id, current_user.role, hackathon_id, hackathon.created_by)
+        raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
     return db.query(Team).filter(Team.hackathon_id == hackathon_id).order_by(Team.created_at.desc()).all()
 
 
@@ -70,6 +80,9 @@ async def get_team(
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
+    if not can_access_hackathon(current_user, team.hackathon):
+        logger.warning("User id=%s role=%s denied team detail on hackathon id=%s owned by %s", current_user.id, current_user.role, team.hackathon_id, team.hackathon.created_by)
+        raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
     return team
 
 
@@ -82,6 +95,8 @@ async def join_team(
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
+    if not can_access_hackathon(current_user, team.hackathon):
+        raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
     if _user_team_in_hackathon(current_user.id, team.hackathon_id, db):
         raise HTTPException(status_code=400, detail="You are already in a team for this hackathon")
     db.add(TeamMember(team_id=team_id, user_id=current_user.id, role="member"))
