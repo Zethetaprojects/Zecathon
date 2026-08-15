@@ -105,11 +105,11 @@ export default function EasterEggHunt() {
 
       {/* Slide-over panel */}
       {open && (
-        <div className="fixed inset-0 z-[80] flex justify-end">
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
+        <div className="fixed inset-0 z-[80] flex justify-end pointer-events-none">
+          <div className="absolute inset-0 z-0 bg-black/60 backdrop-blur-sm pointer-events-auto" onClick={() => setOpen(false)} />
           <div
             ref={panelRef}
-            className={`relative h-full w-80 sm:w-96 bg-space-900/95 border-l border-white/10 shadow-2xl flex flex-col animate-slide-in-right ${shake ? 'animate-shake' : ''}`}
+            className={`relative z-10 h-full w-80 sm:w-96 bg-space-900 border-l border-white/10 shadow-2xl flex flex-col pointer-events-auto animate-slide-in-right ${shake ? 'animate-shake' : ''}`}
           >
             <div className="p-5 border-b border-white/10 flex items-center justify-between gap-4">
               <div>
@@ -121,12 +121,13 @@ export default function EasterEggHunt() {
               <button
                 onClick={() => setOpen(false)}
                 className="micro-lift w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition"
+                type="button"
               >
                 <CloseIcon className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto p-5 space-y-4">
+            <div className="flex-1 overflow-y-auto overscroll-contain p-5 space-y-4">
               {/* Progress bar */}
               <div className="space-y-2">
                 <div className="h-2 rounded-full bg-white/10 overflow-hidden">
