@@ -43,6 +43,7 @@
 
 ## Dev workflow
 - Dev backend port moved to `8002` (`start-dev.sh`, `start-dev.ps1`, `frontend/vite.config.ts`, `README.md`) because the previous `8000` socket was orphaned by an old uvicorn process and could not be reclaimed.
+- Fixed `start-dev.ps1` to use `$PSScriptRoot` so the `Start-Job` blocks start in the project root directory instead of the default `Documents` folder.
 - Added `seed_dev.py` to create a demo hackathon (`ZECATHON Demo Hack`), two teams, one tech and one non-tech submission, and evaluate both using the deterministic fallback. After seeding, the `/reports` page shows a live report.
 - Demo account: `demoorganizer` / `DemoPass1!` (role `organizer`).
 - `admin1` / `TestPass1!` (role promoted to `admin`).
