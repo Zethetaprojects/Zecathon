@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useEasterEggs } from '../hooks/useEasterEggs';
 
 function EggIcon({ className }: { className?: string }) {
@@ -87,31 +88,35 @@ export default function EasterEggHunt() {
         )}
       </button>
 
-      {/* Modal panel */}
-      {open && (
-        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 sm:p-6 pointer-events-none">
-          <div className="absolute inset-0 z-0 bg-black/70 backdrop-blur-sm pointer-events-auto" onClick={() => setOpen(false)} />
-          <div
-            ref={panelRef}
-            className="relative z-10 w-full max-w-2xl max-h-[85vh] bg-space-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col pointer-events-auto animate-slide-in-right"
-          >
-            <div className="p-5 sm:p-6 border-b border-white/10 flex items-center justify-between gap-4">
-              <div>
-                <h2 className="font-pixel text-sm text-white text-shadow-neon">EGG HUNT</h2>
-                <p className="text-[10px] text-slate-400 mt-1">
-                  {count} of {total} found
-                </p>
+      {/* Modal panel — portaled to body so it escapes the navbar stacking context */}
+      {open &&
+        createPortal(
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 pointer-events-none">
+            <div
+              className="absolute inset-0 z-0 bg-black/80 backdrop-blur-sm pointer-events-auto"
+              onClick={() => setOpen(false)}
+            />
+            <div
+              ref={panelRef}
+              className="relative z-10 w-full max-w-2xl max-h-[85vh] bg-space-900 border border-white/10 rounded-2xl shadow-2xl flex flex-col pointer-events-auto animate-slide-in-right"
+            >
+              <div className="p-5 sm:p-6 border-b border-white/10 flex items-center justify-between gap-4">
+                <div>
+                  <h2 className="font-pixel text-sm text-white text-shadow-neon">EGG HUNT</h2>
+                  <p className="text-[10px] text-slate-400 mt-1">
+                    {count} of {total} found
+                  </p>
+                </div>
+                <button
+                  onClick={() => setOpen(false)}
+                  className="micro-lift w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition"
+                  type="button"
+                >
+                  <CloseIcon className="w-4 h-4" />
+                </button>
               </div>
-              <button
-                onClick={() => setOpen(false)}
-                className="micro-lift w-8 h-8 rounded-lg bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white flex items-center justify-center transition"
-                type="button"
-              >
-                <CloseIcon className="w-4 h-4" />
-              </button>
-            </div>
 
-            <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-5">
+              <div className="flex-1 overflow-y-auto overscroll-contain p-5 sm:p-6 space-y-5">
               {/* Progress bar */}
               <div className="space-y-2">
                 <div className="h-2.5 rounded-full bg-white/10 overflow-hidden">
@@ -176,8 +181,9 @@ export default function EasterEggHunt() {
               </button>
             </div>
           </div>
-        </div>
-      )}
+        </div>,
+          document.body
+        )}
     </>
   );
 }

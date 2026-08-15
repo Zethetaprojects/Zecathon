@@ -16,6 +16,10 @@ import Submit from './pages/Submit';
 import Leaderboard from './pages/Leaderboard';
 import PublicLeaderboard from './pages/PublicLeaderboard';
 import AdminDashboard from './pages/AdminDashboard';
+import DocsPage from './pages/DocsPage';
+import ApiDocsPage from './pages/ApiDocsPage';
+import RubricsPage from './pages/RubricsPage';
+import SupportPage from './pages/SupportPage';
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 
@@ -31,6 +35,10 @@ function App() {
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               <Route path="/public/leaderboard/:id" element={<PublicLeaderboard />} />
+              <Route path="/docs" element={<DocsPage />} />
+              <Route path="/api-docs" element={<ApiDocsPage />} />
+              <Route path="/rubrics" element={<RubricsPage />} />
+              <Route path="/support" element={<SupportPage />} />
               <Route element={<PrivateRoute />}>
                 <Route path="/dashboard" element={<Dashboard />} />
                 <Route path="/admin" element={<AdminRoute />}>

@@ -106,6 +106,15 @@
 - [x] Validate: `npm run build` ✅, `pytest backend/tests` ✅ 12 passed, `validate_flow.py` ✅ all flows passed.
 - [x] Commit.
 
+## Phase 14 — Gemini model fallback + real resource pages + portal fix
+- [x] Verify the Gemini key is valid; the issue was the configured model `gemini-2.5-flash` is no longer available for new users on `generateContent`.
+- [x] Add automatic model fallback in `LLMClient` to `gemini-flash-latest` / `gemini-3.5-flash` / `gemini-3.7-flash`.
+- [x] Update default `GEMINI_MODEL` in `backend/.env.example` and `backend/app/config.py` to `gemini-flash-latest`.
+- [x] Render the Easter Egg Hunt modal through a React portal to `document.body` so it is not clipped by the navbar.
+- [x] Create real footer resource pages: `/docs`, `/api-docs`, `/rubrics`, `/support`, and update footer links.
+- [x] Validate: `npm run build` ✅, `pytest backend/tests` ✅ 12 passed, `validate_flow.py` ✅ all flows passed with real Gemini output.
+- [x] Commit.
+
 ## Leftovers / next steps
 - [ ] User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations
 - [ ] Promote existing users to organizer/judge via admin endpoint or set_role script

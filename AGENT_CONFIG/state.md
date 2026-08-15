@@ -22,9 +22,10 @@
 - **CreateHackathon**: rubric editor for tech/non-tech categories.
 - **Submit**: optional supporting GitHub URL for non-tech submissions.
 - **Leaderboard**: copy share link button; judges can retry an evaluation from the teams page.
-- **Easter eggs**: click-based only now — Star Catcher, Logo Fanatic, Controller Hunter, Logo Watcher, Stat Nerd, social footer icons, Teddy Spotter, Fine Print Reader, Captain on Deck, Mascot Friend, Sound Seeker. Keyboard/typing eggs and the secret-code panel removed. The global Egg Hunt is a large centered modal with a scrollable grid.
+- **Easter eggs**: click-based only; the Egg Hunt modal is now a large centered dialog rendered via a React portal so it sits above the navbar and is fully clickable/scrollable.
 - **Custom cursor**: simplified to a single hardware-accelerated image with no trailing image and no `requestAnimationFrame` loop, so it should no longer hang or lag.
-- **Gemini key**: the `GEMINI_API_KEY` currently in `backend/.env` is set but **invalid** (Generative Language API returns `API_KEY_INVALID`). Replace it with a real key from Google AI Studio for live LLM evaluations; the deterministic fallback still produces reports and passes all tests.
+- **Gemini key**: the key is **valid**. The configured model name `gemini-2.5-flash` is no longer available for new users on `generateContent`. The backend now falls back to `gemini-flash-latest` / `gemini-3.5-flash` / `gemini-3.7-flash` automatically, and the default model in `.env.example` has been updated. `validate_flow.py` now returns real Gemini-generated scores and judge questions.
+- **Footer resources**: real pages exist for `/docs` (How it Works), `/api-docs`, `/rubrics`, and `/support` with on-theme content.
 - **Theme**: dark space/pixel styling preserved.
 
 ## Validation

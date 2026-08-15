@@ -32,33 +32,51 @@ class LLMClient:
     def _call_gemini(
         self, prompt: str, temperature: float, categories: Optional[Dict[str, int]] = None
     ) -> Dict[str, Any]:
-        model = settings.gemini_model
-        endpoint = (
-            f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-            f"?key={settings.gemini_api_key}"
-        )
-        payload = {
-            "contents": [
-                {
-                    "role": "user",
-                    "parts": [{"text": prompt}],
-                }
-            ],
-            "generationConfig": {
-                "temperature": temperature,
-                "responseMimeType": "application/json",
-                "maxOutputTokens": 8192,
-            },
-        }
-        try:
-            r = requests.post(endpoint, json=payload, timeout=180)
-            r.raise_for_status()
-            data = r.json()
-            text = self._extract_gemini_text(data)
-            result = self._extract_json({"content": text})
-            return self._ensure_judge_questions(result)
-        except Exception as exc:
-            return self._mock_response(prompt, error=f"Gemini call failed: {exc}", categories=categories)
+        # Some model names (e.g. gemini-2.5-flash) are listed but are not available
+        # for generateContent for new users. Try the configured model first, then fall
+        # back to a known-working model alias.
+        models_to_try = [
+            settings.gemini_model,
+            "gemini-flash-latest",
+            "gemini-3.5-flash",
+            "gemini-3.7-flash",
+        ]
+        last_error = None
+        for i, model in enumerate(models_to_try):
+            if not model:
+                continue
+            endpoint = (
+                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+                f"?key={settings.gemini_api_key}"
+            )
+            payload = {
+                "contents": [
+                    {
+                        "role": "user",
+                        "parts": [{"text": prompt}],
+                    }
+                ],
+                "generationConfig": {
+                    "temperature": temperature,
+                    "responseMimeType": "application/json",
+                    "maxOutputTokens": 8192,
+                },
+            }
+            try:
+                r = requests.post(endpoint, json=payload, timeout=180)
+                if r.status_code == 404 and i < len(models_to_try) - 1:
+                    last_error = f"Model {model} not available for generateContent, trying fallback."
+                    continue
+                r.raise_for_status()
+                data = r.json()
+                text = self._extract_gemini_text(data)
+                result = self._extract_json({"content": text})
+                return self._ensure_judge_questions(result)
+            except Exception as exc:
+                last_error = f"Gemini call failed ({model}): {exc}"
+                if i < len(models_to_try) - 1:
+                    continue
+        return self._mock_response(prompt, error=last_error, categories=categories)
 
     def _extract_gemini_text(self, data: Dict[str, Any]) -> str:
         candidates = data.get("candidates", [])
