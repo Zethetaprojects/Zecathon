@@ -1,0 +1,58 @@
+version: "3.8"
+
+# Production Docker Compose for ZECATHON.
+# This file does NOT include a Postgres service; point DATABASE_URL to a managed
+# Postgres instance (e.g., Cloud SQL) via environment variables.
+#
+# Required environment variables:
+#   SECRET_KEY            - strong random JWT secret
+#   DATABASE_URL          - PostgreSQL connection string (e.g., postgresql+psycopg2://user:pass@host/db)
+#   GEMINI_API_KEY        - valid Google Gemini API key (optional but recommended)
+#   GITHUB_TOKEN          - optional, for higher GitHub API rate limits
+#   AI_BACKEND_URL        - optional legacy LLM fallback
+#   AI_BACKEND_TOKEN      - optional Bearer token for legacy LLM endpoint
+#
+# Example:
+#   export SECRET_KEY=$(openssl rand -hex 32)
+#   export DATABASE_URL=postgresql+psycopg2://...
+#   docker compose -f docker-compose.prod.yml up --build -d
+
+services:
+  backend:
+    build: ./backend
+    container_name: zecathon-backend-prod
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=${DATABASE_URL}
+      - SECRET_KEY=${SECRET_KEY}
+      - GEMINI_API_KEY=${GEMINI_API_KEY:-}
+      - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - AI_BACKEND_URL=${AI_BACKEND_URL:-}
+      - AI_BACKEND_TOKEN=${AI_BACKEND_TOKEN:-}
+      - UPLOAD_DIR=/data/uploads
+    volumes:
+      - zecathon_uploads:/data/uploads
+      - zecathon_logs:/app/logs
+    restart: always
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_BASE_URL: /api
+    container_name: zecathon-frontend-prod
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: always
+
+volumes:
+  zecathon_uploads:
+  zecathon_logs:

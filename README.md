@@ -32,7 +32,7 @@ flowchart LR
         F[FastAPI]
         Auth[JWT Auth]
         Eval[Evaluators]
-        DB[(SQLite)]
+        DB[(PostgreSQL)]
         FS[Uploads]
     end
 
@@ -56,7 +56,7 @@ sequenceDiagram
     participant U as User
     participant F as React Frontend
     participant B as FastAPI
-    participant DB as SQLite
+    participant DB as PostgreSQL
 
     U->>F: register / login
     F->>B: POST /api/auth/register or /login
@@ -106,11 +106,29 @@ flowchart LR
 | View public leaderboard | ✅ | ✅ | ✅ | ✅ |
 
 ## Tech stack
-- **Backend**: FastAPI, SQLAlchemy, SQLite, Pydantic.
+- **Backend**: FastAPI, SQLAlchemy, PostgreSQL (via Docker Compose), Pydantic.
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS.
+- **Deployment**: Docker, Docker Compose, nginx, GCP Cloud Run / Firebase Hosting.
 - **LLM**: Google Gemini REST API (`GEMINI_API_KEY`, `GEMINI_MODEL`) with automatic model fallbacks. If no key is set, a deterministic fallback evaluator is used for demo/testing.
 
 ## Quick start
+
+### Option A — Docker Compose (recommended)
+
+This is the fastest way to run the full stack with PostgreSQL and a production-like setup:
+
+```bash
+cp backend/.env.example backend/.env   # optional: set GEMINI_API_KEY, SECRET_KEY, etc.
+docker compose up --build
+```
+
+- Backend API docs: http://localhost:8000/docs
+- Frontend: http://localhost
+- PostgreSQL: localhost:5432 (user `zecathon`, password `zecathon_secret`, database `zecathon`)
+
+### Option B — Local venv + Vite
+
+For pure backend/frontend development without Docker:
 
 ### 1. Backend
 ```bash
@@ -129,9 +147,9 @@ npm install
 npm run dev
 ```
 
-### 3. One-command start (optional)
+### 3. One-command local start (optional)
 
-From the project root you can start both backend and frontend at once:
+From the project root you can start both backend and frontend dev servers at once:
 
 ```bash
 # Git Bash / WSL / Linux / macOS
@@ -148,7 +166,7 @@ Create `backend/.env` from `.env.example`:
 
 | Variable | Description |
 |----------|-------------|
-| `DATABASE_URL` | SQLite path (default: `sqlite:///./hackathon.db`) |
+| `DATABASE_URL` | Database connection. Default: `sqlite:///./hackathon.db`. Docker Compose uses `postgresql+psycopg2://zecathon:zecathon_secret@postgres:5432/zecathon`. |
 | `SECRET_KEY` | JWT signing secret |
 | `GEMINI_API_KEY` | Google Gemini API key (starts with `AIza...`). Optional — if absent, a deterministic fallback evaluator is used. |
 | `GEMINI_MODEL` | Gemini model to use. Default: `gemini-3.5-flash-lite`. Fallbacks include `gemini-flash-latest`, `gemini-3.5-flash`, `gemini-3.7-flash`. |
@@ -183,6 +201,7 @@ Key endpoints:
 - `GET /api/reports` — list reports for organisers/admins
 - `GET /api/reports/{hackathon_id}` — detailed hackathon report
 - `GET /api/reports/submission/{submission_id}` — printable per-team evaluation report (organiser/admin)
+- `GET /api/reports/submission/{submission_id}/pdf` — download the per-team report as a PDF (organiser/admin)
 
 ## Evaluation details
 
@@ -237,6 +256,7 @@ It starts the backend and Vite dev server, verifies the frontend loads, then wal
 register → login → create hackathon → upload problem statement → create team → submit tech repo → evaluate tech → create second team → submit non-tech document → evaluate non-tech → view leaderboard.
 
 ## Production notes
-- The default storage is local filesystem. For production, replace `app/services/file_storage.py` with S3-compatible storage.
+- Use Docker Compose or a managed PostgreSQL instance (e.g., Cloud SQL) for persistence. Set `DATABASE_URL` to a PostgreSQL connection string.
+- The default storage is local filesystem. For production, replace `app/services/file_storage.py` with S3-compatible storage or mount a Cloud Storage bucket.
 - Set a strong `SECRET_KEY` and configure the LLM endpoint for real evaluations.
-- Use a production database (PostgreSQL) by changing `DATABASE_URL`.
+- See `gcp/README.md` for Cloud Run + Firebase Hosting deployment steps.
