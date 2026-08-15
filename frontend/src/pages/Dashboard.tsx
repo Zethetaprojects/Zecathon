@@ -77,6 +77,14 @@ export default function Dashboard() {
             desc="Explore all hackathons on the platform."
             color="pink"
           />
+          {isOrganizer(user?.role) && (
+            <ActionCard
+              to="/reports"
+              title="Reports"
+              desc="Analytics, verdict breakdowns, and team performance summaries for organisers."
+              color="purple"
+            />
+          )}
           {isAdmin(user?.role) && (
             <ActionCard
               to="/admin"

@@ -192,3 +192,44 @@ class LeaderboardEntry(BaseModel):
     needs_review: bool
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# Report schemas
+class TeamReportEntry(BaseModel):
+    team_id: int
+    team_name: str
+    problem_statement_id: int
+    problem_statement_title: str
+    submission_id: Optional[int] = None
+    type: Optional[str] = None
+    total_score: Optional[int] = None
+    verdict: Optional[str] = None
+    status: Optional[str] = None
+    needs_review: Optional[bool] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HackathonReportSummary(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    problem_statement_count: int
+    team_count: int
+    submission_count: int
+    evaluated_count: int
+    average_score: Optional[float] = None
+    top_team_name: Optional[str] = None
+    top_team_score: Optional[int] = None
+    verdict_breakdown: Dict[str, int]
+    type_breakdown: Dict[str, int]
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HackathonReportDetail(HackathonReportSummary):
+    team_entries: List[TeamReportEntry] = []
+
+    model_config = ConfigDict(from_attributes=True)

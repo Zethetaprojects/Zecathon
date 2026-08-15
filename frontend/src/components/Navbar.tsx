@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useMusic } from './MusicProvider';
 import { useEasterEggs } from '../hooks/useEasterEggs';
-import { isAdmin } from '../utils/role';
+import { isAdmin, isOrganizer } from '../utils/role';
 import EasterEggHunt from './EasterEggHunt';
 
 function ChevronDown({ open }: { open: boolean }) {
@@ -47,17 +47,17 @@ function FeatureItem({
 }
 
 function SoundToggle() {
-  const { playing, toggle } = useMusic();
+  const { enabled, toggle } = useMusic();
   return (
     <button
       onClick={toggle}
       data-egg-trigger="sound-toggle"
       data-egg-message="Space soundtrack unlocked! +25 XP"
       data-egg-color="cyan"
-      title={playing ? 'Mute space music' : 'Play space music'}
+      title={enabled ? 'Mute all sound' : 'Enable sound'}
       className="micro-lift micro-pop w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-neon-cyan flex items-center justify-center transition"
     >
-      {playing ? (
+      {enabled ? (
         <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.536 8.464a5 5 0 010 7.072m2.828-9.9a9 9 0 010 12.728M5.586 15H4a1 1 0 01-1-1v-4a1 1 0 011-1h1.586l4.707-4.707C10.923 3.663 12 4.109 12 5v14c0 .891-1.077 1.337-1.707.707L5.586 15z" />
         </svg>
@@ -200,6 +200,14 @@ export default function Navbar() {
                   className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition micro-lift"
                 >
                   Admin
+                </Link>
+              )}
+              {user && isOrganizer(user.role) && (
+                <Link
+                  to="/reports"
+                  className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition micro-lift"
+                >
+                  Reports
                 </Link>
               )}
             </div>

@@ -13,19 +13,23 @@
 - **Evaluators**: tech and non-tech prompts request `judge_questions`, use per-hackathon custom rubrics (or defaults), and store suggested questions in the evaluation.
 - **Evaluation retry**: `POST /api/evaluate/tech/{id}/retry` and `POST /api/evaluate/non-tech/{id}/retry` delete the old evaluation and re-run it.
 - **Leaderboard**: public, unauthenticated endpoint `GET /api/leaderboard/public/{hackathon_id}`.
+- **Reports**: new router `backend/app/routers/reports.py` with `GET /api/reports` and `GET /api/reports/{hackathon_id}`; schemas `HackathonReportSummary`, `HackathonReportDetail`, `TeamReportEntry`; protected to organisers and admins; admin sees all hackathons, organiser sees only their own.
 - **Docker/GCP**: `backend/Dockerfile`, `frontend/Dockerfile`, `frontend/nginx/default.conf`, `docker-compose.yml`, `gcp/README.md`.
 
 ## Frontend (completed)
-- **New routes**: `/admin` (admin-only), `/public/leaderboard/:id` (shareable).
-- **New components**: `AdminDashboard`, `AdminRoute`, `EvaluationReport`, `PublicLeaderboard`, `EasterEggOverlay`, `EasterEggProvider`, global `Footer` in `PageLayout`.
-- **Role-aware UI**: dashboard cards adapt to admin/organizer/judge/participant; admin link in navbar; registration role selector (Student / Organizer).
+- **New routes**: `/admin` (admin-only), `/public/leaderboard/:id` (shareable), `/reports` (organiser/admin only).
+- **New components**: `AdminDashboard`, `AdminRoute`, `OrganizerRoute`, `EvaluationReport`, `PublicLeaderboard`, `EasterEggOverlay`, `EasterEggProvider`, global `Footer` in `PageLayout`, `ReportsPage`.
+- **Role-aware UI**: dashboard cards adapt to admin/organizer/judge/participant; admin and reports links in navbar for the appropriate roles; registration role selector (Student / Organizer).
+- **Reports page**: summary cards for each hackathon with team/submission/evaluation stats; expandable detail with verdict breakdown, submission-type breakdown, and a team-level table.
 - **CreateHackathon**: rubric editor for tech/non-tech categories.
 - **Submit**: optional supporting GitHub URL for non-tech submissions.
 - **Leaderboard**: copy share link button; judges can retry an evaluation from the teams page.
 - **Easter eggs**: click-based only; the Egg Hunt modal is now a large centered dialog rendered via a React portal so it sits above the navbar and is fully clickable/scrollable.
 - **Custom cursor**: simplified to a single hardware-accelerated image with no trailing image and no `requestAnimationFrame` loop, so it should no longer hang or lag.
+- **Sound system**: `MusicProvider` now has a master `enabled` toggle; the navbar speaker icon toggles both ambient music and all UI click effects; a `ClickEngine` plays a short synthesized click on every button, link, input, label, and `role="button"` interaction.
 - **Gemini key**: the key is **valid**. The configured model `gemini-2.5-flash` is no longer available for new users on `generateContent`. The backend now defaults to and falls back through `gemini-3.5-flash-lite`, `gemini-3.5-flash`, `gemini-3.7-flash`, and `gemini-flash-latest`. `validate_flow.py` returns real Gemini-generated scores and judge questions.
 - **Footer resources**: real pages exist for `/docs` (How it Works), `/api-docs`, `/rubrics`, and `/support` with on-theme content.
+- **README**: includes Mermaid architecture, auth, hackathon lifecycle, evaluation pipeline, and RBAC matrix diagrams; updated env var docs for Gemini.
 - **Theme**: dark space/pixel styling preserved.
 
 ## Validation
@@ -39,6 +43,8 @@
 - New registrations must use a password with ≥8 chars, one letter, one digit, and one symbol.
 
 ## Next action
+- Push the current commit to `git@github.com:Zethetaprojects/Zecathon.git` branch `main`.
+- If SSH push fails, fall back to HTTPS or ask the user for a GitHub token / deploy key.
 - User review in browser; hard-refresh `localhost:5173` after starting `start-dev.sh`.
 - Add a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations; until then the deterministic fallback produces plausible reports.
 

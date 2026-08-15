@@ -22,6 +22,8 @@ import RubricsPage from './pages/RubricsPage';
 import SupportPage from './pages/SupportPage';
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
+import OrganizerRoute from './components/OrganizerRoute';
+import ReportsPage from './pages/ReportsPage';
 
 function App() {
   return (
@@ -41,6 +43,9 @@ function App() {
               <Route path="/support" element={<SupportPage />} />
               <Route element={<PrivateRoute />}>
                 <Route path="/dashboard" element={<Dashboard />} />
+                <Route element={<OrganizerRoute />}>
+                  <Route path="/reports" element={<ReportsPage />} />
+                </Route>
                 <Route path="/admin" element={<AdminRoute />}>
                   <Route index element={<AdminDashboard />} />
                 </Route>

@@ -102,3 +102,37 @@ export interface LeaderboardEntry {
   verdict: string;
   needs_review: boolean;
 }
+
+export interface TeamReportEntry {
+  team_id: number;
+  team_name: string;
+  problem_statement_id: number;
+  problem_statement_title: string;
+  submission_id: number;
+  type: SubmissionType | string;
+  total_score?: number;
+  verdict?: string;
+  status?: SubmissionStatus | string;
+  needs_review?: boolean;
+}
+
+export interface HackathonReportSummary {
+  id: number;
+  name: string;
+  description?: string;
+  start_date?: string;
+  end_date?: string;
+  problem_statement_count: number;
+  team_count: number;
+  submission_count: number;
+  evaluated_count: number;
+  average_score?: number;
+  top_team_name?: string;
+  top_team_score?: number;
+  verdict_breakdown: Record<string, number>;
+  type_breakdown: Record<string, number>;
+}
+
+export interface HackathonReportDetail extends HackathonReportSummary {
+  team_entries: TeamReportEntry[];
+}

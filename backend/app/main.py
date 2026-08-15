@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
 from app.database import engine, Base
-from app.routers import auth, hackathons, problem_statements, teams, submissions, evaluate, leaderboard
+from app.routers import auth, hackathons, problem_statements, teams, submissions, evaluate, leaderboard, reports
 
 
 @asynccontextmanager
@@ -38,6 +38,7 @@ app.include_router(teams.router, prefix="/api/teams", tags=["teams"])
 app.include_router(submissions.router, prefix="/api/submissions", tags=["submissions"])
 app.include_router(evaluate.router, prefix="/api/evaluate", tags=["evaluate"])
 app.include_router(leaderboard.router, prefix="/api/leaderboard", tags=["leaderboard"])
+app.include_router(reports.router, prefix="/api/reports", tags=["reports"])
 
 os.makedirs(settings.upload_dir, exist_ok=True)
 app.mount("/uploads", StaticFiles(directory=settings.upload_dir), name="uploads")

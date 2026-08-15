@@ -99,5 +99,24 @@
 - Validate: `pytest backend/tests`, `validate_flow.py`, `npm run build`, and API smoke tests all pass.
 - Commit: `release: production-ready ZECATHON platform`
 
+## Phase 16 — Reports, global sound system, README diagrams, and push
+- Create `backend/app/routers/reports.py` with `GET /api/reports` and `GET /api/reports/{hackathon_id}` protected to organisers/admins.
+- Add `HackathonReportSummary`, `HackathonReportDetail`, `TeamReportEntry` schemas.
+- Wire `/reports` route in `frontend/src/App.tsx` behind a new `OrganizerRoute` guard.
+- Add "Reports" card to `Dashboard.tsx` and nav link for organisers/admins.
+- Build `ReportsPage.tsx` with summary grid and detail breakdown.
+- Extend `MusicProvider` with a master `enabled` toggle and a `ClickEngine` that plays a short click on every button/link/role=button interaction.
+- Make the navbar speaker icon toggle the entire sound system (music + effects).
+- Add Mermaid architecture/auth/lifecycle/evaluation/RBAC diagrams to `README.md` and update env var docs for Gemini.
+- Validate: `npm run build` ✅, `pytest backend/tests` ✅ 12 passed, `validate_flow.py` ✅ all flows passed.
+- Commit and push to `git@github.com:Zethetaprojects/Zecathon.git` branch `main` without adding any new author metadata.
+
+## Leftovers / next steps
+- User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations.
+- Promote existing users to organizer/judge via admin endpoint or set_role script.
+- Deploy backend to Cloud Run and frontend to Firebase Hosting (see `gcp/README.md`).
+- Optional: migrate SQLite to Cloud SQL and local uploads to Cloud Storage for production scaling.
+- Optional: mobile hamburger menu refinement.
+
 ## Commit cadence
 A commit is required at the end of every phase. If a phase is large, split it into intermediate commits (e.g. backend work first, frontend work second). Each commit message must be clear and phase-tagged.

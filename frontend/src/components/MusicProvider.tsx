@@ -1,8 +1,10 @@
-import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useRef, useEffect, ReactNode } from 'react';
 
 interface MusicContextType {
   playing: boolean;
+  enabled: boolean;
   toggle: () => void;
+  playClick: () => void;
 }
 
 const MusicContext = createContext<MusicContextType | undefined>(undefined);
@@ -46,17 +48,16 @@ class MusicEngine {
 
   constructor() {
     const AC =
-      (window as any).AudioContext || (window as any).webkitAudioContext as typeof AudioContext | undefined;
+      (window as any).AudioContext ||
+      ((window as any).webkitAudioContext as typeof AudioContext | undefined);
     if (!AC) throw new Error('Web Audio not supported');
 
     this.ctx = new AC();
 
-    // Master
     this.master = this.ctx.createGain();
     this.master.gain.value = 0.55;
     this.master.connect(this.ctx.destination);
 
-    // Simple delay for cinematic space
     this.delay = this.ctx.createDelay();
     this.delay.delayTime.value = 0.55;
     this.delayGain = this.ctx.createGain();
@@ -107,7 +108,6 @@ class MusicEngine {
   }
 
   private scheduleChordPad(time: number, chord: ChordVoicing) {
-    // Layered pad voices with slight detune and staggered attacks for richness
     chord.notes.forEach((freq, i) => {
       this.scheduleVoice(freq, time + i * 0.08, this.chordDuration, 'triangle', 0.04, 1.2, 3.0, false);
       this.scheduleVoice(freq * 0.5, time + i * 0.12, this.chordDuration, 'sine', 0.05, 1.0, 3.0, false);
@@ -120,7 +120,6 @@ class MusicEngine {
   }
 
   private scheduleMelody(time: number, chord: ChordVoicing) {
-    // Sparse, slow melody: pick a chord tone, sometimes an octave up
     const idx = Math.floor(Math.random() * chord.notes.length);
     const base = chord.notes[idx];
     const freq = Math.random() > 0.5 ? base * 2 : base;
@@ -129,7 +128,6 @@ class MusicEngine {
   }
 
   private scheduleHarpGlissando(time: number, chord: ChordVoicing) {
-    // A gentle rising triplet every chord section for texture
     const triplet = [chord.notes[0], chord.notes[1], chord.notes[2]];
     triplet.forEach((freq, i) => {
       this.scheduleVoice(freq * 2, time + i * 0.18, 0.6, 'triangle', 0.05, 0.02, 0.5, true);
@@ -147,13 +145,11 @@ class MusicEngine {
         this.scheduleBass(this.nextNoteTime, chord);
       }
 
-      // Melody: on beats 2 and 6 of each bar, with a rest for space
       const barBeat = this.beat % BEATS_PER_BAR;
       if ((barBeat === 2 || barBeat === 6) && Math.random() > 0.25) {
         this.scheduleMelody(this.nextNoteTime, chord);
       }
 
-      // Harp glissando at the mid-point of each chord
       if (this.beat % CHORD_DURATION_BEATS === Math.floor(CHORD_DURATION_BEATS / 2)) {
         this.scheduleHarpGlissando(this.nextNoteTime, chord);
       }
@@ -182,29 +178,126 @@ class MusicEngine {
   }
 }
 
+// ---------------------------------------------------------------------------
+// UI click / interaction sound engine
+// ---------------------------------------------------------------------------
+class ClickEngine {
+  private ctx: AudioContext | null = null;
+  private master: GainNode | null = null;
+
+  private ensureContext() {
+    if (this.ctx && this.ctx.state !== 'closed') return;
+    const AC =
+      (window as any).AudioContext ||
+      ((window as any).webkitAudioContext as typeof AudioContext | undefined);
+    if (!AC) return;
+    const ctx = new AC();
+    this.ctx = ctx;
+    const master = ctx.createGain();
+    this.master = master;
+    master.gain.value = 0.2;
+    master.connect(ctx.destination);
+    ctx.resume().catch(() => {});
+  }
+
+  play() {
+    this.ensureContext();
+    const ctx = this.ctx;
+    const master = this.master;
+    if (!ctx || !master) return;
+    const now = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.type = 'triangle';
+    osc.frequency.setValueAtTime(880, now);
+    osc.frequency.exponentialRampToValueAtTime(220, now + 0.08);
+    gain.gain.setValueAtTime(0, now);
+    gain.gain.linearRampToValueAtTime(0.25, now + 0.005);
+    gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
+    osc.connect(gain);
+    gain.connect(master);
+    osc.start(now);
+    osc.stop(now + 0.1);
+  }
+
+  close() {
+    if (this.ctx && this.ctx.state !== 'closed') {
+      this.ctx.close().catch(() => {});
+    }
+  }
+}
+
 export function MusicProvider({ children }: { children: ReactNode }) {
+  const [enabled, setEnabled] = useState(false);
   const [playing, setPlaying] = useState(false);
   const engineRef = useRef<MusicEngine | null>(null);
+  const clickEngineRef = useRef<ClickEngine | null>(null);
+  const enabledRef = useRef(enabled);
+
+  useEffect(() => {
+    enabledRef.current = enabled;
+  }, [enabled]);
+
+  const stopAll = useCallback(() => {
+    engineRef.current?.stop();
+    engineRef.current = null;
+    clickEngineRef.current?.close();
+    clickEngineRef.current = null;
+    setPlaying(false);
+    setEnabled(false);
+  }, []);
+
+  const startAll = useCallback(() => {
+    try {
+      const engine = new MusicEngine();
+      engineRef.current = engine;
+      engine.start();
+      setPlaying(true);
+      setEnabled(true);
+    } catch {
+      setPlaying(false);
+      setEnabled(false);
+    }
+  }, []);
 
   const toggle = useCallback(() => {
-    if (playing) {
-      engineRef.current?.stop();
-      engineRef.current = null;
-      setPlaying(false);
+    if (enabledRef.current) {
+      stopAll();
     } else {
-      try {
-        const engine = new MusicEngine();
-        engineRef.current = engine;
-        engine.start();
-        setPlaying(true);
-      } catch {
-        setPlaying(false);
-      }
+      startAll();
     }
-  }, [playing]);
+  }, [startAll, stopAll]);
+
+  const playClick = useCallback(() => {
+    if (!enabledRef.current) return;
+    if (!clickEngineRef.current) {
+      clickEngineRef.current = new ClickEngine();
+    }
+    clickEngineRef.current.play();
+  }, []);
+
+  // Global click sound effect for all interactive elements (buttons, links, role=button)
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const isInteractive =
+        target.tagName === 'BUTTON' ||
+        target.tagName === 'A' ||
+        target.tagName === 'INPUT' ||
+        target.tagName === 'TEXTAREA' ||
+        target.tagName === 'SELECT' ||
+        target.closest('button') ||
+        target.closest('a') ||
+        target.closest('label') ||
+        target.getAttribute('role') === 'button';
+      if (isInteractive) playClick();
+    };
+    document.addEventListener('click', handler, true);
+    return () => document.removeEventListener('click', handler, true);
+  }, [playClick]);
 
   return (
-    <MusicContext.Provider value={{ playing, toggle }}>
+    <MusicContext.Provider value={{ playing, enabled, toggle, playClick }}>
       {children}
     </MusicContext.Provider>
   );

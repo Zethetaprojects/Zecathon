@@ -122,6 +122,18 @@
 - [x] Validate: `pytest backend/tests` ✅ 12 passed, real Gemini call ✅, `validate_flow.py` ✅ all flows passed.
 - [x] Commit.
 
+## Phase 16 — Reports, global sound system, README diagrams, and push
+- [x] Create `backend/app/routers/reports.py` with `GET /api/reports` and `GET /api/reports/{hackathon_id}` protected to organisers/admins.
+- [x] Add `HackathonReportSummary`, `HackathonReportDetail`, `TeamReportEntry` schemas.
+- [x] Wire `/reports` route in `frontend/src/App.tsx` behind a new `OrganizerRoute` guard.
+- [x] Add "Reports" card to `Dashboard.tsx` and nav link for organisers/admins.
+- [x] Build `ReportsPage.tsx` with summary grid and detail breakdown.
+- [x] Extend `MusicProvider` with a master `enabled` toggle and a `ClickEngine` that plays a short click on every button/link/role=button interaction.
+- [x] Make the navbar speaker icon toggle the entire sound system (music + effects).
+- [x] Add Mermaid architecture/auth/lifecycle/evaluation/RBAC diagrams to `README.md` and update env var docs for Gemini.
+- [ ] Validate final state and commit.
+- [ ] Push to `git@github.com:Zethetaprojects/Zecathon.git` branch `main` without adding any new author metadata.
+
 ## Leftovers / next steps
 - [ ] User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations
 - [ ] Promote existing users to organizer/judge via admin endpoint or set_role script
