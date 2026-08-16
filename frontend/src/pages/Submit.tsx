@@ -141,7 +141,7 @@ export default function Submit() {
               <select
                 value={type}
                 onChange={(e) => setType(e.target.value as 'tech' | 'non_tech')}
-                className="w-full rounded px-4 py-3 neon-input"
+                className="w-full rounded px-4 py-3 neon-input neon-select"
               >
                 <option value="tech">Tech — GitHub repository</option>
                 <option value="non_tech">Non-tech — document / PDF / PPT / xlsx</option>

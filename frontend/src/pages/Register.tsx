@@ -105,7 +105,7 @@ export default function Register() {
               name="role"
               value={form.role}
               onChange={handleChange}
-              className="w-full rounded px-4 py-3 neon-input"
+              className="w-full rounded px-4 py-3 neon-input neon-select"
             >
               {REGISTER_ROLES.map((r) => (
                 <option key={r.value} value={r.value}>
