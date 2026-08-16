@@ -1,10 +1,10 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { isOrganizer } from '../utils/role';
 import { ScrollReveal } from '../hooks/useInView';
 import { hackathonsApi } from '../api/hackathons';
-import { Hackathon, PublicStats } from '../types';
+import { Hackathon, PublicStats, User } from '../types';
 import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget } from '../utils/hackathon';
 import Countdown from '../components/Countdown';
 import PageLayout from '../components/PageLayout';
@@ -99,6 +99,115 @@ function formatNumber(n: number) {
   return n.toString();
 }
 
+function HackathonCard({ h, user }: { h: Hackathon; user?: User | null }) {
+  const status = getHackathonStatus(h.start_date, h.end_date);
+  const { target, label } = getCountdownTarget(h.start_date, h.end_date);
+  const bannerUrl = resolveBannerUrl(h.banner_path);
+
+  return (
+    <div className="glass-panel overflow-hidden micro-lift micro-glow border border-white/5 hover:border-neon-cyan/30 transition flex flex-col h-full min-w-[280px] sm:min-w-[320px] snap-start">
+      <div className="relative h-36 bg-gradient-to-br from-space-900 to-slate-900">
+        {bannerUrl ? (
+          <img src={bannerUrl} alt={`${h.name} banner`} className="w-full h-full object-cover" />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-slate-600">
+            <svg className="w-10 h-10 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1}
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+        )}
+        <div className="absolute top-3 right-3">
+          <span
+            className={`px-2 py-1 rounded text-[10px] border uppercase tracking-wider ${statusStyles[status.status]}`}
+          >
+            {status.label}
+          </span>
+        </div>
+      </div>
+      <div className="p-5 flex flex-col flex-1">
+        <h3 className="font-pixel text-xs text-white mb-2">{h.name}</h3>
+        <p className="text-sm text-slate-400 line-clamp-2 mb-3 flex-1">{h.description || 'No description provided.'}</p>
+        <div className="text-xs font-mono text-neon-cyan mb-3">
+          {status.status === 'ended' ? 'Ended' : <Countdown targetDate={target} label={label} />}
+        </div>
+        <p className="text-[10px] text-slate-500 mb-4">{formatHackathonDateRange(h.start_date, h.end_date)}</p>
+        <div className="flex items-center justify-between mt-auto">
+          <span className="text-xs text-slate-500">
+            {h.team_count ?? 0} team{(h.team_count ?? 0) === 1 ? '' : 's'}
+          </span>
+          {user ? (
+            <Link to={`/hackathons/${h.id}`} className="px-3 py-1.5 rounded text-xs neon-btn neon-btn-cyan">
+              View arena
+            </Link>
+          ) : (
+            <Link to="/login" className="px-3 py-1.5 rounded text-xs neon-btn neon-btn-ghost">
+              Log in to join
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function FeaturedBanner({ h, user }: { h: Hackathon; user?: User | null }) {
+  const status = getHackathonStatus(h.start_date, h.end_date);
+  const { target, label } = getCountdownTarget(h.start_date, h.end_date);
+  const bannerUrl = resolveBannerUrl(h.banner_path);
+
+  return (
+    <div className="relative rounded-2xl overflow-hidden border border-white/10 bg-gradient-to-br from-space-900 to-slate-900 mb-10 group micro-lift">
+      <div className="relative h-52 sm:h-64 md:h-80">
+        {bannerUrl ? (
+          <img
+            src={bannerUrl}
+            alt={`${h.name} banner`}
+            className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+          />
+        ) : (
+          <div className="w-full h-full flex items-center justify-center text-slate-600">
+            <svg className="w-16 h-16 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path
+                strokeLinecap="round"
+                strokeLinejoin="round"
+                strokeWidth={1}
+                d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"
+              />
+            </svg>
+          </div>
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-space-900/95 via-space-900/50 to-transparent" />
+      </div>
+      <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
+        <div className="flex flex-wrap items-center gap-3 mb-3">
+          <span className="px-2 py-1 rounded text-[10px] border uppercase tracking-wider bg-neon-cyan/10 text-neon-cyan border-neon-cyan/20">
+            Featured
+          </span>
+          <span className={`px-2 py-1 rounded text-[10px] border uppercase tracking-wider ${statusStyles[status.status]}`}>
+            {status.label}
+          </span>
+        </div>
+        <h3 className="font-pixel text-xl sm:text-2xl text-white text-shadow-neon mb-2">{h.name}</h3>
+        <p className="text-sm text-slate-300 max-w-2xl mb-3 line-clamp-2">{h.description || 'No description provided.'}</p>
+        <div className="text-xs font-mono text-neon-cyan mb-4">
+          {status.status === 'ended' ? 'Ended' : <Countdown targetDate={target} label={label} />}
+        </div>
+        <Link
+          to={user ? `/hackathons/${h.id}` : '/login'}
+          className="inline-block px-6 py-2.5 rounded neon-btn neon-btn-primary text-xs micro-lift"
+        >
+          {user ? 'View arena' : 'Log in to join'}
+        </Link>
+      </div>
+    </div>
+  );
+}
+
 export default function LandingPage() {
   const { user } = useAuth();
   const [upcoming, setUpcoming] = useState<Hackathon[]>([]);
@@ -109,6 +218,14 @@ export default function LandingPage() {
     total_evaluations: 0,
   });
   const [loadingUpcoming, setLoadingUpcoming] = useState(true);
+  const carouselRef = useRef<HTMLDivElement>(null);
+
+  const scrollCarousel = (direction: 'left' | 'right') => {
+    const el = carouselRef.current;
+    if (!el) return;
+    const scrollAmount = el.offsetWidth * 0.85;
+    el.scrollBy({ left: direction === 'left' ? -scrollAmount : scrollAmount, behavior: 'smooth' });
+  };
 
   useEffect(() => {
     hackathonsApi
@@ -221,64 +338,48 @@ export default function LandingPage() {
                 <p className="text-slate-300 text-sm">No upcoming hackathons right now. Check back soon.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {upcoming.map((h) => {
-                  const status = getHackathonStatus(h.start_date, h.end_date);
-                  const { target, label } = getCountdownTarget(h.start_date, h.end_date);
-                  const bannerUrl = resolveBannerUrl(h.banner_path);
-                  return (
-                    <div
-                      key={h.id}
-                      className="glass-panel overflow-hidden micro-lift micro-glow border border-white/5 hover:border-neon-cyan/30 transition"
-                    >
-                      <div className="relative h-32 bg-gradient-to-br from-space-900 to-slate-900">
-                        {bannerUrl ? (
-                          <img src={bannerUrl} alt={`${h.name} banner`} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-slate-600">
-                            <svg className="w-10 h-10 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
-                            </svg>
-                          </div>
-                        )}
-                        <div className="absolute top-3 right-3">
-                          <span className={`px-2 py-1 rounded text-[10px] border uppercase tracking-wider ${statusStyles[status.status]}`}>
-                            {status.label}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="p-5">
-                        <h3 className="font-pixel text-xs text-white mb-2">{h.name}</h3>
-                        <p className="text-sm text-slate-400 line-clamp-2 mb-3">{h.description || 'No description provided.'}</p>
-                        <div className="text-xs font-mono text-neon-cyan mb-3">
-                          {status.status === 'ended' ? 'Ended' : <Countdown targetDate={target} label={label} />}
-                        </div>
-                        <p className="text-[10px] text-slate-500 mb-4">{formatHackathonDateRange(h.start_date, h.end_date)}</p>
-                        <div className="flex items-center justify-between">
-                          <span className="text-xs text-slate-500">
-                            {h.team_count ?? 0} team{(h.team_count ?? 0) === 1 ? '' : 's'}
-                          </span>
-                          {user ? (
-                            <Link
-                              to={`/hackathons/${h.id}`}
-                              className="px-3 py-1.5 rounded text-xs neon-btn neon-btn-cyan"
-                            >
-                              View arena
-                            </Link>
-                          ) : (
-                            <Link
-                              to="/login"
-                              className="px-3 py-1.5 rounded text-xs neon-btn neon-btn-ghost"
-                            >
-                              Log in to join
-                            </Link>
-                          )}
-                        </div>
-                      </div>
+              <>
+                {/* Featured banner */}
+                <FeaturedBanner h={upcoming[0]} user={user} />
+
+                {/* Carousel */}
+                <div className="relative">
+                  <div className="flex items-center justify-between mb-4">
+                    <p className="text-xs text-slate-400">Browse all open arenas</p>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => scrollCarousel('left')}
+                        aria-label="Scroll left"
+                        className="p-2 rounded border border-white/10 text-slate-300 hover:text-neon-cyan hover:border-neon-cyan/50 transition micro-lift"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                        </svg>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => scrollCarousel('right')}
+                        aria-label="Scroll right"
+                        className="p-2 rounded border border-white/10 text-slate-300 hover:text-neon-cyan hover:border-neon-cyan/50 transition micro-lift"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      </button>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+
+                  <div
+                    ref={carouselRef}
+                    className="flex gap-6 overflow-x-auto pb-4 snap-x snap-mandatory [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden"
+                  >
+                    {upcoming.map((h) => (
+                      <HackathonCard key={h.id} h={h} user={user} />
+                    ))}
+                  </div>
+                </div>
+              </>
             )}
           </section>
         </ScrollReveal>

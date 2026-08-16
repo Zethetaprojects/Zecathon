@@ -44,6 +44,7 @@
 - **Navigation**: Dashboard now appears before Hackathons in the navbar; a mobile hamburger menu exposes all role-aware links on small screens.
 - **Back buttons**: every submenu page (`CreateHackathon`, `HackathonDetail`, `HackathonTeams`, `Submit`, `Leaderboard`, `ReportsPage`, `AdminDashboard`) has a consistent back button.
 - **Hackathons page**: uses backend counts; organisers/admins can delete hackathons from the card.
+- **Landing page**: public hero, live platform stats, a featured upcoming-hackathon banner with countdown/status, and a horizontal snap-scrolling card carousel for browsing open arenas. The carousel has previous/next buttons and is mobile-friendly.
 - **Team page**: participants can create/join/submit; organisers/admins can also create teams and submit on behalf of a team, delete teams, view per-team reports, add/remove members, and change the team leader. Team leaders can also manage their own team's members and leader.
 - **Submit page**: participants submit their own projects; organisers/admins can submit on behalf of the selected team.
 - **PWA**: `manifest.json`, `sw.js`, registered service worker, theme-color / apple-mobile-web-app meta tags, and `viewport-fit=cover` viewport.

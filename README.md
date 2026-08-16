@@ -5,7 +5,7 @@ A web app for organising hackathons, collecting project submissions, and evaluat
 ## Features
 - User registration and login (JWT).
 - Create hackathons with a start date/time + duration, live countdown, and optional banner image. Organisers and admins can edit hackathon settings and replace the banner at any time.
-- Public landing page showing upcoming hackathons and live platform stats.
+- Public landing page with a featured upcoming-hackathon banner, live platform stats, and a horizontal card carousel for browsing open arenas.
 - Upload problem statements (PDF, DOCX, PPTX, XLSX, TXT, MD).
 - Create teams with a unique copyable join code; participants join by code, while team leaders and managers can add, remove, or promote members and change the team leader.
 - Submit projects per problem statement.
