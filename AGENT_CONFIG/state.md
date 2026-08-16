@@ -10,6 +10,22 @@
 - **Frontend integration**: an **Edit hackathon** button appears on the hackathon detail page for managers, and the team management page shows per-member role selectors and remove buttons for managers/team leaders.
 - **Validation**: `pytest backend/tests` ✅ 22 passed, `npm run build` ✅, `seed_dev.py` ✅, `validate_flow.py` ✅ all flows passed.
 
+## Phase 23 — completed
+- **Themed loading screen**: reusable `LoadingScreen` component with retro rocket animation used across route guards and pages.
+- **Console easter egg**: stylized ASCII art and secret message logged to the browser console on app startup.
+- **More hidden eggs**: additional click-based easter egg triggers added to hero title, status badges, countdowns, empty states, and rubric toggle.
+- **Validation**: `npm run build` ✅ and `pytest backend/tests` ✅ 22 passed.
+- **Committed and pushed to `main`**.
+
+## Phase 24 — completed
+- **Goal**: ship a single-file GCP deployment script and fix the production Docker build.
+- **Dockerfile fix**: `backend/Dockerfile` package list updated for the current `python:3.11-slim` (Debian trixie) base — `libgdk-pixbuf2.0-0` → `libgdk-pixbuf-2.0-0`, plus `libpangoft2-1.0-0` and `libharfbuzz0b` for WeasyPrint.
+- **Docker Compose**: removed obsolete `version: "3.8"` from `docker-compose.yml`.
+- **Deployment artifact**: created `gcp/deploy.sh` — one executable script that enables APIs, creates Artifact Registry, Cloud SQL PostgreSQL instance/database/user, Secret Manager secrets, builds/pushes the backend image, deploys the backend to Cloud Run, and deploys the frontend to Firebase Hosting with `/api` + `/uploads` rewrites.
+- **CI/CD**: created `gcp/cloudbuild.yaml` for automated Cloud Build + Cloud Run + Firebase Hosting deploys on pushes to `main`.
+- **Docs**: updated `gcp/README.md` with quick deploy and CI/CD sections.
+- **Validation**: `bash -n gcp/deploy.sh` ✅, `npm run build` ✅, `pytest backend/tests` ✅ 22 passed. (Full Docker build could not be verified locally because the Docker Desktop engine was not running; the fix is based on the correct Debian trixie package names for WeasyPrint.)
+
 ## Phase 21 — completed
 - **Scheduling**: hackathons now use a `start_date` + `duration_hours` model; `end_date` is computed server-side. Live countdowns appear on the hackathon list, detail, and landing pages.
 - **Banners**: organisers/admins can upload hackathon banner images via `POST /api/hackathons/{id}/banner`. Banners render on cards, detail pages, and the public landing page.

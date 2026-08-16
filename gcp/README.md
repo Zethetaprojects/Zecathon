@@ -2,6 +2,46 @@
 
 This guide covers production deployment of the ZECATHON platform on Google Cloud Platform.
 
+## Quick deploy — one script
+
+For a fully automated deployment, use the provided script:
+
+```bash
+export GCP_PROJECT_ID="your-project-id"
+export GCP_REGION="us-central1"
+export GEMINI_API_KEY="AIza..."            # optional but recommended
+export GITHUB_TOKEN="ghp_..."               # optional, raises GitHub API limits
+./gcp/deploy.sh
+```
+
+The script will:
+1. Enable the required GCP APIs.
+2. Create an Artifact Registry repository.
+3. Create a Cloud SQL PostgreSQL instance and database user.
+4. Create Secret Manager secrets for `SECRET_KEY`, `GEMINI_API_KEY`, `GITHUB_TOKEN`, and `DATABASE_URL`.
+5. Build and push the backend image via Cloud Build.
+6. Deploy the backend to Cloud Run connected to Cloud SQL.
+7. Build the frontend and deploy it to **Firebase Hosting** with `/api` and `/uploads` rewrites to the Cloud Run service.
+
+Run `./gcp/deploy.sh` from the **repository root**.
+
+## CI/CD pipeline
+
+For automated deploys on every push to `main`, use `gcp/cloudbuild.yaml`:
+
+1. Create a Cloud Build trigger pointing at `gcp/cloudbuild.yaml`.
+2. Set the following substitutions:
+   - `_PROJECT_ID` — your GCP project ID
+   - `_REGION` — e.g. `us-central1`
+   - `_REPO_NAME` — Artifact Registry repository (default: `zecathon`)
+   - `_SERVICE_NAME` — Cloud Run service name (default: `zecathon-backend`)
+   - `_DB_INSTANCE` — Cloud SQL connection name: `PROJECT_ID:REGION:INSTANCE_ID`
+3. Ensure the four Secret Manager secrets below exist before the first run.
+
+## Manual deployment steps
+
+If you prefer to deploy manually instead of using `gcp/deploy.sh`, follow the steps below.
+
 ## Overview
 
 - **Backend**: FastAPI API served on **Cloud Run**.

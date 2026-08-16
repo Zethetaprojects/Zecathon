@@ -184,3 +184,11 @@
 - [x] 21.9 Frontend `HackathonTeams` with copyable join codes, join-by-code, and add-member UI
 - [x] 21.10 `seed_dev.py` and README updated
 - [x] 21.11 Validation: `pytest` ✅ 20 passed, `npm run build` ✅, `seed_dev.py` ✅, `validate_flow.py` ✅
+
+## Phase 24 — GCP deployment artifact
+- [x] 24.1 Fix `backend/Dockerfile` for current Debian `python:3.11-slim` base (correct WeasyPrint package names)
+- [x] 24.2 Remove obsolete `version: "3.8"` from `docker-compose.yml`
+- [x] 24.3 Create `gcp/deploy.sh` one-click deploy script for GCP
+- [x] 24.4 Create `gcp/cloudbuild.yaml` CI/CD pipeline
+- [x] 24.5 Update `gcp/README.md` with quick deploy and CI/CD docs
+- [x] 24.6 Validation: `bash -n gcp/deploy.sh` ✅, `npm run build` ✅, `pytest backend/tests` ✅ 22 passed

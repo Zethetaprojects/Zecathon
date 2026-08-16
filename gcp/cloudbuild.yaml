@@ -1,0 +1,106 @@
+# ZECATHON — Cloud Build CI/CD pipeline
+#
+# Triggers on pushes to main.
+# Builds the backend image, pushes it to Artifact Registry, and deploys
+# the Cloud Run service. The frontend is built and deployed via Firebase Hosting
+# in the same build (requires firebase-tools installed in the build step).
+#
+# Required substitutions (set in the Cloud Build trigger or manually):
+#   _PROJECT_ID     GCP project ID
+#   _REGION         GCP region (default: us-central1)
+#   _REPO_NAME       Artifact Registry repository name (default: zecathon)
+#   _SERVICE_NAME    Cloud Run service name (default: zecathon-backend)
+#   _DB_INSTANCE     Cloud SQL instance connection name (PROJECT:REGION:INSTANCE)
+#
+# Optional secrets (must exist in Secret Manager before first run):
+#   zecathon-secret-key
+#   zecathon-gemini-key
+#   zecathon-github-token
+#   zecathon-db-url
+
+steps:
+  # 1. Build and push the backend image
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "build"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:${COMMIT_SHA}"
+      - "-t"
+      - "${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:latest"
+      - "-f"
+      - "backend/Dockerfile"
+      - "backend"
+
+  - name: "gcr.io/cloud-builders/docker"
+    args:
+      - "push"
+      - "${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend"
+      - "--all-tags"
+
+  # 2. Deploy backend to Cloud Run
+  - name: "gcr.io/google.com/cloudsdktool/cloud-sdk"
+    entrypoint: gcloud
+    args:
+      - "run"
+      - "deploy"
+      - "${_SERVICE_NAME}"
+      - "--image"
+      - "${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:${COMMIT_SHA}"
+      - "--platform"
+      - "managed"
+      - "--region"
+      - "${_REGION}"
+      - "--allow-unauthenticated"
+      - "--set-env-vars"
+      - "GEMINI_MODEL=gemini-3.5-flash-lite,UPLOAD_DIR=/data/uploads,MAX_UPLOAD_SIZE=20971520,ACCESS_TOKEN_EXPIRE_MINUTES=60"
+      - "--update-secrets"
+      - "GEMINI_API_KEY=zecathon-gemini-key:latest,SECRET_KEY=zecathon-secret-key:latest,DATABASE_URL=zecathon-db-url:latest,GITHUB_TOKEN=zecathon-github-token:latest"
+      - "--add-cloudsql-instances"
+      - "${_DB_INSTANCE}"
+      - "--memory"
+      - "1Gi"
+      - "--cpu"
+      - "1"
+      - "--concurrency"
+      - "10"
+      - "--max-instances"
+      - "5"
+      - "--timeout"
+      - "300"
+
+  # 3. Build the frontend
+  - name: "node:20"
+    entrypoint: npm
+    args: ["ci"]
+    dir: "frontend"
+
+  - name: "node:20"
+    entrypoint: npm
+    args: ["run", "build"]
+    dir: "frontend"
+
+  # 4. Deploy frontend to Firebase Hosting
+  - name: "node:20"
+    entrypoint: npx
+    args:
+      - "-y"
+      - "firebase-tools"
+      - "deploy"
+      - "--only"
+      - "hosting"
+      - "--project"
+      - "${_PROJECT_ID}"
+    dir: "frontend"
+
+images:
+  - "${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:${COMMIT_SHA}"
+  - "${_REGION}-docker.pkg.dev/${_PROJECT_ID}/${_REPO_NAME}/backend:latest"
+
+options:
+  logging: CLOUD_LOGGING_ONLY
+
+substitutions:
+  _REGION: us-central1
+  _REPO_NAME: zecathon
+  _SERVICE_NAME: zecathon-backend
+  _DB_INSTANCE: ""  # required; set in trigger

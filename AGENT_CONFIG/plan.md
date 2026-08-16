@@ -186,6 +186,15 @@
 - Validate: `npm run build` and `pytest backend/tests` pass.
 - Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
 
+## Phase 24 — Production-ready GCP deployment artifact
+- Fix `backend/Dockerfile` for the current `python:3.11-slim` base (Debian trixie): rename `libgdk-pixbuf2.0-0` to `libgdk-pixbuf-2.0-0` and add `libpangoft2-1.0-0` / `libharfbuzz0b` so WeasyPrint builds successfully.
+- Remove the obsolete `version: "3.8"` attribute from `docker-compose.yml` to silence the Docker Compose warning.
+- Create `gcp/deploy.sh`: one executable script that enables APIs, creates Artifact Registry, Cloud SQL PostgreSQL instance + database + user, Secret Manager secrets, builds/pushes the backend image, deploys the backend to Cloud Run, and deploys the frontend to Firebase Hosting with `/api` + `/uploads` rewrites.
+- Create `gcp/cloudbuild.yaml` for CI/CD deployments on push to `main`.
+- Update `gcp/README.md` to document the quick deploy script and CI/CD pipeline.
+- Validate: `docker compose -f docker-compose.yml build` succeeds for the backend image and `gcp/deploy.sh` has valid bash syntax.
+- Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
+
 ## Leftovers / next steps
 - User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations.
 - Promote existing users to organizer/judge via admin endpoint or set_role script.
