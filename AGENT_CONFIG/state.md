@@ -35,6 +35,7 @@
 - **Docs**: updated `gcp/README.md` with the VM deployment path.
 - **Validation**: `bash -n gcp/deploy-vm.sh` ✅, `npm run build` ✅, `pytest backend/tests` ✅ 22 passed.
 - **Committed and pushed to `main`**.
+- **Post-deploy UI fix**: applied `neon-select` class to the registration and submission type `<select>` elements so they use the custom cyan chevron arrow and matching padding instead of the default browser dropdown arrow.
 
 ## Phase 21 — completed
 - **Scheduling**: hackathons now use a `start_date` + `duration_hours` model; `end_date` is computed server-side. Live countdowns appear on the hackathon list, detail, and landing pages.
