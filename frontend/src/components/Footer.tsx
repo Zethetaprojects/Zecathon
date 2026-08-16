@@ -93,7 +93,7 @@ export default function Footer() {
             <h4 className="font-pixel text-[10px] tracking-widest text-white mb-4">RESOURCES</h4>
             <nav className="space-y-2">
               <FooterLink to="/docs">How it Works</FooterLink>
-              <FooterLink to="/api-docs">API Reference</FooterLink>
+              {user && <FooterLink to="/api-docs">API Reference</FooterLink>}
               <FooterLink to="/rubrics">Evaluator Rubrics</FooterLink>
               <FooterLink to="/support">Support</FooterLink>
             </nav>

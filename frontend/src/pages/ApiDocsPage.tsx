@@ -1,4 +1,7 @@
+import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import PageLayout from '../components/PageLayout';
+import { useAuth } from '../hooks/useAuth';
 
 function Endpoint({ method, path, desc }: { method: string; path: string; desc: string }) {
   const color =
@@ -13,6 +16,19 @@ function Endpoint({ method, path, desc }: { method: string; path: string; desc: 
 }
 
 export default function ApiDocsPage() {
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/login', { replace: true });
+    }
+  }, [user, navigate]);
+
+  if (!user) {
+    return null;
+  }
+
   return (
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">

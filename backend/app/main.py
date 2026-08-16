@@ -28,6 +28,9 @@ app = FastAPI(
     title="Hackathon Evaluation Platform",
     version="0.1.0",
     lifespan=lifespan,
+    docs_url=None if settings.disable_api_docs else "/api/docs",
+    redoc_url=None if settings.disable_api_docs else "/api/redoc",
+    openapi_url=None if settings.disable_api_docs else "/api/openapi.json",
 )
 
 app.add_middleware(

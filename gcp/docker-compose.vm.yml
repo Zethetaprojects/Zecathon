@@ -40,6 +40,7 @@ services:
       UPLOAD_DIR: /data/uploads
       MAX_UPLOAD_SIZE: 20971520
       ACCESS_TOKEN_EXPIRE_MINUTES: 60
+      DISABLE_API_DOCS: ${DISABLE_API_DOCS:-true}
     volumes:
       - zecathon_uploads:/data/uploads
       - zecathon_logs:/app/logs

@@ -235,6 +235,7 @@ GEMINI_MODEL=gemini-3.5-flash-lite
 GITHUB_TOKEN=${GITHUB_TOKEN}
 UPLOAD_DIR=/data/uploads
 MAX_UPLOAD_SIZE=20971520
+DISABLE_API_DOCS=true
 EOF
 log_ok "Backend .env created."
 

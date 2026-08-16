@@ -16,6 +16,7 @@ class Settings(BaseSettings):
     github_token: str = ""
     upload_dir: str = "uploads"
     max_upload_size: int = 20 * 1024 * 1024  # 20 MB
+    disable_api_docs: bool = False
 
     class Config:
         env_file = BASE_DIR / ".env"
