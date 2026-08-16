@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File,
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_active_user, require_organizer
+from app.auth import get_current_active_user, require_permission
 from app.database import get_db
 from app.models import Hackathon, ProblemStatement, Team, User, UserRole
 from app.routers.common import can_access_hackathon, can_manage_hackathon
@@ -57,21 +57,7 @@ async def list_hackathons(
     result = []
     for h in hacks:
         counts = _hackathon_counts(db, h)
-        result.append(
-            HackathonOut(
-                id=h.id,
-                name=h.name,
-                description=h.description,
-                start_date=h.start_date,
-                end_date=h.end_date,
-                duration_hours=h.duration_hours,
-                banner_path=h.banner_path,
-                rubric=h.rubric,
-                created_by=h.created_by,
-                created_at=h.created_at,
-                **counts,
-            )
-        )
+        result.append(HackathonOut.model_validate(h).model_copy(update=counts))
     return result
 
 
@@ -79,7 +65,7 @@ async def list_hackathons(
 async def create_hackathon(
     payload: HackathonCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_organizer),
+    current_user: User = Depends(require_permission("create_hackathon")),
 ):
     end_date = _compute_end_date(payload.start_date, payload.duration_hours, payload.end_date)
     hackathon = Hackathon(
@@ -89,6 +75,8 @@ async def create_hackathon(
         end_date=end_date,
         duration_hours=payload.duration_hours,
         rubric=payload.rubric,
+        max_participants=payload.max_participants,
+        max_team_members=payload.max_team_members,
         created_by=current_user.id,
     )
     db.add(hackathon)
@@ -162,7 +150,7 @@ async def update_hackathon(
     hackathon_id: int,
     payload: HackathonUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_organizer),
+    current_user: User = Depends(require_permission("edit_hackathon")),
 ):
     hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
     if not hackathon:
@@ -183,6 +171,10 @@ async def update_hackathon(
         hackathon.end_date = payload.end_date
     if payload.rubric is not None:
         hackathon.rubric = payload.rubric
+    if payload.max_participants is not None:
+        hackathon.max_participants = payload.max_participants
+    if payload.max_team_members is not None:
+        hackathon.max_team_members = payload.max_team_members
 
     # Recompute end_date whenever scheduling inputs change.
     hackathon.end_date = _compute_end_date(hackathon.start_date, hackathon.duration_hours, hackathon.end_date)
@@ -198,7 +190,7 @@ async def upload_hackathon_banner(
     hackathon_id: int,
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_organizer),
+    current_user: User = Depends(require_permission("edit_hackathon")),
 ):
     hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
     if not hackathon:
@@ -222,7 +214,7 @@ async def create_problem_statement(
     description: str = Form(None),
     file: UploadFile = File(None),
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_organizer),
+    current_user: User = Depends(require_permission("manage_problem_statements")),
 ):
     hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
     if not hackathon:
@@ -252,7 +244,7 @@ async def create_problem_statement(
 async def delete_hackathon(
     hackathon_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_organizer),
+    current_user: User = Depends(require_permission("delete_hackathon")),
 ):
     hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
     if not hackathon:

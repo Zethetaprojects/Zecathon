@@ -221,8 +221,30 @@
 - Validate: `npm run build` ✅, `pytest backend/tests` ✅ 29 passed, `validate_flow.py` ✅ all flows passed.
 - Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
 
+## Phase 28 — Page title and tab-switch attention messages
+- Update `frontend/index.html` title to `Zecathon - A Zetheta Hackathon Platform` and refresh the meta description.
+- Add `frontend/src/components/TabAttention.tsx` that listens to `visibilitychange` and cycles through playful emoji + text messages when the user switches tabs (e.g., “🏆 See the leaderboard and win!”, “🚀 Jump in and start building!”, “🔥 Don’t miss the deadline!”).
+- Wire `TabAttention` into `App.tsx` so it is active on every route.
+- Validate: `npm run build` ✅, `validate_flow.py` ✅ all flows passed.
+- Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
+
+## Phase 29 — Granular role permissions, registration switch, and hackathon participation limits
+- Backend: add `GlobalSettings` model with `registration_open` and `role_permissions` JSON; expose `FEATURES` list and `_default_role_permissions()`.
+- Backend: add `get_global_settings`, `has_permission`, `require_permission`, and `registration_open` helpers; redefine role aliases as role-based gates while keeping per-feature toggles via `require_permission`.
+- Backend: add `GET /api/auth/admin/settings` and `PUT /api/auth/admin/settings` (superadmin only) for registration toggle and role permission matrix.
+- Backend: add `max_participants` and `max_team_members` columns to `Hackathon`; enforce limits in team creation/joining/member-add flows.
+- Backend: wire specific permissions to endpoints (`create_hackathon`, `edit_hackathon`, `delete_hackathon`, `manage_problem_statements`, `create_team`, `join_team`, `manage_team_members`, `submit_project`, `evaluate_submission`, `view_reports`, `view_leaderboard`, `manage_users`).
+- Frontend: create `SuperadminSettings.tsx` at `/admin/settings` with registration toggle and per-role feature matrix.
+- Frontend: add `max_participants` and `max_team_members` inputs to `CreateHackathon` and `EditHackathon` forms.
+- Frontend: add `admin.ts` API wrappers for settings and update `types/index.ts` with limit fields.
+- Frontend: protect `/admin/settings` and the API docs route with `SuperAdminRoute`; ensure only superadmins see the link.
+- Migrations: update `backend/app/database.py` `MIGRATION_SPECS` to add the new columns automatically.
+- Validate: `pytest backend/tests` ✅ 29 passed, `npm run build` ✅, `validate_flow.py` ✅ all flows passed.
+- Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
+- Redeploy VM and provide superadmin recovery command.
+
 ## Leftovers / next steps
-- Redeploy the VM at `/opt/zecathon` so the superadmin role, stats panel, and footer/API-docs changes take effect on the public IP.
+- Redeploy the VM at `/opt/zecathon` so the title, tab attention, superadmin role, stats panel, footer/API-docs changes, role permission toggles, registration switch, and hackathon limits take effect on the public IP.
 - Provide superadmin recovery command for the deployed VM if the only superadmin is lost.
 - User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations.
 - Optional: migrate SQLite to Cloud SQL and local uploads to Cloud Storage for production scaling.

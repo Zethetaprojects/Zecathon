@@ -21,6 +21,24 @@ export interface PlatformStats {
   evaluations: number;
 }
 
+export interface RolePermissions {
+  superadmin: Record<string, boolean>;
+  admin: Record<string, boolean>;
+  organizer: Record<string, boolean>;
+  judge: Record<string, boolean>;
+  participant: Record<string, boolean>;
+}
+
+export interface GlobalSettings {
+  registration_open: boolean;
+  role_permissions: RolePermissions;
+}
+
+export interface GlobalSettingsUpdate {
+  registration_open?: boolean;
+  role_permissions?: RolePermissions;
+}
+
 export const adminApi = {
   listUsers: () => api.get<User[]>('/auth/admin/users'),
   updateRole: (id: number, role: UserRole) => api.put<User>(`/auth/users/${id}/role`, { role }),
@@ -28,4 +46,6 @@ export const adminApi = {
   resetPassword: (id: number, password: string) =>
     api.put<User>(`/auth/admin/users/${id}/password`, { password }),
   stats: () => api.get<PlatformStats>('/auth/admin/stats'),
+  getSettings: () => api.get<GlobalSettings>('/auth/admin/settings'),
+  updateSettings: (payload: GlobalSettingsUpdate) => api.put<GlobalSettings>('/auth/admin/settings', payload),
 };

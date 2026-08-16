@@ -108,6 +108,15 @@ class HackathonBase(BaseModel):
     duration_hours: Optional[int] = None
     banner_path: Optional[str] = None
     rubric: Optional[Dict[str, Any]] = None
+    max_participants: Optional[int] = None
+    max_team_members: Optional[int] = None
+
+    @field_validator("max_participants", "max_team_members")
+    @classmethod
+    def validate_positive_limit(cls, v: Optional[int]) -> Optional[int]:
+        if v is not None and v < 1:
+            raise ValueError("Limit must be at least 1")
+        return v
 
 
 class HackathonCreate(HackathonBase):
@@ -122,6 +131,8 @@ class HackathonUpdate(HackathonBase):
     duration_hours: Optional[int] = None
     banner_path: Optional[str] = None
     rubric: Optional[Dict[str, Any]] = None
+    max_participants: Optional[int] = None
+    max_team_members: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -332,3 +343,22 @@ class HackathonPublicStats(BaseModel):
     total_teams: int
     total_submissions: int
     total_evaluations: int
+
+
+# Global settings / feature-flag schemas
+class RolePermissions(BaseModel):
+    superadmin: Dict[str, bool]
+    admin: Dict[str, bool]
+    organizer: Dict[str, bool]
+    judge: Dict[str, bool]
+    participant: Dict[str, bool]
+
+
+class GlobalSettingsOut(BaseModel):
+    registration_open: bool
+    role_permissions: RolePermissions
+
+
+class GlobalSettingsUpdate(BaseModel):
+    registration_open: Optional[bool] = None
+    role_permissions: Optional[RolePermissions] = None

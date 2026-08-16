@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
 
-from app.auth import require_organizer
+from app.auth import require_permission
 from app.database import get_db
 from app.models import Evaluation, Hackathon, ProblemStatement, Submission, Team, User, UserRole
 from app.schemas import HackathonReportDetail, HackathonReportSummary, SubmissionReport, TeamReportEntry, EvaluationOut
@@ -94,7 +94,7 @@ def _build_report(db: Session, hackathon: Hackathon) -> HackathonReportDetail:
 @router.get("", response_model=List[HackathonReportSummary])
 async def list_reports(
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_organizer),
+    current_user: User = Depends(require_permission("view_reports")),
 ):
     hackathons = db.query(Hackathon).order_by(Hackathon.created_at.desc()).all()
     reports: List[HackathonReportSummary] = []
@@ -130,7 +130,7 @@ async def list_reports(
 async def get_submission_report(
     submission_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_organizer),
+    current_user: User = Depends(require_permission("view_reports")),
 ):
     submission = (
         db.query(Submission)
@@ -178,7 +178,7 @@ def _build_submission_report(
 async def download_submission_report_pdf(
     submission_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_organizer),
+    current_user: User = Depends(require_permission("view_reports")),
 ):
     submission = (
         db.query(Submission)
@@ -216,7 +216,7 @@ async def download_submission_report_pdf(
 async def get_report(
     hackathon_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_organizer),
+    current_user: User = Depends(require_permission("view_reports")),
 ):
     hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
     if not hackathon:

@@ -16,6 +16,8 @@ MIGRATION_SPECS = {
         ("rubric", "JSON"),
         ("duration_hours", "INTEGER"),
         ("banner_path", "VARCHAR"),
+        ("max_participants", "INTEGER"),
+        ("max_team_members", "INTEGER"),
     ],
     "teams": [
         ("join_code", "VARCHAR"),

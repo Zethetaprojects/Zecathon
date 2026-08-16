@@ -5,6 +5,7 @@ import { EasterEggProvider } from './hooks/useEasterEggs';
 import ErrorBoundary from './components/ErrorBoundary';
 import EasterEggOverlay from './components/EasterEggOverlay';
 import ConsoleEasterEgg from './components/ConsoleEasterEgg';
+import TabAttention from './components/TabAttention';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -18,6 +19,7 @@ import Submit from './pages/Submit';
 import Leaderboard from './pages/Leaderboard';
 import PublicLeaderboard from './pages/PublicLeaderboard';
 import AdminDashboard from './pages/AdminDashboard';
+import SuperadminSettings from './pages/SuperadminSettings';
 import DocsPage from './pages/DocsPage';
 import ApiDocsPage from './pages/ApiDocsPage';
 import RubricsPage from './pages/RubricsPage';
@@ -37,6 +39,7 @@ function App() {
           <AuthProvider>
             <EasterEggOverlay />
             <ConsoleEasterEgg />
+            <TabAttention />
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
@@ -57,6 +60,9 @@ function App() {
                 </Route>
                 <Route path="/admin" element={<AdminRoute />}>
                   <Route index element={<AdminDashboard />} />
+                  <Route element={<SuperAdminRoute />}>
+                    <Route path="settings" element={<SuperadminSettings />} />
+                  </Route>
                 </Route>
                 <Route path="/hackathons" element={<Hackathons />} />
                 <Route path="/hackathons/new" element={<CreateHackathon />} />

@@ -2,7 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
 import logging
-from app.auth import get_current_active_user, require_judge
+from app.auth import get_current_active_user, require_permission
 from app.database import get_db
 from app.models import Evaluation, Hackathon, ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User, UserRole
 from app.routers.common import can_manage_hackathon
@@ -68,7 +68,7 @@ def _ensure_evaluation_access(submission: Submission, user: User, db: Session) -
 async def evaluate_tech_endpoint(
     submission_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_judge),
+    current_user: User = Depends(require_permission("evaluate_submission")),
 ):
     submission = db.query(Submission).filter(Submission.id == submission_id).first()
     if not submission:
@@ -90,7 +90,7 @@ async def evaluate_tech_endpoint(
 async def evaluate_non_tech_endpoint(
     submission_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_judge),
+    current_user: User = Depends(require_permission("evaluate_submission")),
 ):
     submission = db.query(Submission).filter(Submission.id == submission_id).first()
     if not submission:
@@ -120,7 +120,7 @@ def _reset_evaluation(db: Session, submission: Submission):
 async def retry_evaluate_tech(
     submission_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_judge),
+    current_user: User = Depends(require_permission("evaluate_submission")),
 ):
     submission = db.query(Submission).filter(Submission.id == submission_id).first()
     if not submission:
@@ -140,7 +140,7 @@ async def retry_evaluate_tech(
 async def retry_evaluate_non_tech(
     submission_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_judge),
+    current_user: User = Depends(require_permission("evaluate_submission")),
 ):
     submission = db.query(Submission).filter(Submission.id == submission_id).first()
     if not submission:

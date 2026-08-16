@@ -32,6 +32,8 @@ export default function EditHackathon() {
     description: '',
     startDate: '',
     durationHours: '',
+    maxParticipants: '',
+    maxTeamMembers: '',
   });
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -50,6 +52,8 @@ export default function EditHackathon() {
           description: h.description || '',
           startDate: toDatetimeLocalValue(h.start_date),
           durationHours: h.duration_hours?.toString() || '',
+          maxParticipants: h.max_participants?.toString() || '',
+          maxTeamMembers: h.max_team_members?.toString() || '',
         });
         setPreviewUrl(resolveBannerUrl(h.banner_path));
       })
@@ -82,11 +86,25 @@ export default function EditHackathon() {
       setSaving(false);
       return;
     }
+    const maxParticipants = form.maxParticipants ? parseInt(form.maxParticipants, 10) : undefined;
+    const maxTeamMembers = form.maxTeamMembers ? parseInt(form.maxTeamMembers, 10) : undefined;
+    if (form.maxParticipants && (isNaN(maxParticipants as number) || (maxParticipants as number) <= 0)) {
+      setError('Max participants must be a positive number.');
+      setSaving(false);
+      return;
+    }
+    if (form.maxTeamMembers && (isNaN(maxTeamMembers as number) || (maxTeamMembers as number) <= 0)) {
+      setError('Max team members must be a positive number.');
+      setSaving(false);
+      return;
+    }
 
     try {
       const payload: any = { name: form.name, description: form.description };
       if (form.startDate) payload.start_date = new Date(form.startDate).toISOString();
       if (form.durationHours) payload.duration_hours = durationHours;
+      if (maxParticipants !== undefined) payload.max_participants = maxParticipants;
+      if (maxTeamMembers !== undefined) payload.max_team_members = maxTeamMembers;
       await hackathonsApi.update(hackathonId, payload);
 
       if (bannerFile) {
@@ -188,6 +206,33 @@ export default function EditHackathon() {
                   required
                   className="w-full rounded px-4 py-3 neon-input"
                   placeholder="e.g. 24"
+                />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-xs pixel-caps text-slate-300 mb-2">Max participants</label>
+                <input
+                  name="maxParticipants"
+                  type="number"
+                  min={1}
+                  value={form.maxParticipants}
+                  onChange={handleChange}
+                  className="w-full rounded px-4 py-3 neon-input"
+                  placeholder="Overall limit (optional)"
+                />
+              </div>
+              <div>
+                <label className="block text-xs pixel-caps text-slate-300 mb-2">Max team members</label>
+                <input
+                  name="maxTeamMembers"
+                  type="number"
+                  min={1}
+                  value={form.maxTeamMembers}
+                  onChange={handleChange}
+                  className="w-full rounded px-4 py-3 neon-input"
+                  placeholder="Per team limit (optional)"
                 />
               </div>
             </div>

@@ -6,7 +6,7 @@ import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_active_user, require_participant, require_organizer
+from app.auth import get_current_active_user, require_permission
 from app.database import get_db
 from app.models import Hackathon, Submission, Team, TeamMember, User, UserRole
 from app.routers.common import can_access_hackathon, can_manage_hackathon
@@ -45,6 +45,34 @@ def _user_team_in_hackathon(user_id: int, hackathon_id: int, db: Session) -> Tea
     )
 
 
+def _count_hackathon_participants(hackathon_id: int, db: Session) -> int:
+    return (
+        db.query(TeamMember)
+        .join(Team)
+        .filter(Team.hackathon_id == hackathon_id)
+        .count()
+    )
+
+
+def _team_size(team: Team) -> int:
+    return len(team.members)
+
+
+def _check_hackathon_limits(hackathon: Hackathon, team: Team, db: Session, adding: int = 1):
+    if hackathon.max_team_members is not None and _team_size(team) + adding > hackathon.max_team_members:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Team member limit reached (max {hackathon.max_team_members} per team)",
+        )
+    if hackathon.max_participants is not None:
+        current = _count_hackathon_participants(hackathon.id, db)
+        if current + adding > hackathon.max_participants:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Hackathon participant limit reached (max {hackathon.max_participants})",
+            )
+
+
 def _generate_join_code(db: Session) -> str:
     for _ in range(10):
         code = "".join(secrets.choice(_JOIN_CODE_ALPHABET) for _ in range(_JOIN_CODE_LENGTH))
@@ -57,7 +85,7 @@ def _generate_join_code(db: Session) -> str:
 async def create_team(
     payload: TeamCreate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission("create_team")),
 ):
     hackathon = db.query(Hackathon).filter(Hackathon.id == payload.hackathon_id).first()
     if not hackathon:
@@ -66,11 +94,16 @@ async def create_team(
         logger.warning("User id=%s role=%s denied team creation on hackathon id=%s owned by %s", current_user.id, current_user.role, payload.hackathon_id, hackathon.created_by)
         raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
 
-    if current_user.role not in (UserRole.participant, UserRole.admin, UserRole.organizer):
-        raise HTTPException(status_code=403, detail="Only participants, organizers, or admins can create teams")
-
     if not _is_manager(current_user) and _user_team_in_hackathon(current_user.id, payload.hackathon_id, db):
         raise HTTPException(status_code=400, detail="You are already in a team for this hackathon")
+
+    if hackathon.max_team_members is not None and hackathon.max_team_members < 1:
+        raise HTTPException(status_code=400, detail="Invalid team member limit")
+
+    if hackathon.max_participants is not None:
+        current = _count_hackathon_participants(hackathon.id, db)
+        if current + 1 > hackathon.max_participants:
+            raise HTTPException(status_code=400, detail=f"Hackathon participant limit reached (max {hackathon.max_participants})")
 
     team = Team(
         hackathon_id=payload.hackathon_id,
@@ -120,7 +153,7 @@ async def get_team(
 async def join_team_by_code(
     payload: TeamJoinByCode,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_participant),
+    current_user: User = Depends(require_permission("join_team")),
 ):
     team = db.query(Team).filter(Team.join_code == payload.code).first()
     if not team:
@@ -134,6 +167,8 @@ async def join_team_by_code(
             raise HTTPException(status_code=400, detail="You are already a member of this team")
         raise HTTPException(status_code=400, detail="You are already in a team for this hackathon")
 
+    _check_hackathon_limits(team.hackathon, team, db, adding=1)
+
     db.add(TeamMember(team_id=team.id, user_id=current_user.id, role="member"))
     db.commit()
     db.refresh(team)
@@ -146,7 +181,7 @@ async def add_team_member(
     team_id: int,
     payload: TeamMemberAdd,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission("manage_team_members")),
 ):
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
@@ -168,6 +203,8 @@ async def add_team_member(
     if existing_team and existing_team.id != team.id:
         raise HTTPException(status_code=400, detail="User is already in another team for this hackathon")
 
+    _check_hackathon_limits(team.hackathon, team, db, adding=1)
+
     db.add(TeamMember(team_id=team_id, user_id=target_user.id, role="member"))
     db.commit()
     db.refresh(team)
@@ -181,7 +218,7 @@ async def update_team_member(
     member_id: int,
     payload: TeamMemberUpdate,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission("manage_team_members")),
 ):
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
@@ -222,7 +259,7 @@ async def remove_team_member(
     team_id: int,
     member_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user),
+    current_user: User = Depends(require_permission("manage_team_members")),
 ):
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
@@ -250,7 +287,7 @@ async def remove_team_member(
 async def join_team(
     team_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_participant),
+    current_user: User = Depends(require_permission("join_team")),
 ):
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
@@ -259,6 +296,7 @@ async def join_team(
         raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
     if _user_team_in_hackathon(current_user.id, team.hackathon_id, db):
         raise HTTPException(status_code=400, detail="You are already in a team for this hackathon")
+    _check_hackathon_limits(team.hackathon, team, db, adding=1)
     db.add(TeamMember(team_id=team_id, user_id=current_user.id, role="member"))
     db.commit()
     db.refresh(team)
@@ -269,7 +307,7 @@ async def join_team(
 async def delete_team(
     team_id: int,
     db: Session = Depends(get_db),
-    current_user: User = Depends(require_organizer),
+    current_user: User = Depends(require_permission("delete_hackathon")),
 ):
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:

@@ -1,8 +1,29 @@
 # Current State
 
 - **Date**: 2026-08-16
-- **Repo**: full-stack hackathon evaluation platform (ZECATHON) with RBAC, superadmin role, Gemini integration, dynamic rubrics, judge questions, evaluation retry, easter eggs, PWA baseline, mobile-friendly navigation, GCP deployment artifacts, sound mixer, and admin confirmation modal.
+- **Repo**: full-stack hackathon evaluation platform (ZECATHON) with RBAC, superadmin role, granular role permission toggles, global registration switch, hackathon participation limits, Gemini integration, dynamic rubrics, judge questions, evaluation retry, easter eggs, PWA baseline, mobile-friendly navigation, GCP deployment artifacts, sound mixer, and admin confirmation modal.
 - **AGENT_CONFIG**: maintained.
+
+## Phase 29 — completed
+- **Granular role permissions**: added `GlobalSettings` model with `registration_open` and `role_permissions` JSON; added `FEATURES` list and `_default_role_permissions()` defaults.
+- **Permission gates**: added `get_global_settings`, `has_permission`, `require_permission`, and `registration_open` helpers; redefined role aliases (`require_superadmin`, `require_admin`, `require_organizer`, `require_judge`, `require_participant`) as role-based gates while actions are gated by `require_permission` for per-role toggles.
+- **Superadmin settings endpoints**: added `GET /api/auth/admin/settings` and `PUT /api/auth/admin/settings` (superadmin only) to read/update the registration switch and role permission matrix.
+- **Hackathon participation limits**: added `max_participants` (overall) and `max_team_members` (per team) to `Hackathon`; enforced limits in team creation, join-by-code, direct join, and member-add flows.
+- **Endpoint permission wiring**: mapped specific features to endpoints: `create_hackathon`, `edit_hackathon`, `delete_hackathon`, `manage_problem_statements`, `create_team`, `join_team`, `manage_team_members`, `submit_project`, `evaluate_submission`, `view_reports`, `view_leaderboard`, `manage_users`.
+- **Frontend superadmin settings**: built `SuperadminSettings.tsx` at `/admin/settings` with a registration toggle and a per-role, per-feature matrix grouped by Hackathons / Teams / Submissions / Reports / Admin / General.
+- **Hackathon limit inputs**: added `max_participants` and `max_team_members` fields to `CreateHackathon` and `EditHackathon` forms; updated types and API payloads.
+- **API docs lockdown**: protected `/api-docs` and `/admin/settings` with `SuperAdminRoute`; footer API Reference link remains hidden for non-superadmins.
+- **Migrations**: updated `backend/app/database.py` `MIGRATION_SPECS` to add `max_participants` and `max_team_members` columns automatically.
+- **Validation**: `pytest backend/tests` ✅ 29 passed, `npm run build` ✅, `validate_flow.py` ✅ all flows passed.
+- **Committed and pushed to `main`**.
+- **Next**: redeploy the VM at `/opt/zecathon` so all Phase 29 changes take effect on the public IP.
+
+## Phase 28 — completed
+- **Page title**: updated `frontend/index.html` title to `Zecathon - A Zetheta Hackathon Platform` and refreshed the meta description.
+- **Tab attention**: added `frontend/src/components/TabAttention.tsx` that listens to `visibilitychange` and cycles playful emoji + text messages when the user switches tabs (e.g., “🏆 See the leaderboard and win!”, “🚀 Jump in and start building!”, “🔥 Don’t miss the deadline!”). Wired into `App.tsx` so it is active on every route.
+- **Validation**: `npm run build` ✅, `validate_flow.py` ✅ all flows passed.
+- **Committed and pushed to `main`**.
+- **Next**: redeploy the VM at `/opt/zecathon` so the title and tab attention changes take effect on the public IP.
 
 ## Phase 27 — completed
 - **Superadmin role**: added `superadmin` to `UserRole` enum and across backend/frontend auth dependencies. Superadmin inherits all admin privileges and can additionally manage admin/superadmin roles, create superadmin users, and view platform-wide stats.

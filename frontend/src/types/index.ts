@@ -22,6 +22,8 @@ export interface Hackathon {
   end_date?: string;
   duration_hours?: number;
   banner_path?: string;
+  max_participants?: number;
+  max_team_members?: number;
   created_by: number;
   created_at: string;
   problem_statements?: ProblemStatement[];

@@ -161,12 +161,20 @@ export default function AdminDashboard() {
             </div>
             <div className="flex items-center gap-3">
               {isSuper && (
-                <Link
-                  to="/api-docs"
-                  className="hidden sm:inline-block text-xs text-neon-cyan hover:text-white transition"
-                >
-                  API docs
-                </Link>
+                <>
+                  <Link
+                    to="/admin/settings"
+                    className="hidden sm:inline-block text-xs text-neon-cyan hover:text-white transition"
+                  >
+                    Settings
+                  </Link>
+                  <Link
+                    to="/api-docs"
+                    className="hidden sm:inline-block text-xs text-neon-cyan hover:text-white transition"
+                  >
+                    API docs
+                  </Link>
+                </>
               )}
               <button
                 onClick={() => setShowForm((s) => !s)}

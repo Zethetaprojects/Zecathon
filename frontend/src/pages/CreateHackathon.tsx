@@ -26,6 +26,8 @@ export default function CreateHackathon() {
     description: '',
     startDate: '',
     durationHours: '',
+    maxParticipants: '',
+    maxTeamMembers: '',
   });
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [techRubric, setTechRubric] = useState('');
@@ -61,10 +63,26 @@ export default function CreateHackathon() {
       return;
     }
 
+    const maxParticipants = form.maxParticipants ? parseInt(form.maxParticipants, 10) : undefined;
+    if (form.maxParticipants && (isNaN(maxParticipants as number) || (maxParticipants as number) < 1)) {
+      setError('Overall participant limit must be at least 1.');
+      setBusy(false);
+      return;
+    }
+
+    const maxTeamMembers = form.maxTeamMembers ? parseInt(form.maxTeamMembers, 10) : undefined;
+    if (form.maxTeamMembers && (isNaN(maxTeamMembers as number) || (maxTeamMembers as number) < 1)) {
+      setError('Team member limit must be at least 1.');
+      setBusy(false);
+      return;
+    }
+
     try {
       const payload: any = { name: form.name, description: form.description };
       if (form.startDate) payload.start_date = new Date(form.startDate).toISOString();
       if (form.durationHours) payload.duration_hours = durationHours;
+      if (maxParticipants !== undefined) payload.max_participants = maxParticipants;
+      if (maxTeamMembers !== undefined) payload.max_team_members = maxTeamMembers;
       if (tech || nonTech) {
         payload.rubric = {};
         if (tech) payload.rubric.tech = tech;
@@ -165,6 +183,35 @@ export default function CreateHackathon() {
                 className="w-full text-sm text-slate-300 file:mr-4 file:px-3 file:py-2 file:rounded file:border-0 file:text-xs file:bg-neon-cyan/20 file:text-neon-cyan file:cursor-pointer"
               />
               <p className="text-[10px] text-slate-500 mt-2">Recommended: 1200×400 px, landscape banner.</p>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4 border-t border-white/10">
+              <div>
+                <label className="block text-xs pixel-caps text-slate-300 mb-2">Overall participant limit</label>
+                <input
+                  name="maxParticipants"
+                  type="number"
+                  min={1}
+                  value={form.maxParticipants}
+                  onChange={handleChange}
+                  className="w-full rounded px-4 py-3 neon-input"
+                  placeholder="Leave blank for no limit"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">Maximum total members across all teams.</p>
+              </div>
+              <div>
+                <label className="block text-xs pixel-caps text-slate-300 mb-2">Max members per team</label>
+                <input
+                  name="maxTeamMembers"
+                  type="number"
+                  min={1}
+                  value={form.maxTeamMembers}
+                  onChange={handleChange}
+                  className="w-full rounded px-4 py-3 neon-input"
+                  placeholder="Leave blank for no limit"
+                />
+                <p className="text-[10px] text-slate-500 mt-1">Includes the team leader.</p>
+              </div>
             </div>
 
             {/* Advanced rubric editor */}

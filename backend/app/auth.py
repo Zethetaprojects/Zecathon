@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models import User, UserRole
+from app.models import User, UserRole, GlobalSettings, _default_role_permissions
 from app.schemas import TokenData
 
 pwd_context = None  # legacy placeholder removed; using bcrypt directly
@@ -77,15 +77,73 @@ def require_role(*roles: UserRole):
     return checker
 
 
-require_superadmin = require_role(UserRole.superadmin)
-require_admin = require_role(UserRole.superadmin, UserRole.admin)
-require_organizer = require_role(UserRole.superadmin, UserRole.admin, UserRole.organizer)
-require_judge = require_role(UserRole.superadmin, UserRole.admin, UserRole.organizer, UserRole.judge)
-require_participant = require_role(UserRole.participant)
+def get_global_settings(db: Session) -> GlobalSettings:
+    settings_row = db.query(GlobalSettings).first()
+    if not settings_row:
+        settings_row = GlobalSettings(
+            registration_open=True,
+            role_permissions=_default_role_permissions(),
+        )
+        db.add(settings_row)
+        db.commit()
+        db.refresh(settings_row)
+    return settings_row
+
+
+def has_permission(user: User, permission: str, db: Session) -> bool:
+    """Check whether a user has a granular feature permission.
+
+    Superadmin always passes to avoid lockouts; other roles are gated by
+    the global `role_permissions` settings.
+    """
+    if user.role == UserRole.superadmin:
+        return True
+    gs = get_global_settings(db)
+    perms = gs.role_permissions.get(user.role.value, {})
+    return bool(perms.get(permission, False))
+
+
+def require_permission(permission: str):
+    def checker(
+        current_user: User = Depends(get_current_active_user),
+        db: Session = Depends(get_db),
+    ) -> User:
+        if not has_permission(current_user, permission, db):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Permission denied: {permission}",
+            )
+        return current_user
+
+    return checker
+
+
+# Role-based gates for routes that should not be affected by permission toggles.
+def _require_role(*roles: UserRole):
+    def checker(current_user: User = Depends(get_current_active_user)) -> User:
+        if current_user.role not in roles:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=f"Requires one of the following roles: {', '.join(r.value for r in roles)}",
+            )
+        return current_user
+
+    return checker
+
+
+require_superadmin = _require_role(UserRole.superadmin)
+require_admin = _require_role(UserRole.admin, UserRole.superadmin)
+require_organizer = _require_role(UserRole.organizer, UserRole.admin, UserRole.superadmin)
+require_judge = _require_role(UserRole.judge, UserRole.admin, UserRole.superadmin)
+require_participant = _require_role(UserRole.participant, UserRole.admin, UserRole.superadmin)
 
 
 def is_superadmin(user: User) -> bool:
     return user.role == UserRole.superadmin
+
+
+def registration_open(db: Session) -> bool:
+    return bool(get_global_settings(db).registration_open)
 
 
 class RateLimiter:
