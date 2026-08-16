@@ -35,6 +35,12 @@ services:
     volumes:
       - zecathon_uploads:/data/uploads
       - zecathon_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health", "||", "exit", "1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     restart: always
     deploy:
       resources:

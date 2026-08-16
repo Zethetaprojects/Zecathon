@@ -97,12 +97,14 @@ flowchart LR
 | Action | Admin | Organiser | Judge | Participant |
 |---|---|---|---|---|
 | Create hackathon | ✅ | ✅ | ❌ | ❌ |
-| Upload problem statement | ✅ | ✅ | ❌ | ❌ |
-| Delete hackathon / team | ✅ | ✅ | ❌ | ❌ |
+| Upload problem statement | ✅ | ✅ (own hackathons) | ❌ | ❌ |
+| Delete hackathon / team | ✅ | ✅ (own hackathons) | ❌ | ❌ |
 | Create / join team | ❌ | ❌ | ❌ | ✅ |
 | Submit project | ❌ | ❌ | ❌ | ✅ |
-| Evaluate submission | ✅ | ✅ | ✅ | ❌ |
-| View per-team evaluation report | ✅ | ✅ | ❌ | ❌ |
+| Manage team/submission on behalf | ✅ | ✅ (own hackathons) | ❌ | ❌ |
+| Evaluate submission | ✅ | ✅ (own hackathons) | ✅ | ❌ |
+| View per-team evaluation report | ✅ | ✅ (own hackathons) | ❌ | ❌ |
+| View authenticated leaderboard | ✅ | ✅ (own hackathons) | ✅ | ✅ |
 | View public leaderboard | ✅ | ✅ | ✅ | ✅ |
 
 ## Tech stack
@@ -188,12 +190,12 @@ Key endpoints:
 - `POST /api/hackathons` — create hackathon (organiser/admin)
 - `DELETE /api/hackathons/{id}` — delete hackathon and all data (organiser/admin)
 - `POST /api/hackathons/{id}/problem-statements` — upload problem statement (organiser/admin)
-- `POST /api/teams` — create team (participant only)
+- `POST /api/teams` — create team (participant; organiser/admin can create on behalf of their hackathons)
 - `POST /api/teams/{id}/join` — join a team (participant only)
-- `DELETE /api/teams/{id}` — delete team and submissions (organiser/admin)
-- `POST /api/submissions` — submit a project (participant only)
-- `POST /api/evaluate/tech/{submission_id}` — evaluate a tech submission (judge/organiser/admin)
-- `POST /api/evaluate/non-tech/{submission_id}` — evaluate a non-tech submission (judge/organiser/admin)
+- `DELETE /api/teams/{id}` — delete team and submissions (organiser of owner hackathon / admin)
+- `POST /api/submissions` — submit a project (participant; organiser/admin can submit on behalf of their hackathons)
+- `POST /api/evaluate/tech/{submission_id}` — evaluate a tech submission (judge/organiser of owner hackathon/admin)
+- `POST /api/evaluate/non-tech/{submission_id}` — evaluate a non-tech submission (judge/organiser of owner hackathon/admin)
 - `POST /api/evaluate/tech/{id}/retry` — retry tech evaluation
 - `POST /api/evaluate/non-tech/{id}/retry` — retry non-tech evaluation
 - `GET /api/leaderboard/{hackathon_id}` — authenticated leaderboard
@@ -257,6 +259,7 @@ register → login → create hackathon → upload problem statement → create 
 
 ## Production notes
 - Use Docker Compose or a managed PostgreSQL instance (e.g., Cloud SQL) for persistence. Set `DATABASE_URL` to a PostgreSQL connection string.
+- The frontend nginx container proxies `/api` and `/uploads` to the backend service, so the SPA uses relative URLs in both development and production.
 - The default storage is local filesystem. For production, replace `app/services/file_storage.py` with S3-compatible storage or mount a Cloud Storage bucket.
 - Set a strong `SECRET_KEY` and configure the LLM endpoint for real evaluations.
 - See `gcp/README.md` for Cloud Run + Firebase Hosting deployment steps.
