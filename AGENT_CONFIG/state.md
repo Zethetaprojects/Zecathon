@@ -36,6 +36,7 @@
 - **Validation**: `bash -n gcp/deploy-vm.sh` ✅, `npm run build` ✅, `pytest backend/tests` ✅ 22 passed.
 - **Committed and pushed to `main`**.
 - **Post-deploy UI fix**: applied `neon-select` class to the registration and submission type `<select>` elements so they use the custom cyan chevron arrow and matching padding instead of the default browser dropdown arrow.
+- **Security hardening**: added `DISABLE_API_DOCS` backend setting; VM deployment now disables FastAPI auto-generated `/api/docs`, `/api/redoc`, and `/api/openapi.json`; the footer "API Reference" link is hidden for logged-out users and the `/api-docs` page redirects to login when unauthenticated.
 
 ## Phase 21 — completed
 - **Scheduling**: hackathons now use a `start_date` + `duration_hours` model; `end_date` is computed server-side. Live countdowns appear on the hackathon list, detail, and landing pages.
