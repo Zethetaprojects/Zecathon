@@ -1,8 +1,17 @@
 # Current State
 
 - **Date**: 2026-08-16
-- **Repo**: full-stack hackathon evaluation platform (ZECATHON) with RBAC, Gemini integration, dynamic rubrics, judge questions, evaluation retry, easter eggs, PWA baseline, mobile-friendly navigation, GCP deployment artifacts, and a new sound mixer with separate background/effects volume controls.
+- **Repo**: full-stack hackathon evaluation platform (ZECATHON) with RBAC, superadmin role, Gemini integration, dynamic rubrics, judge questions, evaluation retry, easter eggs, PWA baseline, mobile-friendly navigation, GCP deployment artifacts, sound mixer, and admin confirmation modal.
 - **AGENT_CONFIG**: maintained.
+
+## Phase 27 — completed
+- **Superadmin role**: added `superadmin` to `UserRole` enum and across backend/frontend auth dependencies. Superadmin inherits all admin privileges and can additionally manage admin/superadmin roles, create superadmin users, and view platform-wide stats.
+- **API docs lockdown**: removed the API Reference footer link; `/api-docs` route is now restricted to superadmin only (frontend `SuperAdminRoute` + in-page redirect).
+- **Platform stats**: added `GET /api/auth/admin/stats` returning counts for users by role, hackathons, teams, submissions, and evaluations; displayed as a stats panel on the admin dashboard for superadmins only.
+- **PostgreSQL enum migration**: `_ensure_user_role_enum` adds `superadmin` to the existing PostgreSQL enum automatically on startup.
+- **Validation**: `npm run build` ✅, `pytest backend/tests` ✅ 29 passed, `validate_flow.py` ✅ all flows passed.
+- **Committed and pushed to `main`**.
+- **Next**: redeploy the VM at `/opt/zecathon` so the superadmin changes take effect on the public IP; provide recovery command.
 
 ## Phase 26 — completed
 - **Sound mixer**: refactored `MusicProvider` to keep persistent AudioContext engines and control volume via gain nodes; added `musicVolume`/`effectsVolume` states and a master mute toggle. Replaced the navbar speaker icon with a `SoundMixer` popover containing two sliders and a master mute button.

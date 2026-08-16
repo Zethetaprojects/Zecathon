@@ -82,7 +82,35 @@ def _add_user_role_column():
             conn.commit()
 
 
+def _ensure_user_role_enum():
+    """Lightweight migration: ensure the PostgreSQL user role enum includes 'superadmin'."""
+    if not settings.database_url.startswith("postgresql"):
+        return
+    try:
+        with engine.begin() as conn:
+            # Discover the enum type backing the users.role column and add superadmin if missing.
+            row = conn.execute(
+                text(
+                    """
+                    SELECT t.typname
+                    FROM pg_type t
+                    JOIN pg_enum e ON t.oid = e.enumtypid
+                    JOIN pg_attribute a ON a.atttypid = t.oid
+                    JOIN pg_class c ON c.oid = a.attrelid
+                    WHERE c.relname = 'users' AND a.attname = 'role'
+                    LIMIT 1
+                    """
+                )
+            ).fetchone()
+            if row:
+                enum_name = row[0]
+                conn.execute(text(f"ALTER TYPE {enum_name} ADD VALUE IF NOT EXISTS 'superadmin'"))
+    except Exception:
+        pass
+
+
 _add_user_role_column()
+_ensure_user_role_enum()
 
 
 def get_db():

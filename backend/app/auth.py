@@ -77,10 +77,15 @@ def require_role(*roles: UserRole):
     return checker
 
 
-require_admin = require_role(UserRole.admin)
-require_organizer = require_role(UserRole.admin, UserRole.organizer)
-require_judge = require_role(UserRole.admin, UserRole.organizer, UserRole.judge)
+require_superadmin = require_role(UserRole.superadmin)
+require_admin = require_role(UserRole.superadmin, UserRole.admin)
+require_organizer = require_role(UserRole.superadmin, UserRole.admin, UserRole.organizer)
+require_judge = require_role(UserRole.superadmin, UserRole.admin, UserRole.organizer, UserRole.judge)
 require_participant = require_role(UserRole.participant)
+
+
+def is_superadmin(user: User) -> bool:
+    return user.role == UserRole.superadmin
 
 
 class RateLimiter:

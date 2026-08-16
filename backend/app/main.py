@@ -7,7 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
 from app.config import settings
-from app.database import engine, Base, ensure_columns
+from app.database import engine, Base, ensure_columns, _ensure_user_role_enum
 from app.logger import setup_logging
 from app.routers import auth, hackathons, problem_statements, teams, submissions, evaluate, leaderboard, reports
 
@@ -17,6 +17,7 @@ async def lifespan(app: FastAPI):
     setup_logging()
     Base.metadata.create_all(bind=engine)
     ensure_columns(engine)
+    _ensure_user_role_enum()
     os.makedirs(settings.upload_dir, exist_ok=True)
     logger = logging.getLogger("app.main")
     logger.info("ZECATHON backend startup complete")

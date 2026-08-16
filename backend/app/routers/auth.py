@@ -11,7 +11,9 @@ from app.auth import (
     get_current_active_user,
     get_current_user,
     get_password_hash,
+    is_superadmin,
     require_admin,
+    require_superadmin,
     verify_password,
 )
 from app.database import get_db
@@ -80,8 +82,10 @@ async def list_users(
 async def admin_create_user(
     payload: AdminUserCreate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_admin),
+    current_user: User = Depends(require_admin),
 ):
+    if payload.role == UserRole.superadmin and not is_superadmin(current_user):
+        raise HTTPException(status_code=403, detail="Only superadmin can create superadmin users")
     if db.query(User).filter((User.username == payload.username) | (User.email == payload.email)).first():
         raise HTTPException(status_code=400, detail="Username or email already registered")
     user = User(
@@ -122,13 +126,51 @@ async def update_user_role(
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
-    if user.id == current_user.id and user.role == UserRole.admin and payload.role != UserRole.admin:
-        raise HTTPException(status_code=400, detail="You cannot demote yourself from admin")
+
+    if user.id == current_user.id and payload.role != user.role:
+        if user.role == UserRole.superadmin:
+            raise HTTPException(status_code=400, detail="You cannot demote yourself from superadmin")
+        if user.role == UserRole.admin:
+            raise HTTPException(status_code=400, detail="You cannot demote yourself from admin")
+
+    if payload.role == UserRole.superadmin or user.role == UserRole.superadmin:
+        if not is_superadmin(current_user):
+            raise HTTPException(status_code=403, detail="Only superadmin can manage superadmin roles")
+
+    if payload.role == UserRole.admin or user.role == UserRole.admin:
+        if not is_superadmin(current_user):
+            raise HTTPException(status_code=403, detail="Only superadmin can manage admin roles")
+
     if user.role == UserRole.admin and payload.role != UserRole.admin:
-        other_admin = db.query(User).filter(User.id != user.id, User.role == UserRole.admin).first()
-        if not other_admin:
-            raise HTTPException(status_code=400, detail="Cannot demote the last admin")
+        if not is_superadmin(current_user):
+            other_admin = db.query(User).filter(User.id != user.id, User.role == UserRole.admin).first()
+            if not other_admin:
+                raise HTTPException(status_code=400, detail="Cannot demote the last admin")
+
     user.role = payload.role
     db.commit()
     db.refresh(user)
     return user
+
+
+@router.get("/admin/stats", response_model=dict)
+async def admin_stats(
+    db: Session = Depends(get_db),
+    _: User = Depends(require_superadmin),
+):
+    from app.models import Hackathon, Team, Submission, Evaluation
+    users = db.query(User).count()
+    return {
+        "users": users,
+        "users_by_role": {
+            "superadmin": db.query(User).filter(User.role == UserRole.superadmin).count(),
+            "admin": db.query(User).filter(User.role == UserRole.admin).count(),
+            "organizer": db.query(User).filter(User.role == UserRole.organizer).count(),
+            "judge": db.query(User).filter(User.role == UserRole.judge).count(),
+            "participant": db.query(User).filter(User.role == UserRole.participant).count(),
+        },
+        "hackathons": db.query(Hackathon).count(),
+        "teams": db.query(Team).count(),
+        "submissions": db.query(Submission).count(),
+        "evaluations": db.query(Evaluation).count(),
+    }

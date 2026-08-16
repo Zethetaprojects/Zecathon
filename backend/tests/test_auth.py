@@ -56,3 +56,71 @@ def test_register_admin_blocked(client):
         "role": "admin"
     })
     assert r.status_code == 422
+
+
+def test_register_superadmin_blocked(client):
+    r = client.post("/api/auth/register", json={
+        "username": "superhacker",
+        "email": "superhacker@example.com",
+        "password": "Secret123!",
+        "role": "superadmin"
+    })
+    assert r.status_code == 422
+
+
+def test_superadmin_can_access_stats(superadmin_client):
+    r = superadmin_client.get("/api/auth/admin/stats")
+    assert r.status_code == 200
+    data = r.json()
+    assert "users" in data
+    assert "hackathons" in data
+
+
+def test_admin_cannot_access_stats(admin_client):
+    r = admin_client.get("/api/auth/admin/stats")
+    assert r.status_code == 403
+
+
+def test_superadmin_can_create_admin(superadmin_client):
+    r = superadmin_client.post("/api/auth/admin/users", json={
+        "username": "newadmin",
+        "email": "newadmin@example.com",
+        "password": "Secret123!",
+        "role": "admin"
+    })
+    assert r.status_code == 201
+    assert r.json()["role"] == "admin"
+
+
+def test_admin_cannot_create_superadmin(admin_client):
+    r = admin_client.post("/api/auth/admin/users", json={
+        "username": "attemptedsuper",
+        "email": "attemptedsuper@example.com",
+        "password": "Secret123!",
+        "role": "superadmin"
+    })
+    assert r.status_code == 403
+
+
+def test_admin_cannot_promote_user_to_superadmin(admin_client, db):
+    # create a participant user via regular registration
+    r = admin_client.post("/api/auth/register", json={
+        "username": "promoteme",
+        "email": "promoteme@example.com",
+        "password": "Secret123!"
+    })
+    assert r.status_code == 201
+    user_id = r.json()["id"]
+    r = admin_client.put(f"/api/auth/users/{user_id}/role", json={"role": "superadmin"})
+    assert r.status_code == 403
+
+
+def test_superadmin_can_manage_admin_role(superadmin_client, admin_client, db):
+    # admin_client is an admin user; superadmin demotes them to organizer
+    r = superadmin_client.get("/api/auth/me")
+    super_id = r.json()["id"]
+    r = admin_client.get("/api/auth/me")
+    admin_id = r.json()["id"]
+    r = superadmin_client.put(f"/api/auth/users/{admin_id}/role", json={"role": "organizer"})
+    assert r.status_code == 200
+    assert r.json()["role"] == "organizer"

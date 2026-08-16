@@ -96,3 +96,12 @@ def admin_client(db):
         yield c
     finally:
         app.dependency_overrides.clear()
+
+
+@pytest.fixture
+def superadmin_client(db):
+    c = _make_authenticated_client(db, "superadminuser", "superadmin@example.com", UserRole.superadmin)
+    try:
+        yield c
+    finally:
+        app.dependency_overrides.clear()

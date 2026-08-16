@@ -2,7 +2,7 @@ import { useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import PageLayout from '../components/PageLayout';
 import { useAuth } from '../hooks/useAuth';
-import { isAdmin } from '../utils/role';
+import { isSuperAdmin } from '../utils/role';
 
 function Endpoint({ method, path, desc }: { method: string; path: string; desc: string }) {
   const color =
@@ -21,12 +21,12 @@ export default function ApiDocsPage() {
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (!user || !isAdmin(user.role)) {
+    if (!user || !isSuperAdmin(user.role)) {
       navigate('/dashboard', { replace: true });
     }
   }, [user, navigate]);
 
-  if (!user || !isAdmin(user.role)) {
+  if (!user || !isSuperAdmin(user.role)) {
     return null;
   }
 

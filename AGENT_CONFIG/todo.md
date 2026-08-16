@@ -210,3 +210,12 @@
 - [x] 26.5 Remove **API Reference** link from footer and restrict `/api-docs` to admins
 - [x] 26.6 Validation: `npm run build` ✅, `pytest backend/tests` ✅ 22 passed, `validate_flow.py` ✅ all flows passed
 - [x] 26.7 Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`
+
+## Phase 27 — Superadmin role, API docs lockdown, and platform stats
+- [x] 27.1 Add `superadmin` role to backend/frontend with all admin privileges
+- [x] 27.2 Restrict superadmin-sensitive actions (create superadmin, manage admin roles) to superadmin only
+- [x] 27.3 Restrict `/api-docs` frontend route and footer visibility to superadmin only
+- [x] 27.4 Add `GET /api/auth/admin/stats` endpoint and superadmin dashboard stats panel
+- [x] 27.5 Add PostgreSQL enum migration for `superadmin` role value
+- [x] 27.6 Validation: `npm run build` ✅, `pytest backend/tests` ✅ 29 passed, `validate_flow.py` ✅ all flows passed
+- [x] 27.7 Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`

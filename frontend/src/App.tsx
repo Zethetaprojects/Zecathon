@@ -25,6 +25,7 @@ import SupportPage from './pages/SupportPage';
 import PrivateRoute from './components/PrivateRoute';
 import AdminRoute from './components/AdminRoute';
 import OrganizerRoute from './components/OrganizerRoute';
+import SuperAdminRoute from './components/SuperAdminRoute';
 import ReportsPage from './pages/ReportsPage';
 import TeamReportPage from './pages/TeamReportPage';
 
@@ -42,7 +43,9 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/public/leaderboard/:id" element={<PublicLeaderboard />} />
               <Route path="/docs" element={<DocsPage />} />
-              <Route path="/api-docs" element={<ApiDocsPage />} />
+              <Route element={<SuperAdminRoute />}>
+                <Route path="/api-docs" element={<ApiDocsPage />} />
+              </Route>
               <Route path="/rubrics" element={<RubricsPage />} />
               <Route path="/support" element={<SupportPage />} />
               <Route element={<PrivateRoute />}>

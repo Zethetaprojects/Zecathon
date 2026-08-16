@@ -1,12 +1,16 @@
 import { useEffect, useState } from 'react';
-import { adminApi, CreateUserPayload } from '../api/admin';
+import { Link } from 'react-router-dom';
+import { adminApi, CreateUserPayload, PlatformStats } from '../api/admin';
 import { User, UserRole } from '../types';
 import { formatError } from '../utils/formatError';
+import { isSuperAdmin } from '../utils/role';
+import { useAuth } from '../hooks/useAuth';
 import PageLayout from '../components/PageLayout';
 import BackButton from '../components/BackButton';
 import LoadingScreen from '../components/LoadingScreen';
 
-const ROLES: UserRole[] = ['admin', 'organizer', 'judge', 'participant'];
+const ALL_ROLES: UserRole[] = ['superadmin', 'admin', 'organizer', 'judge', 'participant'];
+const ADMIN_ROLES: UserRole[] = ['admin', 'organizer', 'judge', 'participant'];
 
 const INITIAL_FORM: CreateUserPayload = {
   username: '',
@@ -15,8 +19,16 @@ const INITIAL_FORM: CreateUserPayload = {
   role: 'participant',
 };
 
+const roleLabel = (role: string) =>
+  role === 'superadmin' ? 'Superadmin' : role.charAt(0).toUpperCase() + role.slice(1);
+
 export default function AdminDashboard() {
+  const { user } = useAuth();
+  const isSuper = user ? isSuperAdmin(user.role) : false;
+  const roles = isSuper ? ALL_ROLES : ADMIN_ROLES;
+
   const [users, setUsers] = useState<User[]>([]);
+  const [stats, setStats] = useState<PlatformStats | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -42,8 +54,17 @@ export default function AdminDashboard() {
       .finally(() => setLoading(false));
   };
 
+  const fetchStats = () => {
+    if (!isSuper) return;
+    adminApi
+      .stats()
+      .then((res) => setStats(res.data))
+      .catch((err) => setError(formatError(err, 'Failed to load stats')));
+  };
+
   useEffect(() => {
     fetchUsers();
+    fetchStats();
   }, []);
 
   const executeChangeRole = async (id: number, role: UserRole) => {
@@ -53,7 +74,7 @@ export default function AdminDashboard() {
     try {
       const { data } = await adminApi.updateRole(id, role);
       setUsers((prev) => prev.map((u) => (u.id === id ? data : u)));
-      setSuccess(`${data.username}'s role updated to ${role}.`);
+      setSuccess(`${data.username}'s role updated to ${roleLabel(data.role)}.`);
     } catch (err: any) {
       setError(formatError(err, 'Failed to update role'));
     } finally {
@@ -62,11 +83,11 @@ export default function AdminDashboard() {
   };
 
   const changeRole = (id: number, role: UserRole) => {
-    const user = users.find((u) => u.id === id);
-    if (!user) return;
+    const target = users.find((u) => u.id === id);
+    if (!target) return;
     setConfirm({
       title: 'Change role?',
-      message: `Change ${user.username}'s role from ${user.role} to ${role}?`,
+      message: `Change ${target.username}'s role from ${roleLabel(target.role)} to ${roleLabel(role)}?`,
       action: () => executeChangeRole(id, role),
     });
   };
@@ -90,12 +111,12 @@ export default function AdminDashboard() {
   };
 
   const handleResetPassword = (id: number) => {
-    const user = users.find((u) => u.id === id);
+    const target = users.find((u) => u.id === id);
     const password = resetPasswords[id]?.trim();
-    if (!user || !password) return;
+    if (!target || !password) return;
     setConfirm({
       title: 'Reset password?',
-      message: `Reset password for ${user.username}?`,
+      message: `Reset password for ${target.username}?`,
       action: () => executeResetPassword(id),
     });
   };
@@ -110,7 +131,8 @@ export default function AdminDashboard() {
       setUsers((prev) => [data, ...prev]);
       setForm(INITIAL_FORM);
       setShowForm(false);
-      setSuccess(`User ${data.username} created as ${data.role}.`);
+      setSuccess(`User ${data.username} created as ${roleLabel(data.role)}.`);
+      fetchStats();
     } catch (err: any) {
       setError(formatError(err, 'Failed to create user'));
     } finally {
@@ -127,15 +149,32 @@ export default function AdminDashboard() {
         <div className="glass-panel p-6 mb-8">
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
-              <h1 className="font-pixel text-lg text-white text-shadow-neon mb-2">ADMIN PANEL</h1>
+              <div className="flex items-center gap-3 mb-2">
+                <h1 className="font-pixel text-lg text-white text-shadow-neon">ADMIN PANEL</h1>
+                {isSuper && (
+                  <span className="px-2 py-0.5 rounded text-[10px] font-semibold tracking-wider bg-neon-purple/20 text-neon-purple border border-neon-purple/40">
+                    SUPERADMIN
+                  </span>
+                )}
+              </div>
               <p className="text-slate-400 text-sm">Manage platform users, roles, and passwords.</p>
             </div>
-            <button
-              onClick={() => setShowForm((s) => !s)}
-              className="neon-btn neon-btn-primary px-4 py-2 text-sm whitespace-nowrap"
-            >
-              {showForm ? 'Cancel' : 'Add user'}
-            </button>
+            <div className="flex items-center gap-3">
+              {isSuper && (
+                <Link
+                  to="/api-docs"
+                  className="hidden sm:inline-block text-xs text-neon-cyan hover:text-white transition"
+                >
+                  API docs
+                </Link>
+              )}
+              <button
+                onClick={() => setShowForm((s) => !s)}
+                className="neon-btn neon-btn-primary px-4 py-2 text-sm whitespace-nowrap"
+              >
+                {showForm ? 'Cancel' : 'Add user'}
+              </button>
+            </div>
           </div>
         </div>
 
@@ -148,6 +187,24 @@ export default function AdminDashboard() {
         {success && (
           <div className="mb-6 px-4 py-3 rounded bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan text-sm">
             {success}
+          </div>
+        )}
+
+        {isSuper && stats && (
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4 mb-6">
+            {[
+              { label: 'Users', value: stats.users },
+              { label: 'Hackathons', value: stats.hackathons },
+              { label: 'Teams', value: stats.teams },
+              { label: 'Submissions', value: stats.submissions },
+              { label: 'Evaluations', value: stats.evaluations },
+              { label: 'Admins', value: stats.users_by_role.admin + stats.users_by_role.superadmin },
+            ].map((s) => (
+              <div key={s.label} className="glass-panel p-4 text-center">
+                <div className="font-pixel text-xl text-neon-cyan">{s.value}</div>
+                <div className="text-[10px] pixel-caps text-slate-400 mt-1">{s.label}</div>
+              </div>
+            ))}
           </div>
         )}
 
@@ -195,9 +252,9 @@ export default function AdminDashboard() {
                   onChange={(e) => setForm((f) => ({ ...f, role: e.target.value as UserRole }))}
                   className="w-full rounded px-3 py-2 neon-input neon-select"
                 >
-                  {ROLES.map((role) => (
+                  {roles.map((role) => (
                     <option key={role} value={role}>
-                      {role}
+                      {roleLabel(role)}
                     </option>
                   ))}
                 </select>
@@ -250,9 +307,9 @@ export default function AdminDashboard() {
                           onChange={(e) => changeRole(u.id, e.target.value as UserRole)}
                           className="rounded px-3 py-2 text-sm neon-input neon-select disabled:opacity-50"
                         >
-                          {ROLES.map((role) => (
+                          {roles.map((role) => (
                             <option key={role} value={role}>
-                              {role}
+                              {roleLabel(role)}
                             </option>
                           ))}
                         </select>

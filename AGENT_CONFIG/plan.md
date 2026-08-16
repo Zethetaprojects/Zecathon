@@ -212,9 +212,18 @@
 - Validate: `npm run build` ✅, `pytest backend/tests` ✅ 22 passed, `validate_flow.py` ✅ all flows passed.
 - Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
 
+## Phase 27 — Superadmin role and API docs lockdown
+- Add `superadmin` to `UserRole` enum and propagate to schemas, auth dependencies, and frontend types/utils.
+- Grant `superadmin` all admin privileges; reserve superadmin-only actions: managing admin/superadmin roles, creating superadmin users, and viewing platform-wide stats.
+- Restrict `/api-docs` frontend route to superadmin only; keep API Reference link out of the footer.
+- Add `GET /api/auth/admin/stats` returning user/hackathon/team/submission/evaluation counts, displayed as a stats panel on the admin dashboard for superadmins.
+- Add PostgreSQL enum migration for `superadmin` so existing VM databases pick up the new role value automatically.
+- Validate: `npm run build` ✅, `pytest backend/tests` ✅ 29 passed, `validate_flow.py` ✅ all flows passed.
+- Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
+
 ## Leftovers / next steps
-- Redeploy the VM at `/opt/zecathon` so the footer/API-docs changes take effect on the public IP.
-- Provide the admin recovery command to recreate the initial admin account on the deployed VM if needed.
+- Redeploy the VM at `/opt/zecathon` so the superadmin role, stats panel, and footer/API-docs changes take effect on the public IP.
+- Provide superadmin recovery command for the deployed VM if the only superadmin is lost.
 - User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations.
 - Optional: migrate SQLite to Cloud SQL and local uploads to Cloud Storage for production scaling.
 - Optional: mobile hamburger menu refinement.
