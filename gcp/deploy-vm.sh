@@ -11,7 +11,9 @@
 # What you need before running this:
 #   1. A GCP Compute Engine VM (Ubuntu 22.04/24.04 LTS recommended, e2-medium or larger).
 #   2. Firewall rules in the GCP Console allowing TCP 80 and 443 to the VM.
-#   3. A DNS A record pointing your domain to the VM's external IP.
+#   3. Either:
+#        - a DNS A record pointing a domain to the VM's external IP, OR
+#        - the VM's external IP address (the script will use a self-signed certificate).
 #   4. SSH into the VM using the browser terminal and run this script from the repo root.
 #
 # Usage:
@@ -52,6 +54,10 @@ prompt() {
   fi
 }
 
+is_ip() {
+  [[ "$1" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]
+}
+
 # -----------------------------------------------------------------------------
 # Preflight
 # -----------------------------------------------------------------------------
@@ -66,15 +72,25 @@ if [[ -d /opt/zecathon ]]; then
   log_warn "${APP_DIR} already exists. The script will update the code and redeploy."
 fi
 
-prompt DOMAIN "Domain name (e.g. zecathon.example.com): "
+prompt DOMAIN "Domain or external IP (e.g. zecathon.example.com or 34.123.45.67): "
 if [[ -z "$DOMAIN" ]]; then
-  log_error "A domain name is required."
+  log_error "A domain or IP address is required."
   exit 1
 fi
 
-prompt EMAIL "Email address for Let's Encrypt SSL: "
+USE_IP=false
+if is_ip "$DOMAIN"; then
+  USE_IP=true
+  log_info "Detected an IP address. Only a self-signed certificate is possible."
+fi
+
+prompt EMAIL "Email address for Let's Encrypt SSL (press Enter for self-signed): "
 if [[ -z "$EMAIL" ]]; then
   log_warn "No email provided; SSL certificate will use a self-signed fallback."
+fi
+if [[ "$USE_IP" == true && -n "$EMAIL" ]]; then
+  log_warn "Let's Encrypt cannot issue certificates for bare IP addresses. Reverting to self-signed."
+  EMAIL=""
 fi
 
 prompt GEMINI_API_KEY "Gemini API key (optional, press Enter to skip): "
@@ -203,16 +219,8 @@ log_ok "nginx configured."
 # -----------------------------------------------------------------------------
 # 6. SSL certificate
 # -----------------------------------------------------------------------------
-if [[ -n "$EMAIL" ]]; then
-  log_info "Obtaining Let's Encrypt SSL certificate for ${DOMAIN}..."
-  certbot --nginx --non-interactive --agree-tos --email "$EMAIL" -d "$DOMAIN" || {
-    log_warn "certbot failed; falling back to a self-signed certificate."
-    EMAIL=""
-  }
-fi
-
-if [[ -z "$EMAIL" ]]; then
-  log_warn "Using a self-signed SSL certificate."
+if [[ "$USE_IP" == true ]]; then
+  log_warn "Using a self-signed SSL certificate for IP address ${DOMAIN}."
   mkdir -p /etc/nginx/ssl
   openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
     -keyout /etc/nginx/ssl/zecathon.key \
@@ -222,9 +230,28 @@ if [[ -z "$EMAIL" ]]; then
   # Patch the nginx config to listen on 443 with the self-signed cert
   sed -i '/listen 80;/a\    listen 443 ssl;\n    ssl_certificate /etc/nginx/ssl/zecathon.crt;\n    ssl_certificate_key /etc/nginx/ssl/zecathon.key;' /etc/nginx/sites-available/zecathon
   nginx -t && systemctl reload nginx
+  log_ok "SSL configured for IP address."
+elif [[ -n "$EMAIL" ]]; then
+  log_info "Obtaining Let's Encrypt SSL certificate for ${DOMAIN}..."
+  certbot --nginx --non-interactive --agree-tos --email "$EMAIL" -d "$DOMAIN" || {
+    log_warn "certbot failed; falling back to a self-signed certificate."
+    EMAIL=""
+  }
 fi
 
-log_ok "SSL configured."
+if [[ "$USE_IP" != true && -z "$EMAIL" ]]; then
+  log_warn "Using a self-signed SSL certificate for ${DOMAIN}."
+  mkdir -p /etc/nginx/ssl
+  openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+    -keyout /etc/nginx/ssl/zecathon.key \
+    -out /etc/nginx/ssl/zecathon.crt \
+    -subj "/CN=${DOMAIN}"
+
+  # Patch the nginx config to listen on 443 with the self-signed cert
+  sed -i '/listen 80;/a\    listen 443 ssl;\n    ssl_certificate /etc/nginx/ssl/zecathon.crt;\n    ssl_certificate_key /etc/nginx/ssl/zecathon.key;' /etc/nginx/sites-available/zecathon
+  nginx -t && systemctl reload nginx
+  log_ok "SSL configured."
+fi
 
 # -----------------------------------------------------------------------------
 # 7. Create systemd service for the Docker stack
@@ -277,7 +304,12 @@ done
 echo
 log_ok "ZECATHON deployment complete!"
 echo
-echo "  Application URL: https://${DOMAIN}"
+if [[ "$USE_IP" == true ]]; then
+  echo "  HTTP URL:        http://${DOMAIN}"
+  echo "  HTTPS URL:       https://${DOMAIN}  (self-signed; browser will warn)"
+else
+  echo "  Application URL: https://${DOMAIN}"
+fi
 echo "  VM directory:    ${APP_DIR}"
 echo "  systemd service: zecathon.service"
 echo "  nginx config:    /etc/nginx/sites-available/zecathon"

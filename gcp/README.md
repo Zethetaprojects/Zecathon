@@ -53,7 +53,7 @@ Architecture:
 ### Steps
 
 1. In the GCP Console, create a Compute Engine VM and add firewall rules for **TCP 80** and **TCP 443**.
-2. Point your domain's DNS A record to the VM's external IP.
+2. (Optional) Point a domain's DNS A record to the VM's external IP. If you don't have a domain, you can use the VM's external IP directly — the script will create a self-signed certificate.
 3. Open the browser SSH terminal and run:
 
 ```bash
