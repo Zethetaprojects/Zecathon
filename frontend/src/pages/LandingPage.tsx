@@ -213,7 +213,7 @@ function FeaturedBanner({ h, user }: { h: Hackathon; user?: User | null }) {
         </div>
         <Link
           to={user ? `/hackathons/${h.id}` : '/login'}
-          className="inline-block px-6 py-2.5 rounded neon-btn neon-btn-primary text-xs micro-lift"
+          className="block w-fit px-6 py-2.5 rounded neon-btn neon-btn-primary text-xs micro-lift mt-4"
         >
           {user ? 'View arena' : 'Log in to join'}
         </Link>
