@@ -31,7 +31,7 @@
 - **Gunicorn**: added `gunicorn` to `backend/requirements.txt` and created `backend/gunicorn.conf.py` for production FastAPI workers.
 - **VM compose stack**: created `gcp/docker-compose.vm.yml` with PostgreSQL in Docker + backend in Docker using gunicorn/uvicorn workers, plus persistent volumes for DB, uploads, and logs.
 - **Host nginx**: created `gcp/nginx-zecathon.conf` template that serves the built frontend SPA and proxies `/api` + `/uploads` to the backend container.
-- **Deploy script**: created `gcp/deploy-vm.sh` for the GCP browser SSH terminal. It installs Docker, nginx, certbot, and Node.js; clones/updates the repo; builds the frontend; configures nginx and SSL (Let's Encrypt or self-signed); and creates a systemd `zecathon.service` to keep the Docker stack alive. **Updated**: script now accepts a bare external IP address (self-signed certificate) in addition to a domain name.
+- **Deploy script**: created `gcp/deploy-vm.sh` for the GCP browser SSH terminal. It installs Docker, nginx, certbot, and Node.js; clones/updates the repo; builds the frontend; configures nginx and SSL (Let's Encrypt or self-signed); and creates a systemd `zecathon.service` to keep the Docker stack alive. **Updated**: accepts a bare external IP address (self-signed certificate) in addition to a domain name; **auto-detects the GCP VM external IP** so no input is required for a quick IP-based deployment.
 - **Docs**: updated `gcp/README.md` with the VM deployment path.
 - **Validation**: `bash -n gcp/deploy-vm.sh` ✅, `npm run build` ✅, `pytest backend/tests` ✅ 22 passed.
 - **Committed and pushed to `main`**.

@@ -11,9 +11,9 @@
 # What you need before running this:
 #   1. A GCP Compute Engine VM (Ubuntu 22.04/24.04 LTS recommended, e2-medium or larger).
 #   2. Firewall rules in the GCP Console allowing TCP 80 and 443 to the VM.
-#   3. Either:
-#        - a DNS A record pointing a domain to the VM's external IP, OR
-#        - the VM's external IP address (the script will use a self-signed certificate).
+#   3. (Optional) A DNS A record pointing a domain to the VM's external IP. If you don't
+#      provide one, the script automatically detects the VM's external IP and uses a
+#      self-signed certificate.
 #   4. SSH into the VM using the browser terminal and run this script from the repo root.
 #
 # Usage:
@@ -58,6 +58,30 @@ is_ip() {
   [[ "$1" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]
 }
 
+is_ip() {
+  [[ "$1" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]
+}
+
+detect_external_ip() {
+  local ip=""
+  # Try GCP metadata service first
+  ip=$(curl -fsS -m 5 -H "Metadata-Flavor: Google" \
+    http://metadata.google.internal/computeMetadata/v1/instance/network-interfaces/0/access-configs/0/external-ip 2>/dev/null || true)
+  # Fallback to public IP discovery services
+  if [[ -z "$ip" ]]; then
+    ip=$(curl -fsS -m 5 https://ifconfig.me 2>/dev/null || true)
+  fi
+  if [[ -z "$ip" ]]; then
+    ip=$(curl -fsS -m 5 https://icanhazip.com 2>/dev/null || true)
+  fi
+  if [[ -z "$ip" ]]; then
+    ip=$(curl -fsS -m 5 https://api.ipify.org 2>/dev/null || true)
+  fi
+  if is_ip "$ip"; then
+    echo "$ip"
+  fi
+}
+
 # -----------------------------------------------------------------------------
 # Preflight
 # -----------------------------------------------------------------------------
@@ -72,7 +96,21 @@ if [[ -d /opt/zecathon ]]; then
   log_warn "${APP_DIR} already exists. The script will update the code and redeploy."
 fi
 
-prompt DOMAIN "Domain or external IP (e.g. zecathon.example.com or 34.123.45.67): "
+# Auto-detect external IP if no domain was provided
+if [[ -z "$DOMAIN" ]]; then
+  log_info "Detecting VM external IP address..."
+  DETECTED_IP=$(detect_external_ip)
+  if [[ -n "$DETECTED_IP" ]]; then
+    DOMAIN="$DETECTED_IP"
+    log_ok "Detected external IP: ${DOMAIN}"
+  fi
+fi
+
+# Allow the user to override with a custom domain if they want
+if [[ -z "$DOMAIN" ]]; then
+  prompt DOMAIN "External IP could not be detected. Enter domain or IP (e.g. zecathon.example.com or 34.123.45.67): "
+fi
+
 if [[ -z "$DOMAIN" ]]; then
   log_error "A domain or IP address is required."
   exit 1
@@ -81,7 +119,7 @@ fi
 USE_IP=false
 if is_ip "$DOMAIN"; then
   USE_IP=true
-  log_info "Detected an IP address. Only a self-signed certificate is possible."
+  log_info "Using IP address ${DOMAIN}. Only a self-signed certificate is possible."
 fi
 
 prompt EMAIL "Email address for Let's Encrypt SSL (press Enter for self-signed): "
