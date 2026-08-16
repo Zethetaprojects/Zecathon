@@ -162,23 +162,28 @@ apt-get install -y --no-install-recommends \
   python3-certbot-nginx \
   openssl \
   unzip \
-  software-properties-common \
-  apt-transport-https
+  xz-utils
 
-# Install Node.js 20 LTS
+# Install Node.js 20 LTS from the official binary distribution.
+# This works on both Debian and Ubuntu and avoids distro-specific package names.
 if ! command -v node >/dev/null 2>&1; then
   log_info "Installing Node.js 20..."
-  curl -fsSL https://deb.nodesource.com/setup_20.x | bash -
-  apt-get install -y nodejs
+  NODE_VERSION="20.18.0"
+  NODE_ARCH="linux-x64"
+  TMP_NODE_DIR=$(mktemp -d)
+  curl -fsS "https://nodejs.org/dist/v${NODE_VERSION}/node-v${NODE_VERSION}-${NODE_ARCH}.tar.xz" -o "${TMP_NODE_DIR}/node.tar.xz"
+  tar -xJf "${TMP_NODE_DIR}/node.tar.xz" -C /usr/local --strip-components=1
+  rm -rf "$TMP_NODE_DIR"
+  log_ok "Node.js $(node --version) installed."
 fi
 
-# Install Docker Engine
+# Install Docker Engine if not already present.
 if ! command -v docker >/dev/null 2>&1; then
   log_info "Installing Docker..."
   install -m 0755 -d /etc/apt/keyrings
-  curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  curl -fsSL https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
   chmod a+r /etc/apt/keyrings/docker.gpg
-  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+  echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]') $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
   apt-get update
   apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 fi
