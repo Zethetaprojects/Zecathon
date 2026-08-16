@@ -5,8 +5,22 @@ import { Hackathon, ProblemStatement } from '../types';
 import { formatError } from '../utils/formatError';
 import { isOrganizer } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
+import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget } from '../utils/hackathon';
+import Countdown from '../components/Countdown';
 import PageLayout from '../components/PageLayout';
 import BackButton from '../components/BackButton';
+
+const statusStyles = {
+  upcoming: 'bg-neon-purple/10 text-neon-purple border-neon-purple/20',
+  open: 'bg-neon-cyan/10 text-neon-cyan border-neon-cyan/20',
+  ended: 'bg-neon-pink/10 text-neon-pink border-neon-pink/20',
+};
+
+function resolveBannerUrl(path?: string | null) {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  return path.startsWith('/') ? path : `/uploads/${path.split('/').pop()}`;
+}
 
 export default function HackathonDetail() {
   const { id } = useParams<{ id: string }>();
@@ -24,7 +38,10 @@ export default function HackathonDetail() {
   const [nonTechRubric, setNonTechRubric] = useState('');
   const [rubricBusy, setRubricBusy] = useState(false);
   const [rubricError, setRubricError] = useState('');
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
+  const [bannerBusy, setBannerBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
+  const bannerRef = useRef<HTMLInputElement>(null);
 
   const fetchHackathon = () => {
     hackathonsApi
@@ -117,6 +134,25 @@ export default function HackathonDetail() {
     }
   };
 
+  const handleBannerUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!bannerFile) return;
+    setBannerBusy(true);
+    setError('');
+    try {
+      const form = new FormData();
+      form.append('file', bannerFile);
+      await hackathonsApi.uploadBanner(Number(id), form);
+      setBannerFile(null);
+      if (bannerRef.current) bannerRef.current.value = '';
+      fetchHackathon();
+    } catch (err: any) {
+      setError(formatError(err, 'Failed to upload banner'));
+    } finally {
+      setBannerBusy(false);
+    }
+  };
+
   if (loading) {
     return (
       <PageLayout className="flex items-center justify-center">
@@ -140,6 +176,10 @@ export default function HackathonDetail() {
     );
   }
 
+  const status = getHackathonStatus(hackathon.start_date, hackathon.end_date);
+  const { target, label } = getCountdownTarget(hackathon.start_date, hackathon.end_date);
+  const bannerUrl = resolveBannerUrl(hackathon.banner_path);
+
   return (
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
@@ -147,29 +187,103 @@ export default function HackathonDetail() {
           <BackButton to="/hackathons" label="Back to hackathons" />
         </div>
 
-        <div className="glass-panel p-6 sm:p-8 mb-8">
-          <h1 className="font-pixel text-xl text-white text-shadow-neon mb-3">{hackathon.name}</h1>
-          <p className="text-slate-300 mb-6 leading-relaxed">{hackathon.description}</p>
-
-          <div className="flex flex-wrap gap-3">
-            <Link
-              to={`/hackathons/${id}/teams`}
-              className="px-5 py-2.5 rounded neon-btn neon-btn-primary text-xs"
-            >
-              Manage teams & submissions
-            </Link>
-            <Link
-              to={`/hackathons/${id}/leaderboard`}
-              className="px-5 py-2.5 rounded neon-btn neon-btn-cyan text-xs"
-            >
-              Leaderboard
-            </Link>
+        {/* Banner + hero */}
+        <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-gradient-to-br from-space-900 to-slate-900 mb-6">
+          <div className="relative h-40 sm:h-56">
+            {bannerUrl ? (
+              <img
+                src={bannerUrl}
+                alt={`${hackathon.name} banner`}
+                className="w-full h-full object-cover"
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-slate-600">
+                <svg className="w-16 h-16 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                </svg>
+              </div>
+            )}
+            <div className="absolute inset-0 bg-gradient-to-t from-space-900/90 via-space-900/30 to-transparent" />
+            <div className="absolute bottom-0 left-0 right-0 p-6">
+              <div className="flex flex-wrap items-center gap-3 mb-3">
+                <span className={`px-2.5 py-1 rounded text-[10px] border uppercase tracking-wider ${statusStyles[status.status]}`}>
+                  {status.label}
+                </span>
+                {status.status !== 'ended' && target && (
+                  <span className="font-mono text-xs text-white">
+                    <Countdown targetDate={target} label={label} />
+                  </span>
+                )}
+              </div>
+              <h1 className="font-pixel text-xl sm:text-2xl text-white text-shadow-neon mb-2">{hackathon.name}</h1>
+              <p className="text-slate-300 text-sm max-w-2xl">{hackathon.description}</p>
+            </div>
           </div>
+        </div>
+
+        <div className="flex flex-wrap gap-3 mb-8">
+          <Link
+            to={`/hackathons/${id}/teams`}
+            className="px-5 py-2.5 rounded neon-btn neon-btn-primary text-xs"
+          >
+            Manage teams & submissions
+          </Link>
+          <Link
+            to={`/hackathons/${id}/leaderboard`}
+            className="px-5 py-2.5 rounded neon-btn neon-btn-cyan text-xs"
+          >
+            Leaderboard
+          </Link>
         </div>
 
         {error && (
           <div className="mb-6 px-4 py-3 rounded bg-neon-pink/10 border border-neon-pink/30 text-neon-pink text-sm">
             {error}
+          </div>
+        )}
+
+        <div className="glass-panel p-6 sm:p-8 mb-8">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+            <h2 className="font-pixel text-sm text-white">SCHEDULE</h2>
+            <p className="text-xs text-slate-400">{formatHackathonDateRange(hackathon.start_date, hackathon.end_date)}</p>
+          </div>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            <div className="p-4 rounded bg-black/20 border border-white/10">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Status</p>
+              <p className="text-sm font-semibold text-white">{status.label}</p>
+            </div>
+            <div className="p-4 rounded bg-black/20 border border-white/10">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Duration</p>
+              <p className="text-sm font-semibold text-white">{hackathon.duration_hours ? `${hackathon.duration_hours} hours` : 'Not set'}</p>
+            </div>
+            <div className="p-4 rounded bg-black/20 border border-white/10">
+              <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Countdown</p>
+              <p className="text-sm font-semibold text-neon-cyan font-mono">
+                {status.status === 'ended' ? 'Ended' : <Countdown targetDate={target} label={label} />}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {canManage && (
+          <div className="glass-panel p-6 sm:p-8 mb-8">
+            <h2 className="font-pixel text-sm text-white mb-4">BANNER</h2>
+            <form onSubmit={handleBannerUpload} className="flex flex-col sm:flex-row gap-4 items-start">
+              <input
+                ref={bannerRef}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+                onChange={(e) => setBannerFile(e.target.files?.[0] || null)}
+                className="flex-1 text-sm text-slate-300 file:mr-4 file:px-3 file:py-2 file:rounded file:border-0 file:text-xs file:bg-neon-cyan/20 file:text-neon-cyan file:cursor-pointer"
+              />
+              <button
+                type="submit"
+                disabled={bannerBusy || !bannerFile}
+                className="px-5 py-2 rounded neon-btn neon-btn-primary text-xs disabled:opacity-50"
+              >
+                {bannerBusy ? 'Uploading...' : 'Upload banner'}
+              </button>
+            </form>
           </div>
         )}
 
@@ -250,6 +364,7 @@ export default function HackathonDetail() {
             </form>
           )}
         </div>
+
         {canManage && (
           <div className="glass-panel p-6 sm:p-8 mb-8">
             <div className="flex items-center justify-between gap-4 mb-4">

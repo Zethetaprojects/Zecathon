@@ -19,6 +19,7 @@ def test_create_team_and_submit(auth_client, participant_client, client):
     team = r.json()
     assert team["name"] == "Neural Ninjas"
     assert team["members"][0]["role"] == "leader"
+    assert team["join_code"] and len(team["join_code"]) == 8
     team_id = team["id"]
 
     # list teams
@@ -57,7 +58,7 @@ def test_create_team_and_submit(auth_client, participant_client, client):
     assert r.json()["type"] == "tech"
 
 
-def test_join_team(auth_client, participant_client, client):
+def test_join_team_by_code(auth_client, participant_client, client):
     r = auth_client.post("/api/hackathons", json={"name": "Join Hack", "description": "x"})
     hackathon_id = r.json()["id"]
     r = auth_client.post(
@@ -66,7 +67,9 @@ def test_join_team(auth_client, participant_client, client):
     )
     assert r.status_code == 201
     r = participant_client.post("/api/teams", json={"hackathon_id": hackathon_id, "name": "Open Team"})
+    join_code = r.json()["join_code"]
     team_id = r.json()["id"]
+    assert join_code
 
     # register another user
     r = client.post("/api/auth/register", json={"username": "bob", "email": "bob@example.com", "password": "Secret123!"})
@@ -74,9 +77,34 @@ def test_join_team(auth_client, participant_client, client):
     r = client.post("/api/auth/login", data={"username": "bob", "password": "Secret123!"})
     token = r.json()["access_token"]
 
-    r = client.post(f"/api/teams/{team_id}/join", headers={"Authorization": f"Bearer {token}"})
-    assert r.status_code == 200
+    r = client.post("/api/teams/join-by-code", json={"code": join_code}, headers={"Authorization": f"Bearer {token}"})
+    assert r.status_code == 200, r.text
     assert len(r.json()["members"]) == 2
+    assert r.json()["id"] == team_id
+
+
+def test_add_team_member(auth_client, participant_client, client):
+    r = auth_client.post("/api/hackathons", json={"name": "Add Member Hack", "description": "x"})
+    hackathon_id = r.json()["id"]
+    r = auth_client.post(
+        f"/api/hackathons/{hackathon_id}/problem-statements",
+        data={"title": "Build a chatbot"},
+    )
+    assert r.status_code == 201
+
+    # participant creates a team and is the leader
+    r = participant_client.post("/api/teams", json={"hackathon_id": hackathon_id, "name": "Leader Team"})
+    team_id = r.json()["id"]
+
+    # register a new user to add
+    r = client.post("/api/auth/register", json={"username": "carol", "email": "carol@example.com", "password": "Secret123!"})
+    assert r.status_code == 201
+
+    r = participant_client.post(f"/api/teams/{team_id}/members", json={"username": "carol"})
+    assert r.status_code == 200, r.text
+    members = r.json()["members"]
+    assert len(members) == 2
+    assert any(m["username"] == "carol" and m["role"] == "member" for m in members)
 
 
 def test_non_tech_submission(auth_client, participant_client):

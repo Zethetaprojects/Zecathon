@@ -20,6 +20,8 @@ export interface Hackathon {
   description?: string;
   start_date?: string;
   end_date?: string;
+  duration_hours?: number;
+  banner_path?: string;
   created_by: number;
   created_at: string;
   problem_statements?: ProblemStatement[];
@@ -42,6 +44,7 @@ export interface Team {
   id: number;
   hackathon_id: number;
   name: string;
+  join_code?: string;
   created_at: string;
   members?: TeamMember[];
 }
@@ -145,4 +148,11 @@ export interface HackathonReportSummary {
 
 export interface HackathonReportDetail extends HackathonReportSummary {
   team_entries: TeamReportEntry[];
+}
+
+export interface PublicStats {
+  total_hackathons: number;
+  total_teams: number;
+  total_submissions: number;
+  total_evaluations: number;
 }

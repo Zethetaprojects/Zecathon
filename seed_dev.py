@@ -9,6 +9,7 @@ import sqlite3
 import subprocess
 import sys
 import time
+from datetime import datetime, timedelta
 from pathlib import Path
 
 import requests
@@ -103,12 +104,16 @@ def main():
 
         headers = {"Authorization": f"Bearer {token}"}
 
+        start = datetime.now().replace(second=0, microsecond=0) + timedelta(hours=1)
+
         # Create hackathon
         r = requests.post(
             f"{API_BASE}/hackathons",
             json={
                 "name": "ZECATHON Demo Hack",
                 "description": "Demo hackathon seeded for the dashboard report.",
+                "start_date": start.isoformat(),
+                "duration_hours": 24,
                 "rubric": {
                     "non_tech": {
                         "Problem-Specific Grounding": 150,

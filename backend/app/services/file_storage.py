@@ -6,7 +6,8 @@ from fastapi import UploadFile, HTTPException
 from app.config import settings
 
 ALLOWED_EXTENSIONS = {
-    ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".txt", ".md"
+    ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".txt", ".md",
+    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg",
 }
 
 

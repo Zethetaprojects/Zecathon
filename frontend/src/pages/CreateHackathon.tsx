@@ -24,9 +24,10 @@ export default function CreateHackathon() {
   const [form, setForm] = useState({
     name: '',
     description: '',
-    start_date: '',
-    end_date: '',
+    startDate: '',
+    durationHours: '',
   });
+  const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [techRubric, setTechRubric] = useState('');
   const [nonTechRubric, setNonTechRubric] = useState('');
   const [rubricError, setRubricError] = useState('');
@@ -53,16 +54,31 @@ export default function CreateHackathon() {
       return;
     }
 
+    const durationHours = parseInt(form.durationHours, 10);
+    if (form.durationHours && (isNaN(durationHours) || durationHours <= 0)) {
+      setError('Duration must be a positive number of hours.');
+      setBusy(false);
+      return;
+    }
+
     try {
       const payload: any = { name: form.name, description: form.description };
-      if (form.start_date) payload.start_date = new Date(form.start_date).toISOString();
-      if (form.end_date) payload.end_date = new Date(form.end_date).toISOString();
+      if (form.startDate) payload.start_date = new Date(form.startDate).toISOString();
+      if (form.durationHours) payload.duration_hours = durationHours;
       if (tech || nonTech) {
         payload.rubric = {};
         if (tech) payload.rubric.tech = tech;
         if (nonTech) payload.rubric.non_tech = nonTech;
       }
-      await hackathonsApi.create(payload);
+      const res = await hackathonsApi.create(payload);
+      const hackathon = res.data;
+
+      if (bannerFile && hackathon.id) {
+        const bannerForm = new FormData();
+        bannerForm.append('file', bannerFile);
+        await hackathonsApi.uploadBanner(hackathon.id, bannerForm);
+      }
+
       navigate('/hackathons');
     } catch (err: any) {
       setError(formatError(err, 'Failed to create hackathon'));
@@ -115,25 +131,40 @@ export default function CreateHackathon() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-xs pixel-caps text-slate-300 mb-2">Start date</label>
+                <label className="block text-xs pixel-caps text-slate-300 mb-2">Start date & time</label>
                 <input
-                  name="start_date"
+                  name="startDate"
                   type="datetime-local"
-                  value={form.start_date}
+                  value={form.startDate}
                   onChange={handleChange}
+                  required
                   className="w-full rounded px-4 py-3 neon-input"
                 />
               </div>
               <div>
-                <label className="block text-xs pixel-caps text-slate-300 mb-2">End date</label>
+                <label className="block text-xs pixel-caps text-slate-300 mb-2">Duration (hours)</label>
                 <input
-                  name="end_date"
-                  type="datetime-local"
-                  value={form.end_date}
+                  name="durationHours"
+                  type="number"
+                  min={1}
+                  value={form.durationHours}
                   onChange={handleChange}
+                  required
                   className="w-full rounded px-4 py-3 neon-input"
+                  placeholder="e.g. 24"
                 />
               </div>
+            </div>
+
+            <div>
+              <label className="block text-xs pixel-caps text-slate-300 mb-2">Banner image</label>
+              <input
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+                onChange={(e) => setBannerFile(e.target.files?.[0] || null)}
+                className="w-full text-sm text-slate-300 file:mr-4 file:px-3 file:py-2 file:rounded file:border-0 file:text-xs file:bg-neon-cyan/20 file:text-neon-cyan file:cursor-pointer"
+              />
+              <p className="text-[10px] text-slate-500 mt-2">Recommended: 1200×400 px, landscape banner.</p>
             </div>
 
             {/* Advanced rubric editor */}

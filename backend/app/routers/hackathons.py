@@ -1,31 +1,62 @@
+from datetime import datetime, timedelta
 from typing import List
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy import func
-from sqlalchemy.orm import Session, contains_eager
+from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user, require_organizer
 from app.database import get_db
-from app.models import Evaluation, Hackathon, ProblemStatement, Submission, Team, TeamMember, User, UserRole
-from app.routers.common import can_access_hackathon
-from app.schemas import HackathonCreate, HackathonOut, HackathonDetail, HackathonUpdate, ProblemStatementOut
+from app.models import Hackathon, ProblemStatement, Team, User, UserRole
+from app.routers.common import can_access_hackathon, can_manage_hackathon
+from app.schemas import (
+    HackathonCreate,
+    HackathonOut,
+    HackathonDetail,
+    HackathonPublicOut,
+    HackathonPublicStats,
+    HackathonUpdate,
+    ProblemStatementOut,
+)
 from app.services.file_storage import save_upload
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
+def _compute_end_date(
+    start_date: datetime | None,
+    duration_hours: int | None,
+    end_date: datetime | None,
+) -> datetime | None:
+    if start_date and duration_hours is not None:
+        return start_date + timedelta(hours=duration_hours)
+    return end_date
+
+
+def _hackathon_counts(db: Session, hackathon: Hackathon) -> dict:
+    return {
+        "problem_statement_count": db.query(func.count(ProblemStatement.id))
+        .filter(ProblemStatement.hackathon_id == hackathon.id)
+        .scalar()
+        or 0,
+        "team_count": db.query(func.count(Team.id)).filter(Team.hackathon_id == hackathon.id).scalar() or 0,
+    }
+
+
 @router.get("", response_model=List[HackathonOut])
-async def list_hackathons(db: Session = Depends(get_db), current_user: User = Depends(get_current_active_user)):
+async def list_hackathons(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
     hacks = db.query(Hackathon).order_by(Hackathon.created_at.desc()).all()
     # Organizers only see hackathons they created; admins and participants see everything.
     if current_user.role == UserRole.organizer:
         hacks = [h for h in hacks if h.created_by == current_user.id]
     result = []
     for h in hacks:
-        ps_count = db.query(func.count(ProblemStatement.id)).filter(ProblemStatement.hackathon_id == h.id).scalar()
-        team_count = db.query(func.count(Team.id)).filter(Team.hackathon_id == h.id).scalar()
+        counts = _hackathon_counts(db, h)
         result.append(
             HackathonOut(
                 id=h.id,
@@ -33,11 +64,12 @@ async def list_hackathons(db: Session = Depends(get_db), current_user: User = De
                 description=h.description,
                 start_date=h.start_date,
                 end_date=h.end_date,
+                duration_hours=h.duration_hours,
+                banner_path=h.banner_path,
                 rubric=h.rubric,
                 created_by=h.created_by,
                 created_at=h.created_at,
-                problem_statement_count=ps_count or 0,
-                team_count=team_count or 0,
+                **counts,
             )
         )
     return result
@@ -49,11 +81,13 @@ async def create_hackathon(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_organizer),
 ):
+    end_date = _compute_end_date(payload.start_date, payload.duration_hours, payload.end_date)
     hackathon = Hackathon(
         name=payload.name,
         description=payload.description,
         start_date=payload.start_date,
-        end_date=payload.end_date,
+        end_date=end_date,
+        duration_hours=payload.duration_hours,
         rubric=payload.rubric,
         created_by=current_user.id,
     )
@@ -62,6 +96,50 @@ async def create_hackathon(
     db.refresh(hackathon)
     logger.info("Hackathon created id=%s name=%s by user id=%s", hackathon.id, hackathon.name, current_user.id)
     return hackathon
+
+
+@router.get("/public", response_model=List[HackathonPublicOut])
+async def list_public_hackathons(db: Session = Depends(get_db)):
+    """Return upcoming/active hackathons for the public landing page."""
+    now = datetime.utcnow()
+    hacks = (
+        db.query(Hackathon)
+        .filter((Hackathon.end_date == None) | (Hackathon.end_date >= now))
+        .order_by(Hackathon.start_date.asc().nulls_last())
+        .all()
+    )
+    result = []
+    for h in hacks:
+        counts = _hackathon_counts(db, h)
+        result.append(
+            HackathonPublicOut(
+                id=h.id,
+                name=h.name,
+                description=h.description,
+                start_date=h.start_date,
+                end_date=h.end_date,
+                duration_hours=h.duration_hours,
+                banner_path=h.banner_path,
+                **counts,
+            )
+        )
+    return result
+
+
+@router.get("/public/stats", response_model=HackathonPublicStats)
+async def public_hackathon_stats(db: Session = Depends(get_db)):
+    from app.models import Submission, Evaluation
+
+    total_hackathons = db.query(func.count(Hackathon.id)).scalar() or 0
+    total_teams = db.query(func.count(Team.id)).scalar() or 0
+    total_submissions = db.query(func.count(Submission.id)).scalar() or 0
+    total_evaluations = db.query(func.count(Evaluation.id)).scalar() or 0
+    return {
+        "total_hackathons": total_hackathons,
+        "total_teams": total_teams,
+        "total_submissions": total_submissions,
+        "total_evaluations": total_evaluations,
+    }
 
 
 @router.get("/{hackathon_id}", response_model=HackathonDetail)
@@ -89,7 +167,7 @@ async def update_hackathon(
     hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    if current_user.role != UserRole.admin and hackathon.created_by != current_user.id:
+    if not can_manage_hackathon(current_user, hackathon):
         logger.warning("User id=%s role=%s denied update on hackathon id=%s owned by %s", current_user.id, current_user.role, hackathon_id, hackathon.created_by)
         raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can update this hackathon")
 
@@ -99,14 +177,41 @@ async def update_hackathon(
         hackathon.description = payload.description
     if payload.start_date is not None:
         hackathon.start_date = payload.start_date
+    if payload.duration_hours is not None:
+        hackathon.duration_hours = payload.duration_hours
     if payload.end_date is not None:
         hackathon.end_date = payload.end_date
     if payload.rubric is not None:
         hackathon.rubric = payload.rubric
 
+    # Recompute end_date whenever scheduling inputs change.
+    hackathon.end_date = _compute_end_date(hackathon.start_date, hackathon.duration_hours, hackathon.end_date)
+
     db.commit()
     db.refresh(hackathon)
     logger.info("Hackathon updated id=%s by user id=%s", hackathon.id, current_user.id)
+    return hackathon
+
+
+@router.post("/{hackathon_id}/banner", response_model=HackathonOut)
+async def upload_hackathon_banner(
+    hackathon_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_organizer),
+):
+    hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+    if not can_manage_hackathon(current_user, hackathon):
+        logger.warning("User id=%s role=%s denied banner upload on hackathon id=%s owned by %s", current_user.id, current_user.role, hackathon_id, hackathon.created_by)
+        raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can upload a banner")
+
+    banner_path = await save_upload(file)
+    hackathon.banner_path = banner_path
+    db.commit()
+    db.refresh(hackathon)
+    logger.info("Banner uploaded for hackathon id=%s by user id=%s", hackathon.id, current_user.id)
     return hackathon
 
 
@@ -122,7 +227,7 @@ async def create_problem_statement(
     hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    if hackathon.created_by != current_user.id and current_user.role != UserRole.admin:
+    if not can_manage_hackathon(current_user, hackathon):
         logger.warning("User id=%s role=%s denied problem statement creation on hackathon id=%s", current_user.id, current_user.role, hackathon_id)
         raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can add problem statements")
 
@@ -152,7 +257,7 @@ async def delete_hackathon(
     hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    if current_user.role != UserRole.admin and hackathon.created_by != current_user.id:
+    if not can_manage_hackathon(current_user, hackathon):
         logger.warning("User id=%s role=%s denied delete on hackathon id=%s owned by %s", current_user.id, current_user.role, hackathon_id, hackathon.created_by)
         raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can delete this hackathon")
 

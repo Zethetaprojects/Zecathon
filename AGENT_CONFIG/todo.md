@@ -170,3 +170,17 @@
 - [x] 20.5 Deployment-ready Docker/nginx/GCP docs
 - [x] 20.6 PWA and mobile navbar polish
 - [x] 20.7 Tests, validation, and commits
+
+## Phase 21 — Scheduling, banners, team join codes, public homepage
+
+- [x] 21.1 Backend models: `duration_hours`, `banner_path`, `join_code`; migration helper for missing columns
+- [x] 21.2 Backend scheduling: compute `end_date` from `duration_hours`; public hackathon + stats endpoints
+- [x] 21.3 Backend team management: unique join code, `POST /teams/join-by-code`, `POST /teams/{id}/members`
+- [x] 21.4 Backend tests updated for scheduling, join codes, and add-member
+- [x] 21.5 Frontend types + `Countdown` component + API wrappers
+- [x] 21.6 Frontend `CreateHackathon` with start date/time, duration, banner upload
+- [x] 21.7 Frontend `Hackathons` + `HackathonDetail` with banners, status badges, and countdowns
+- [x] 21.8 Frontend `LandingPage` with upcoming hackathons and live stats
+- [x] 21.9 Frontend `HackathonTeams` with copyable join codes, join-by-code, and add-member UI
+- [x] 21.10 `seed_dev.py` and README updated
+- [x] 21.11 Validation: `pytest` ✅ 20 passed, `npm run build` ✅, `seed_dev.py` ✅, `validate_flow.py` ✅

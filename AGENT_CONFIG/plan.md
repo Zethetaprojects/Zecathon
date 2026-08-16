@@ -157,6 +157,18 @@
 - Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
 - User action: fully restart the dev stack (close the PowerShell window, kill lingering python/node processes, or reboot) so the new backend starts cleanly on port 8002.
 
+## Phase 21 — Scheduling, banners, join codes, public homepage, and dynamic stats
+- Backend: add `banner_path` to `Hackathon` and `join_code` to `Team`; add a lightweight migration helper so existing SQLite/PostgreSQL databases pick up the new columns automatically.
+- Backend: accept `duration_hours` on hackathon creation/update; compute `end_date = start_date + timedelta(hours=duration_hours)`; add `GET /api/hackathons/public` (unauthenticated upcoming hackathons) and `GET /api/hackathons/public/stats` (dynamic landing-page stats).
+- Backend: generate a unique copyable `join_code` when a team is created; add `POST /api/teams/join-by-code` for participants and `POST /api/teams/{team_id}/members` for managers/team leaders to add users by username.
+- Frontend: add `banner_path` and `join_code` to types; build a `Countdown` component and use it on cards, detail, and landing page.
+- Frontend: redesign `CreateHackathon` with a single start date/time picker + duration hours + banner upload.
+- Frontend: update `Hackathons`, `HackathonDetail`, and `LandingPage` to show banners, status badges (Upcoming/Open/Ended), and countdowns; replace hardcoded landing-page stats with live public stats.
+- Frontend: update `HackathonTeams` to display copyable join codes for managers/leaders, add a join-by-code input for participants, and add an "Add member by username" control for managers/leaders.
+- Tests: update hackathon creation tests for `duration_hours`, add team join-code/add-member tests, add public endpoint tests.
+- Seed and README: update `seed_dev.py` to use scheduling fields and refresh README with the new endpoints, RBAC notes, and join flow.
+- Validate: `pytest backend/tests`, `npm run build`, `seed_dev.py`, `validate_flow.py`; commit and push to `main`.
+
 ## Leftovers / next steps
 - User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations.
 - Promote existing users to organizer/judge via admin endpoint or set_role script.

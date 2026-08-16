@@ -1,21 +1,39 @@
+import secrets
+import string
 from typing import List
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_active_user, require_organizer, require_participant
+from app.auth import get_current_active_user, require_participant, require_organizer
 from app.database import get_db
-from app.models import Evaluation, Hackathon, Submission, Team, TeamMember, User, UserRole
-from app.routers.common import can_access_hackathon
-from app.schemas import TeamCreate, TeamOut
+from app.models import Hackathon, Submission, Team, TeamMember, User, UserRole
+from app.routers.common import can_access_hackathon, can_manage_hackathon
+from app.schemas import TeamCreate, TeamJoinByCode, TeamMemberAdd, TeamOut
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+_JOIN_CODE_ALPHABET = string.ascii_uppercase + string.digits
+_JOIN_CODE_ALPHABET = _JOIN_CODE_ALPHABET.replace("O", "").replace("I", "")  # avoid ambiguous chars
+_JOIN_CODE_LENGTH = 8
+
 
 def _is_manager(user: User) -> bool:
     return user.role in (UserRole.admin, UserRole.organizer)
+
+
+def _is_team_leader(user: User, team: Team) -> bool:
+    return any(m.user_id == user.id and m.role == "leader" for m in team.members)
+
+
+def _can_manage_team(user: User, team: Team) -> bool:
+    if user.role == UserRole.admin:
+        return True
+    if user.role == UserRole.organizer and can_manage_hackathon(user, team.hackathon):
+        return True
+    return _is_team_leader(user, team)
 
 
 def _user_team_in_hackathon(user_id: int, hackathon_id: int, db: Session) -> Team | None:
@@ -25,6 +43,14 @@ def _user_team_in_hackathon(user_id: int, hackathon_id: int, db: Session) -> Tea
         .filter(Team.hackathon_id == hackathon_id, TeamMember.user_id == user_id)
         .first()
     )
+
+
+def _generate_join_code(db: Session) -> str:
+    for _ in range(10):
+        code = "".join(secrets.choice(_JOIN_CODE_ALPHABET) for _ in range(_JOIN_CODE_LENGTH))
+        if not db.query(Team).filter(Team.join_code == code).first():
+            return code
+    raise RuntimeError("Could not generate a unique team join code")
 
 
 @router.post("", response_model=TeamOut, status_code=status.HTTP_201_CREATED)
@@ -46,7 +72,11 @@ async def create_team(
     if not _is_manager(current_user) and _user_team_in_hackathon(current_user.id, payload.hackathon_id, db):
         raise HTTPException(status_code=400, detail="You are already in a team for this hackathon")
 
-    team = Team(hackathon_id=payload.hackathon_id, name=payload.name)
+    team = Team(
+        hackathon_id=payload.hackathon_id,
+        name=payload.name,
+        join_code=_generate_join_code(db),
+    )
     db.add(team)
     db.flush()
     db.add(TeamMember(team_id=team.id, user_id=current_user.id, role="leader"))
@@ -83,6 +113,65 @@ async def get_team(
     if not can_access_hackathon(current_user, team.hackathon):
         logger.warning("User id=%s role=%s denied team detail on hackathon id=%s owned by %s", current_user.id, current_user.role, team.hackathon_id, team.hackathon.created_by)
         raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
+    return team
+
+
+@router.post("/join-by-code", response_model=TeamOut)
+async def join_team_by_code(
+    payload: TeamJoinByCode,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_participant),
+):
+    team = db.query(Team).filter(Team.join_code == payload.code).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if not can_access_hackathon(current_user, team.hackathon):
+        raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
+
+    existing_team = _user_team_in_hackathon(current_user.id, team.hackathon_id, db)
+    if existing_team:
+        if existing_team.id == team.id:
+            raise HTTPException(status_code=400, detail="You are already a member of this team")
+        raise HTTPException(status_code=400, detail="You are already in a team for this hackathon")
+
+    db.add(TeamMember(team_id=team.id, user_id=current_user.id, role="member"))
+    db.commit()
+    db.refresh(team)
+    logger.info("User id=%s joined team id=%s by code", current_user.id, team.id)
+    return team
+
+
+@router.post("/{team_id}/members", response_model=TeamOut)
+async def add_team_member(
+    team_id: int,
+    payload: TeamMemberAdd,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if not can_access_hackathon(current_user, team.hackathon):
+        raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
+    if not _can_manage_team(current_user, team):
+        raise HTTPException(status_code=403, detail="Only a team leader, hackathon organiser, or admin can add members")
+
+    target_user = db.query(User).filter(User.username == payload.username).first()
+    if not target_user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    existing_member = db.query(TeamMember).filter(TeamMember.team_id == team_id, TeamMember.user_id == target_user.id).first()
+    if existing_member:
+        raise HTTPException(status_code=400, detail="User is already a member of this team")
+
+    existing_team = _user_team_in_hackathon(target_user.id, team.hackathon_id, db)
+    if existing_team and existing_team.id != team.id:
+        raise HTTPException(status_code=400, detail="User is already in another team for this hackathon")
+
+    db.add(TeamMember(team_id=team_id, user_id=target_user.id, role="member"))
+    db.commit()
+    db.refresh(team)
+    logger.info("User id=%s added user id=%s to team id=%s", current_user.id, target_user.id, team_id)
     return team
 
 

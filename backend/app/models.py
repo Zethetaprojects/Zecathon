@@ -34,6 +34,8 @@ class Hackathon(Base):
     start_date = Column(DateTime, nullable=True)
     end_date = Column(DateTime, nullable=True)
     rubric = Column(JSON, nullable=True, default=None)  # custom per-hackathon scoring rubric
+    duration_hours = Column(Integer, nullable=True)  # hackathon duration from start_date
+    banner_path = Column(String, nullable=True)  # uploaded banner image path/URL
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 
@@ -62,6 +64,7 @@ class Team(Base):
     id = Column(Integer, primary_key=True, index=True)
     hackathon_id = Column(Integer, ForeignKey("hackathons.id"), nullable=False)
     name = Column(String, nullable=False)
+    join_code = Column(String, nullable=True, unique=True)  # copyable team invite code
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 
     hackathon = relationship("Hackathon", back_populates="teams")

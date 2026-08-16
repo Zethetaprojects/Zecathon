@@ -4,6 +4,14 @@
 - **Repo**: full-stack hackathon evaluation platform (ZECATHON) with RBAC, Gemini integration, dynamic rubrics, judge questions, evaluation retry, easter eggs, PWA baseline, mobile-friendly navigation, and GCP deployment artifacts.
 - **AGENT_CONFIG**: created; context, plan, state, and todo maintained.
 
+## Phase 21 — completed
+- **Scheduling**: hackathons now use a `start_date` + `duration_hours` model; `end_date` is computed server-side. Live countdowns appear on the hackathon list, detail, and landing pages.
+- **Banners**: organisers/admins can upload hackathon banner images via `POST /api/hackathons/{id}/banner`. Banners render on cards, detail pages, and the public landing page.
+- **Public homepage**: `/` now fetches upcoming hackathons and live platform stats from unauthenticated endpoints, replacing the hardcoded stat numbers.
+- **Team join codes**: every team created gets a unique 8-character invite code. Participants join via `POST /api/teams/join-by-code`. Leaders and managers see a copyable code and can add members by username via `POST /api/teams/{team_id}/members`.
+- **Database migrations**: `ensure_columns` in `app.database` automatically adds missing columns (including Phase 20 evaluation fields and Phase 21 fields) to existing SQLite/PostgreSQL databases.
+- **Validation**: `pytest backend/tests` ✅ 20 passed, `npm run build` ✅, `seed_dev.py` ✅, `validate_flow.py` ✅ all flows passed.
+
 ## Backend (completed)
 - **Phase 20.4 (organizer/admin scope hardening)**: added `backend/app/routers/common.py` with `can_access_hackathon`/`can_manage_hackathon`/`require_hackathon_access`; scoped `GET /api/hackathons`, `GET /api/hackathons/{id}`, `GET /api/problem-statements/{id}`, `GET /api/teams`, `GET /api/teams/{id}`, `POST /api/teams`, `POST /api/teams/{id}/join`, `GET /api/submissions`, `GET /api/submissions/{id}`, `POST /api/submissions`, `POST /api/evaluate/*`, and `GET /api/leaderboard/{id}` so admins/judges see everything, participants see everything, and organizers only see/control their own hackathons; removed the duplicate `/api/reports/submission/{id}` route; proxied `/uploads` in `frontend/vite.config.ts` and `frontend/nginx/default.conf`.
 - **Phase 20.5 (deployment docs)**: updated `README.md` RBAC matrix and API docs; rewrote `gcp/README.md` for Cloud SQL, Artifact Registry, Cloud Load Balancing, and nginx `/api` + `/uploads` proxy; added backend healthchecks to `docker-compose.yml` and `docker-compose.prod.yml`.
@@ -72,19 +80,20 @@
 - **Teams**: 2
 - **Submissions**: 2
 - **Evaluated**: 2
-- **Average score**: ~149
-- **Top team**: `Doc Dynamos` — ~178 pts
+- **Start**: scheduled demo start date/time + 24-hour duration
+- **Average score**: ~168
+- **Top team**: `Doc Dynamos` — ~252 pts
 - **Verdict breakdown**: 2 × NEEDS WORK (deterministic fallback because no Gemini key is set)
 - **Type breakdown**: 1 tech, 1 non-tech
-- **Team entries**: Tech Titans (tech, 114 pts) and Doc Dynamos (non-tech, ~178 pts)
-- **Per-team report**: includes score breakdown, authenticity band, category scores, strengths, weaknesses, review flags, and suggested judge questions.
+- **Team entries**: Tech Titans (tech, ~84 pts) and Doc Dynamos (non-tech, ~252 pts)
+- **Per-team report**: includes score breakdown, authenticity band, category scores, category explanations, strengths, weaknesses, review flags, and suggested judge questions.
 
 ## Repository
-- Pushed to `https://github.com/Zethetaprojects/Zecathon.git` branch `main` in previous phases; this phase will add a new commit.
+- Phase 21 changes will be committed and pushed to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
 - No new author metadata is added; commits retain the existing `user.name`/`user.email` from the global git config.
 
 ## Next action
-- Phase 20 is complete and pushed to `main`.
+- Phase 21 is complete and pushed to `main`.
 - No further blockers; ready for user testing or deployment.
 
 ## Blockers

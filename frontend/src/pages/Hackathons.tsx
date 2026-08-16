@@ -5,6 +5,8 @@ import { Hackathon } from '../types';
 import { formatError } from '../utils/formatError';
 import { isOrganizer } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
+import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget } from '../utils/hackathon';
+import Countdown from '../components/Countdown';
 import PageLayout from '../components/PageLayout';
 
 function EmptyState({ canCreate }: { canCreate: boolean }) {
@@ -30,11 +32,16 @@ function EmptyState({ canCreate }: { canCreate: boolean }) {
   );
 }
 
-function formatDate(date?: string) {
-  if (!date) return null;
-  const d = new Date(date);
-  if (isNaN(d.getTime())) return null;
-  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+const statusStyles = {
+  upcoming: 'bg-neon-purple/10 text-neon-purple border-neon-purple/20',
+  open: 'bg-neon-cyan/10 text-neon-cyan border-neon-cyan/20',
+  ended: 'bg-neon-pink/10 text-neon-pink border-neon-pink/20',
+};
+
+function resolveBannerUrl(path?: string | null) {
+  if (!path) return null;
+  if (path.startsWith('http')) return path;
+  return path.startsWith('/') ? path : `/uploads/${path.split('/').pop()}`;
 }
 
 export default function Hackathons() {
@@ -113,60 +120,92 @@ export default function Hackathons() {
           <EmptyState canCreate={canCreate} />
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            {hackathons.map((h) => (
-              <Link
-                key={h.id}
-                to={`/hackathons/${h.id}`}
-                className="group glass-panel p-6 block border-l-4 border-neon-cyan/40 hover:border-neon-cyan transition-all duration-300 hover:-translate-y-1 hover:shadow-neon-cyan micro-lift"
-              >
-                <div className="flex items-start justify-between gap-4 mb-3">
-                  <h2 className="font-pixel text-xs text-white group-hover:text-neon-cyan transition">
-                    {h.name}
-                  </h2>
-                  <span className="px-2 py-1 rounded text-[10px] bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20 uppercase tracking-wider">
-                    Open
-                  </span>
-                </div>
-                <p className="text-slate-300 text-sm line-clamp-2 mb-4">
-                  {h.description || 'No description provided.'}
-                </p>
-                <div className="grid grid-cols-2 gap-3 text-xs text-slate-400 mb-4">
-                  <div className="glass-panel px-3 py-2">
-                    <span className="block text-[10px] text-slate-500 uppercase tracking-wider">Problems</span>
-                    <span className="text-white font-semibold">{h.problem_statement_count ?? 0}</span>
-                  </div>
-                  <div className="glass-panel px-3 py-2">
-                    <span className="block text-[10px] text-slate-500 uppercase tracking-wider">Teams</span>
-                    <span className="text-white font-semibold">{h.team_count ?? 0}</span>
-                  </div>
-                </div>
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-slate-500">
-                    {formatDate(h.start_date) || 'Date TBD'}
-                    {h.end_date && ` → ${formatDate(h.end_date)}`}
-                  </span>
-                  <div className="flex items-center gap-3">
-                    {canCreate && (
-                      <button
-                        onClick={(e) => {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleDelete(h.id);
-                        }}
-                        disabled={deleting[h.id]}
-                        className="text-neon-pink hover:text-white transition disabled:opacity-50"
-                        title="Delete hackathon"
-                      >
-                        {deleting[h.id] ? '...' : 'Delete'}
-                      </button>
+            {hackathons.map((h) => {
+              const status = getHackathonStatus(h.start_date, h.end_date);
+              const { target, label } = getCountdownTarget(h.start_date, h.end_date);
+              const bannerUrl = resolveBannerUrl(h.banner_path);
+              return (
+                <Link
+                  key={h.id}
+                  to={`/hackathons/${h.id}`}
+                  className="group glass-panel block border-l-4 border-neon-cyan/40 hover:border-neon-cyan transition-all duration-300 hover:-translate-y-1 hover:shadow-neon-cyan micro-lift overflow-hidden"
+                >
+                  {/* Banner */}
+                  <div className="relative h-32 sm:h-40 bg-gradient-to-br from-space-900 to-slate-900 overflow-hidden">
+                    {bannerUrl ? (
+                      <img
+                        src={bannerUrl}
+                        alt={`${h.name} banner`}
+                        className="w-full h-full object-cover group-hover:scale-105 transition duration-500"
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-slate-600">
+                        <svg className="w-12 h-12 opacity-30" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
+                        </svg>
+                      </div>
                     )}
-                    <span className="text-neon-cyan group-hover:translate-x-1 transition transform">
-                      View arena →
-                    </span>
+                    <div className="absolute top-3 right-3">
+                      <span className={`px-2 py-1 rounded text-[10px] border uppercase tracking-wider ${statusStyles[status.status]}`}>
+                        {status.label}
+                      </span>
+                    </div>
                   </div>
-                </div>
-              </Link>
-            ))}
+
+                  <div className="p-6">
+                    <div className="flex items-start justify-between gap-4 mb-3">
+                      <h2 className="font-pixel text-xs text-white group-hover:text-neon-cyan transition">
+                        {h.name}
+                      </h2>
+                    </div>
+                    <p className="text-slate-300 text-sm line-clamp-2 mb-4">
+                      {h.description || 'No description provided.'}
+                    </p>
+                    <div className="grid grid-cols-2 gap-3 text-xs text-slate-400 mb-4">
+                      <div className="glass-panel px-3 py-2">
+                        <span className="block text-[10px] text-slate-500 uppercase tracking-wider">Problems</span>
+                        <span className="text-white font-semibold">{h.problem_statement_count ?? 0}</span>
+                      </div>
+                      <div className="glass-panel px-3 py-2">
+                        <span className="block text-[10px] text-slate-500 uppercase tracking-wider">Teams</span>
+                        <span className="text-white font-semibold">{h.team_count ?? 0}</span>
+                      </div>
+                    </div>
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 text-xs">
+                      <div className="text-slate-400">
+                        {status.status === 'ended' ? (
+                          <span className="text-slate-500">{formatHackathonDateRange(h.start_date, h.end_date)}</span>
+                        ) : (
+                          <Countdown targetDate={target} label={label} className="text-neon-cyan font-mono" />
+                        )}
+                      </div>
+                      <div className="flex items-center gap-3">
+                        {canCreate && (
+                          <button
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              handleDelete(h.id);
+                            }}
+                            disabled={deleting[h.id]}
+                            className="text-neon-pink hover:text-white transition disabled:opacity-50"
+                            title="Delete hackathon"
+                          >
+                            {deleting[h.id] ? '...' : 'Delete'}
+                          </button>
+                        )}
+                        <span className="text-neon-cyan group-hover:translate-x-1 transition transform">
+                          View arena →
+                        </span>
+                      </div>
+                    </div>
+                    <div className="mt-3 text-[10px] text-slate-500">
+                      {formatHackathonDateRange(h.start_date, h.end_date)}
+                    </div>
+                  </div>
+                </Link>
+              );
+            })}
           </div>
         )}
       </div>

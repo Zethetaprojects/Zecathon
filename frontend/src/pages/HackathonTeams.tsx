@@ -28,6 +28,11 @@ export default function HackathonTeams() {
   const [deletingTeam, setDeletingTeam] = useState<Record<number, boolean>>({});
   const [evaluating, setEvaluating] = useState<Record<number, boolean>>({});
   const [report, setReport] = useState<Evaluation | null>(null);
+  const [joinCodeInput, setJoinCodeInput] = useState('');
+  const [joinBusy, setJoinBusy] = useState(false);
+  const [addMemberUser, setAddMemberUser] = useState<Record<number, string>>({});
+  const [addMemberBusy, setAddMemberBusy] = useState<Record<number, boolean>>({});
+  const [copiedTeam, setCopiedTeam] = useState<number | null>(null);
   const navigate = useNavigate();
 
   const fetchHackathon = () => {
@@ -56,10 +61,14 @@ export default function HackathonTeams() {
         setSubmissionsByTeam(map);
       })
       .catch((err: any) => {
-        // Admins and hackathon owners should not see the participant "not a member" banner;
-        // they are allowed to view all team submissions. If a genuine error occurs, still show it.
+        // Managers can view all team submissions regardless of membership.
+        if (canManage) {
+          setSubmissionsByTeam({});
+          return;
+        }
         const msg = err?.response?.data?.detail || '';
-        if (canManage && typeof msg === 'string' && msg.toLowerCase().includes('not a member')) {
+        if (typeof msg === 'string' && msg.toLowerCase().includes('not a member')) {
+          // Non-members get a silent empty map; no red banner.
           setSubmissionsByTeam({});
           return;
         }
@@ -92,13 +101,46 @@ export default function HackathonTeams() {
     }
   };
 
-  const joinTeam = async (teamId: number) => {
+  const joinByCode = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!joinCodeInput.trim()) return;
+    setJoinBusy(true);
     setError('');
     try {
-      await teamsApi.join(teamId);
+      await teamsApi.joinByCode(joinCodeInput.trim());
+      setJoinCodeInput('');
       fetchTeams();
     } catch (err: any) {
       setError(formatError(err, 'Failed to join team'));
+    } finally {
+      setJoinBusy(false);
+    }
+  };
+
+  const addMember = async (teamId: number) => {
+    const username = addMemberUser[teamId]?.trim();
+    if (!username) return;
+    setAddMemberBusy((prev) => ({ ...prev, [teamId]: true }));
+    setError('');
+    try {
+      await teamsApi.addMember(teamId, username);
+      setAddMemberUser((prev) => ({ ...prev, [teamId]: '' }));
+      fetchTeams();
+    } catch (err: any) {
+      setError(formatError(err, 'Failed to add member'));
+    } finally {
+      setAddMemberBusy((prev) => ({ ...prev, [teamId]: false }));
+    }
+  };
+
+  const copyCode = async (team: Team) => {
+    if (!team.join_code) return;
+    try {
+      await navigator.clipboard.writeText(team.join_code);
+      setCopiedTeam(team.id);
+      setTimeout(() => setCopiedTeam(null), 1500);
+    } catch {
+      // ignore
     }
   };
 
@@ -137,6 +179,13 @@ export default function HackathonTeams() {
       setEvaluating((prev) => ({ ...prev, [submission.id]: false }));
     }
   };
+
+  const isTeamLeader = (team: Team) =>
+    team.members?.some((m) => m.user_id === user?.id && m.role === 'leader') ?? false;
+
+  const canManageTeam = (team: Team) => canManage || isTeamLeader(team);
+
+  const userInAnyTeam = teams.some((t) => t.members?.some((m) => m.user_id === user?.id));
 
   if (loading) {
     return (
@@ -219,22 +268,27 @@ export default function HackathonTeams() {
             ) : (
               teams.map((team) => (
                 <div key={team.id} className="glass-panel p-6">
-                  <div className="flex justify-between items-start gap-4 mb-4">
-                    <div>
+                  <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
+                    <div className="flex-1">
                       <h2 className="font-pixel text-xs text-white mb-2">{team.name}</h2>
-                      <p className="text-xs text-slate-400">
+                      <p className="text-xs text-slate-400 mb-3">
                         Members: {team.members?.map((m) => `${m.username} (${m.role})`).join(', ') || 'none'}
                       </p>
+                      {(canManageTeam(team)) && team.join_code && (
+                        <div className="flex items-center gap-2">
+                          <div className="px-3 py-1.5 rounded bg-black/30 border border-neon-cyan/30 font-mono text-xs text-neon-cyan tracking-widest select-all">
+                            {team.join_code}
+                          </div>
+                          <button
+                            onClick={() => copyCode(team)}
+                            className="text-[10px] px-2 py-1 rounded border border-white/10 text-slate-300 hover:text-neon-cyan hover:border-neon-cyan/50 transition"
+                          >
+                            {copiedTeam === team.id ? 'Copied!' : 'Copy code'}
+                          </button>
+                        </div>
+                      )}
                     </div>
                     <div className="flex items-center gap-2">
-                      {isParticipantUser && (
-                        <button
-                          onClick={() => joinTeam(team.id)}
-                          className="px-3 py-1.5 rounded neon-btn neon-btn-ghost text-xs"
-                        >
-                          Join
-                        </button>
-                      )}
                       {canManage && (
                         <button
                           onClick={() => deleteTeam(team.id)}
@@ -246,6 +300,27 @@ export default function HackathonTeams() {
                       )}
                     </div>
                   </div>
+
+                  {/* Add member UI for managers/leaders */}
+                  {canManageTeam(team) && (
+                    <div className="mb-4 p-3 rounded bg-black/20 border border-white/10">
+                      <div className="flex flex-col sm:flex-row gap-2">
+                        <input
+                          value={addMemberUser[team.id] || ''}
+                          onChange={(e) => setAddMemberUser((prev) => ({ ...prev, [team.id]: e.target.value }))}
+                          placeholder="Username to add"
+                          className="flex-1 rounded px-3 py-2 text-xs neon-input"
+                        />
+                        <button
+                          onClick={() => addMember(team.id)}
+                          disabled={addMemberBusy[team.id]}
+                          className="px-3 py-2 rounded neon-btn neon-btn-primary text-xs disabled:opacity-50"
+                        >
+                          {addMemberBusy[team.id] ? '...' : 'Add member'}
+                        </button>
+                      </div>
+                    </div>
+                  )}
 
                   <div className="space-y-3">
                     {hackathon.problem_statements?.map((ps) => {
@@ -323,27 +398,62 @@ export default function HackathonTeams() {
             )}
           </div>
 
-          {canActOnTeams && (
-            <div className="glass-panel p-6 h-fit">
-              <h3 className="font-pixel text-xs text-white mb-4">CREATE TEAM</h3>
-              <form onSubmit={createTeam} className="space-y-4">
-                <input
-                  value={teamName}
-                  onChange={(e) => setTeamName(e.target.value)}
-                  placeholder="Team name"
-                  required
-                  className="w-full rounded px-4 py-3 neon-input"
-                />
-                <button
-                  type="submit"
-                  disabled={busy}
-                  className="w-full rounded neon-btn neon-btn-primary py-3 text-xs disabled:opacity-50"
-                >
-                  {busy ? 'Creating...' : 'Create team'}
-                </button>
-              </form>
-            </div>
-          )}
+          <div className="space-y-6">
+            {canActOnTeams && (
+              <div className="glass-panel p-6 h-fit">
+                <h3 className="font-pixel text-xs text-white mb-4">CREATE TEAM</h3>
+                <form onSubmit={createTeam} className="space-y-4">
+                  <input
+                    value={teamName}
+                    onChange={(e) => setTeamName(e.target.value)}
+                    placeholder="Team name"
+                    required
+                    className="w-full rounded px-4 py-3 neon-input"
+                  />
+                  <button
+                    type="submit"
+                    disabled={busy}
+                    className="w-full rounded neon-btn neon-btn-primary py-3 text-xs disabled:opacity-50"
+                  >
+                    {busy ? 'Creating...' : 'Create team'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {isParticipantUser && !userInAnyTeam && (
+              <div className="glass-panel p-6 h-fit">
+                <h3 className="font-pixel text-xs text-white mb-4">JOIN A TEAM</h3>
+                <p className="text-xs text-slate-400 mb-3">
+                  Ask the team leader for their invite code and paste it here.
+                </p>
+                <form onSubmit={joinByCode} className="space-y-4">
+                  <input
+                    value={joinCodeInput}
+                    onChange={(e) => setJoinCodeInput(e.target.value.toUpperCase())}
+                    placeholder="e.g. AB3D9F2K"
+                    maxLength={8}
+                    className="w-full rounded px-4 py-3 neon-input font-mono tracking-widest"
+                  />
+                  <button
+                    type="submit"
+                    disabled={joinBusy || !joinCodeInput.trim()}
+                    className="w-full rounded neon-btn neon-btn-cyan py-3 text-xs disabled:opacity-50"
+                  >
+                    {joinBusy ? 'Joining...' : 'Join by code'}
+                  </button>
+                </form>
+              </div>
+            )}
+
+            {isParticipantUser && userInAnyTeam && (
+              <div className="glass-panel p-6 h-fit">
+                <p className="text-xs text-slate-300">
+                  You are already in a team. View your team above or submit a project for a problem statement.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </PageLayout>

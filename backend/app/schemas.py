@@ -68,6 +68,8 @@ class HackathonBase(BaseModel):
     description: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+    duration_hours: Optional[int] = None
+    banner_path: Optional[str] = None
     rubric: Optional[Dict[str, Any]] = None
 
 
@@ -80,6 +82,8 @@ class HackathonUpdate(HackathonBase):
     description: Optional[str] = None
     start_date: Optional[datetime] = None
     end_date: Optional[datetime] = None
+    duration_hours: Optional[int] = None
+    banner_path: Optional[str] = None
     rubric: Optional[Dict[str, Any]] = None
 
     model_config = ConfigDict(from_attributes=True)
@@ -123,6 +127,14 @@ class TeamCreate(BaseModel):
     name: str
 
 
+class TeamMemberAdd(BaseModel):
+    username: str
+
+
+class TeamJoinByCode(BaseModel):
+    code: str
+
+
 class TeamMemberOut(BaseModel):
     id: int
     user_id: int
@@ -137,6 +149,7 @@ class TeamOut(BaseModel):
     id: int
     hackathon_id: int
     name: str
+    join_code: Optional[str] = None
     created_at: datetime
     members: List[TeamMemberOut] = []
 
@@ -255,3 +268,26 @@ class HackathonReportDetail(HackathonReportSummary):
     team_entries: List[TeamReportEntry] = []
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# Public (unauthenticated) hackathon schemas
+
+class HackathonPublicOut(BaseModel):
+    id: int
+    name: str
+    description: Optional[str] = None
+    start_date: Optional[datetime] = None
+    end_date: Optional[datetime] = None
+    duration_hours: Optional[int] = None
+    banner_path: Optional[str] = None
+    problem_statement_count: int = 0
+    team_count: int = 0
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HackathonPublicStats(BaseModel):
+    total_hackathons: int
+    total_teams: int
+    total_submissions: int
+    total_evaluations: int

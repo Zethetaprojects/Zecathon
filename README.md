@@ -4,14 +4,17 @@ A web app for organising hackathons, collecting project submissions, and evaluat
 
 ## Features
 - User registration and login (JWT).
-- Create hackathons and upload problem statements (PDF, DOCX, PPTX, XLSX, TXT, MD).
-- Create teams and submit projects per problem statement.
+- Create hackathons with a start date/time + duration, live countdown, and optional banner image.
+- Public landing page showing upcoming hackathons and live platform stats.
+- Upload problem statements (PDF, DOCX, PPTX, XLSX, TXT, MD).
+- Create teams with a unique copyable join code; participants join by code, while team leaders and managers can add members directly.
+- Submit projects per problem statement.
 - Two evaluator APIs:
   - **Tech**: evaluates a GitHub repository against a problem statement.
   - **Non-tech**: evaluates a project document, with an optional supporting PPT.
 - Hackathon-oriented rubrics with admissibility gate, authenticity multiplier, and server-side score reconciliation.
 - Live leaderboard with discrete, non-clustered scores and a public shareable link.
-- Organiser/admin reports with verdict and submission-type breakdowns.
+- Organiser/admin reports with verdict and submission-type breakdowns, plus per-team printable PDF reports.
 
 ## System overview
 
@@ -97,15 +100,16 @@ flowchart LR
 | Action | Admin | Organiser | Judge | Participant |
 |---|---|---|---|---|
 | Create hackathon | ✅ | ✅ | ❌ | ❌ |
-| Upload problem statement | ✅ | ✅ (own hackathons) | ❌ | ❌ |
+| Upload problem statement / banner | ✅ | ✅ (own hackathons) | ❌ | ❌ |
 | Delete hackathon / team | ✅ | ✅ (own hackathons) | ❌ | ❌ |
-| Create / join team | ❌ | ❌ | ❌ | ✅ |
-| Submit project | ❌ | ❌ | ❌ | ✅ |
-| Manage team/submission on behalf | ✅ | ✅ (own hackathons) | ❌ | ❌ |
+| Create team | ✅ | ✅ (own hackathons) | ❌ | ✅ |
+| Join team by invite code | ❌ | ❌ | ❌ | ✅ |
+| Add member to team | ✅ | ✅ (own hackathons) | ❌ | ✅ (team leader) |
+| Submit project | ✅ | ✅ (own hackathons) | ❌ | ✅ (team member) |
 | Evaluate submission | ✅ | ✅ (own hackathons) | ✅ | ❌ |
 | View per-team evaluation report | ✅ | ✅ (own hackathons) | ❌ | ❌ |
 | View authenticated leaderboard | ✅ | ✅ (own hackathons) | ✅ | ✅ |
-| View public leaderboard | ✅ | ✅ | ✅ | ✅ |
+| View public leaderboard / upcoming hackathons | ✅ | ✅ | ✅ | ✅ |
 
 ## Tech stack
 - **Backend**: FastAPI, SQLAlchemy, PostgreSQL (via Docker Compose), Pydantic.
@@ -187,11 +191,16 @@ Key endpoints:
 - `POST /api/auth/login` — get JWT token
 - `GET /api/auth/admin/users` — admin user list
 - `PUT /api/auth/users/{id}/role` — admin role update
+- `GET /api/hackathons/public` — public upcoming hackathons (unauthenticated)
+- `GET /api/hackathons/public/stats` — public platform stats (unauthenticated)
 - `POST /api/hackathons` — create hackathon (organiser/admin)
 - `DELETE /api/hackathons/{id}` — delete hackathon and all data (organiser/admin)
 - `POST /api/hackathons/{id}/problem-statements` — upload problem statement (organiser/admin)
+- `POST /api/hackathons/{id}/banner` — upload hackathon banner image (organiser/admin)
 - `POST /api/teams` — create team (participant; organiser/admin can create on behalf of their hackathons)
-- `POST /api/teams/{id}/join` — join a team (participant only)
+- `POST /api/teams/join-by-code` — join a team using its invite code (participant only)
+- `POST /api/teams/{team_id}/members` — add a user to a team by username (team leader / organiser of owner hackathon / admin)
+- `POST /api/teams/{id}/join` — join a team by ID (legacy participant endpoint)
 - `DELETE /api/teams/{id}` — delete team and submissions (organiser of owner hackathon / admin)
 - `POST /api/submissions` — submit a project (participant; organiser/admin can submit on behalf of their hackathons)
 - `POST /api/evaluate/tech/{submission_id}` — evaluate a tech submission (judge/organiser of owner hackathon/admin)
@@ -204,6 +213,14 @@ Key endpoints:
 - `GET /api/reports/{hackathon_id}` — detailed hackathon report
 - `GET /api/reports/submission/{submission_id}` — printable per-team evaluation report (organiser/admin)
 - `GET /api/reports/submission/{submission_id}/pdf` — download the per-team report as a PDF (organiser/admin)
+
+## Hackathon scheduling and team join flow
+
+When creating a hackathon, organisers pick a **start date/time** and a **duration in hours**. The backend computes `end_date = start_date + duration_hours` and the frontend shows a live countdown on the hackathon card and detail page (time remaining until start or until end, depending on status).
+
+Organisers can upload a **banner image** (`POST /api/hackathons/{id}/banner`). Banners are displayed on the public landing page, the hackathon list, and the hackathon detail page.
+
+Each team gets a unique **8-character invite code** when it is created. The code is shown to the team leader and to hackathon managers in a copyable format. Participants join teams by pasting the code into the **Join by code** box. Managers and team leaders can also add members directly by username (`POST /api/teams/{team_id}/members`).
 
 ## Evaluation details
 
