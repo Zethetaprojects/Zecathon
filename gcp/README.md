@@ -38,6 +38,55 @@ For automated deploys on every push to `main`, use `gcp/cloudbuild.yaml`:
    - `_DB_INSTANCE` — Cloud SQL connection name: `PROJECT_ID:REGION:INSTANCE_ID`
 3. Ensure the four Secret Manager secrets below exist before the first run.
 
+## Self-hosted VM deployment (no gcloud CLI)
+
+If you prefer to run everything on a single GCP Compute Engine VM and manage it through the browser SSH terminal, use this path instead. It does **not** require `gcloud`, Cloud Run, Cloud SQL, or Firebase Hosting.
+
+Architecture:
+- **VM**: GCP Compute Engine (Ubuntu 22.04/24.04 LTS, e2-medium or larger).
+- **Database**: PostgreSQL running inside Docker with a persistent volume.
+- **Backend**: Docker container running **gunicorn** + uvicorn workers.
+- **Frontend**: Built React SPA served by host **nginx**.
+- **Reverse proxy / SSL**: Host **nginx** with optional Let's Encrypt (via certbot) or a self-signed certificate.
+- **Process management**: **systemd** `zecathon.service` keeps the Docker stack up.
+
+### Steps
+
+1. In the GCP Console, create a Compute Engine VM and add firewall rules for **TCP 80** and **TCP 443**.
+2. Point your domain's DNS A record to the VM's external IP.
+3. Open the browser SSH terminal and run:
+
+```bash
+sudo apt update && sudo apt install -y git
+git clone https://github.com/Zethetaprojects/Zecathon.git /opt/zecathon
+cd /opt/zecathon
+sudo ./gcp/deploy-vm.sh
+```
+
+The script will:
+1. Install Docker, nginx, certbot, and Node.js.
+2. Build the frontend SPA.
+3. Configure nginx and obtain an SSL certificate.
+4. Create a systemd service that starts PostgreSQL + backend via `gcp/docker-compose.vm.yml`.
+5. Start the application and wait for the backend health check.
+
+After deployment:
+
+```bash
+sudo systemctl status zecathon
+sudo journalctl -u zecathon -f
+sudo docker compose -f /opt/zecathon/gcp/docker-compose.vm.yml logs -f
+```
+
+To redeploy after code changes:
+
+```bash
+cd /opt/zecathon
+git pull origin main
+sudo systemctl restart zecathon
+sudo systemctl reload nginx
+```
+
 ## Manual deployment steps
 
 If you prefer to deploy manually instead of using `gcp/deploy.sh`, follow the steps below.

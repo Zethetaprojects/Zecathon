@@ -26,6 +26,16 @@
 - **Docs**: updated `gcp/README.md` with quick deploy and CI/CD sections.
 - **Validation**: `bash -n gcp/deploy.sh` ✅, `npm run build` ✅, `pytest backend/tests` ✅ 22 passed. (Full Docker build could not be verified locally because the Docker Desktop engine was not running; the fix is based on the correct Debian trixie package names for WeasyPrint.)
 
+## Phase 25 — completed
+- **Goal**: self-hosted GCP VM deployment without managed services (no gcloud CLI, no Cloud Run, no Cloud SQL, no Firebase).
+- **Gunicorn**: added `gunicorn` to `backend/requirements.txt` and created `backend/gunicorn.conf.py` for production FastAPI workers.
+- **VM compose stack**: created `gcp/docker-compose.vm.yml` with PostgreSQL in Docker + backend in Docker using gunicorn/uvicorn workers, plus persistent volumes for DB, uploads, and logs.
+- **Host nginx**: created `gcp/nginx-zecathon.conf` template that serves the built frontend SPA and proxies `/api` + `/uploads` to the backend container.
+- **Deploy script**: created `gcp/deploy-vm.sh` for the GCP browser SSH terminal. It installs Docker, nginx, certbot, and Node.js; clones/updates the repo; builds the frontend; configures nginx and SSL (Let's Encrypt or self-signed); and creates a systemd `zecathon.service` to keep the Docker stack alive.
+- **Docs**: updated `gcp/README.md` with the VM deployment path.
+- **Validation**: `bash -n gcp/deploy-vm.sh` ✅, `npm run build` ✅, `pytest backend/tests` ✅ 22 passed.
+- **Committed and pushed to `main`**.
+
 ## Phase 21 — completed
 - **Scheduling**: hackathons now use a `start_date` + `duration_hours` model; `end_date` is computed server-side. Live countdowns appear on the hackathon list, detail, and landing pages.
 - **Banners**: organisers/admins can upload hackathon banner images via `POST /api/hackathons/{id}/banner`. Banners render on cards, detail pages, and the public landing page.

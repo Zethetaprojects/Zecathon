@@ -192,3 +192,12 @@
 - [x] 24.4 Create `gcp/cloudbuild.yaml` CI/CD pipeline
 - [x] 24.5 Update `gcp/README.md` with quick deploy and CI/CD docs
 - [x] 24.6 Validation: `bash -n gcp/deploy.sh` ✅, `npm run build` ✅, `pytest backend/tests` ✅ 22 passed
+
+## Phase 25 — Self-hosted GCP VM deployment (no managed services)
+- [x] 25.1 Add `gunicorn` to `backend/requirements.txt`
+- [x] 25.2 Create `backend/gunicorn.conf.py` for production workers
+- [x] 25.3 Create `gcp/docker-compose.vm.yml` (PostgreSQL + backend with gunicorn)
+- [x] 25.4 Create `gcp/nginx-zecathon.conf` host nginx template
+- [x] 25.5 Create `gcp/deploy-vm.sh` single-script VM deployment
+- [x] 25.6 Update `gcp/README.md` with VM deployment instructions
+- [x] 25.7 Validation: `bash -n gcp/deploy-vm.sh` ✅, `npm run build` ✅, `pytest backend/tests` ✅ 22 passed

@@ -195,6 +195,15 @@
 - Validate: `docker compose -f docker-compose.yml build` succeeds for the backend image and `gcp/deploy.sh` has valid bash syntax.
 - Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
 
+## Phase 25 — Self-hosted GCP VM deployment (no managed services)
+- Add `gunicorn` to `backend/requirements.txt` and create `backend/gunicorn.conf.py` for production FastAPI workers.
+- Create `gcp/docker-compose.vm.yml` for a single VM: PostgreSQL in Docker + backend in Docker (gunicorn/uvicorn workers), with host nginx serving the frontend.
+- Create `gcp/nginx-zecathon.conf` host nginx template that serves static frontend files and proxies `/api` + `/uploads` to the backend container.
+- Create `gcp/deploy-vm.sh`: a single script for the GCP browser SSH terminal that installs Docker, nginx, certbot, Node.js, clones the repo, builds the frontend, configures nginx + SSL, and creates a systemd `zecathon.service` to keep the Docker stack alive.
+- Document the VM deployment path in `gcp/README.md`.
+- Validate: `bash -n gcp/deploy-vm.sh` passes and `npm run build` / `pytest backend/tests` still pass.
+- Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
+
 ## Leftovers / next steps
 - User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations.
 - Promote existing users to organizer/judge via admin endpoint or set_role script.

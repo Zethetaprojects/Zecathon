@@ -1,0 +1,66 @@
+# ZECATHON production deployment for a single GCP VM.
+# PostgreSQL runs in Docker; backend runs in Docker with gunicorn + uvicorn workers.
+# The host nginx server serves the built frontend and proxies /api and /uploads here.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: zecathon-postgres
+    environment:
+      POSTGRES_USER: ${DB_USER:-zecathon}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-zecathon_secret}
+      POSTGRES_DB: ${DB_NAME:-zecathon}
+    volumes:
+      - zecathon_pg_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-zecathon} -d ${DB_NAME:-zecathon}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+
+  backend:
+    build:
+      context: ../backend
+      dockerfile: Dockerfile
+    container_name: zecathon-backend
+    command: >
+      gunicorn app.main:app
+      -c /app/gunicorn.conf.py
+    environment:
+      DATABASE_URL: postgresql+psycopg2://${DB_USER:-zecathon}:${DB_PASSWORD:-zecathon_secret}@postgres:5432/${DB_NAME:-zecathon}
+      SECRET_KEY: ${SECRET_KEY}
+      GEMINI_API_KEY: ${GEMINI_API_KEY:-}
+      GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      AI_BACKEND_URL: ${AI_BACKEND_URL:-}
+      AI_BACKEND_TOKEN: ${AI_BACKEND_TOKEN:-}
+      UPLOAD_DIR: /data/uploads
+      MAX_UPLOAD_SIZE: 20971520
+      ACCESS_TOKEN_EXPIRE_MINUTES: 60
+    volumes:
+      - zecathon_uploads:/data/uploads
+      - zecathon_logs:/app/logs
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "127.0.0.1:8000:8000"
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health", "||", "exit", "1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+
+volumes:
+  zecathon_pg_data:
+  zecathon_uploads:
+  zecathon_logs:
