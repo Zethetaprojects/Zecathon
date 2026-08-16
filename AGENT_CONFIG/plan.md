@@ -169,6 +169,15 @@
 - Seed and README: update `seed_dev.py` to use scheduling fields and refresh README with the new endpoints, RBAC notes, and join flow.
 - Validate: `pytest backend/tests`, `npm run build`, `seed_dev.py`, `validate_flow.py`; commit and push to `main`.
 
+## Phase 22 — Team member management and hackathon edit page
+- Backend: expose `PATCH /api/teams/{team_id}/members/{member_id}` and `DELETE /api/teams/{team_id}/members/{member_id}` for admins, hackathon organisers (own hackathons), and team leaders. Promoting a member to leader demotes the existing leader; removing or demoting the only leader is rejected.
+- Backend tests: cover organiser promotion/demotion/removal and team-leader self-management.
+- Frontend: add `updateMember` / `removeMember` API wrappers and a dedicated `/hackathons/:id/edit` page with name, description, start date/time, duration, and banner upload preview.
+- Frontend: add an **Edit hackathon** button on the detail page for managers.
+- Frontend: show role selectors and remove buttons per team member for managers and team leaders on the team management page.
+- Validate: `pytest backend/tests`, `npm run build`, `seed_dev.py`, `validate_flow.py` all pass.
+- Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
+
 ## Leftovers / next steps
 - User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations.
 - Promote existing users to organizer/judge via admin endpoint or set_role script.

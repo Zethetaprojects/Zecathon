@@ -33,6 +33,8 @@ export default function HackathonTeams() {
   const [addMemberUser, setAddMemberUser] = useState<Record<number, string>>({});
   const [addMemberBusy, setAddMemberBusy] = useState<Record<number, boolean>>({});
   const [copiedTeam, setCopiedTeam] = useState<number | null>(null);
+  const [updatingMember, setUpdatingMember] = useState<Record<number, boolean>>({});
+  const [removingMember, setRemovingMember] = useState<Record<number, boolean>>({});
   const navigate = useNavigate();
 
   const fetchHackathon = () => {
@@ -130,6 +132,33 @@ export default function HackathonTeams() {
       setError(formatError(err, 'Failed to add member'));
     } finally {
       setAddMemberBusy((prev) => ({ ...prev, [teamId]: false }));
+    }
+  };
+
+  const updateMemberRole = async (teamId: number, memberId: number, role: string) => {
+    setUpdatingMember((prev) => ({ ...prev, [memberId]: true }));
+    setError('');
+    try {
+      await teamsApi.updateMember(teamId, memberId, role);
+      fetchTeams();
+    } catch (err: any) {
+      setError(formatError(err, 'Failed to update member role'));
+    } finally {
+      setUpdatingMember((prev) => ({ ...prev, [memberId]: false }));
+    }
+  };
+
+  const removeMember = async (teamId: number, memberId: number, username: string) => {
+    if (!window.confirm(`Remove ${username} from the team?`)) return;
+    setRemovingMember((prev) => ({ ...prev, [memberId]: true }));
+    setError('');
+    try {
+      await teamsApi.removeMember(teamId, memberId);
+      fetchTeams();
+    } catch (err: any) {
+      setError(formatError(err, 'Failed to remove member'));
+    } finally {
+      setRemovingMember((prev) => ({ ...prev, [memberId]: false }));
     }
   };
 
@@ -271,9 +300,50 @@ export default function HackathonTeams() {
                   <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
                     <div className="flex-1">
                       <h2 className="font-pixel text-xs text-white mb-2">{team.name}</h2>
-                      <p className="text-xs text-slate-400 mb-3">
-                        Members: {team.members?.map((m) => `${m.username} (${m.role})`).join(', ') || 'none'}
-                      </p>
+                      {canManageTeam(team) ? (
+                        <ul className="space-y-2 mb-3">
+                          {team.members?.map((m) => (
+                            <li
+                              key={m.id}
+                              className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2 rounded bg-black/20 border border-white/10"
+                            >
+                              <div className="text-xs text-slate-300">
+                                <span className="font-medium text-white">{m.username}</span>
+                                {m.user_id === user?.id && (
+                                  <span className="text-slate-500 ml-1">(you)</span>
+                                )}
+                                {m.role === 'leader' && (
+                                  <span className="ml-2 text-[10px] px-1.5 py-0.5 rounded bg-neon-cyan/10 text-neon-cyan border border-neon-cyan/20">
+                                    Leader
+                                  </span>
+                                )}
+                              </div>
+                              <div className="flex items-center gap-2">
+                                <select
+                                  value={m.role}
+                                  onChange={(e) => updateMemberRole(team.id, m.id, e.target.value)}
+                                  disabled={updatingMember[m.id]}
+                                  className="bg-space-900 border border-white/20 rounded px-2 py-1 text-xs text-white focus:border-neon-cyan focus:outline-none cursor-pointer"
+                                >
+                                  <option value="member">Member</option>
+                                  <option value="leader">Leader</option>
+                                </select>
+                                <button
+                                  onClick={() => removeMember(team.id, m.id, m.username)}
+                                  disabled={removingMember[m.id] || updatingMember[m.id]}
+                                  className="px-2 py-1 rounded text-[10px] text-neon-pink border border-neon-pink/30 hover:bg-neon-pink/10 transition disabled:opacity-50"
+                                >
+                                  {removingMember[m.id] ? '...' : 'Remove'}
+                                </button>
+                              </div>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : (
+                        <p className="text-xs text-slate-400 mb-3">
+                          Members: {team.members?.map((m) => `${m.username} (${m.role})`).join(', ') || 'none'}
+                        </p>
+                      )}
                       {(canManageTeam(team)) && team.join_code && (
                         <div className="flex items-center gap-2">
                           <div className="px-3 py-1.5 rounded bg-black/30 border border-neon-cyan/30 font-mono text-xs text-neon-cyan tracking-widest select-all">

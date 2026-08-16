@@ -4,10 +4,10 @@ A web app for organising hackathons, collecting project submissions, and evaluat
 
 ## Features
 - User registration and login (JWT).
-- Create hackathons with a start date/time + duration, live countdown, and optional banner image.
+- Create hackathons with a start date/time + duration, live countdown, and optional banner image. Organisers and admins can edit hackathon settings and replace the banner at any time.
 - Public landing page showing upcoming hackathons and live platform stats.
 - Upload problem statements (PDF, DOCX, PPTX, XLSX, TXT, MD).
-- Create teams with a unique copyable join code; participants join by code, while team leaders and managers can add members directly.
+- Create teams with a unique copyable join code; participants join by code, while team leaders and managers can add, remove, or promote members and change the team leader.
 - Submit projects per problem statement.
 - Two evaluator APIs:
   - **Tech**: evaluates a GitHub repository against a problem statement.
@@ -100,11 +100,14 @@ flowchart LR
 | Action | Admin | Organiser | Judge | Participant |
 |---|---|---|---|---|
 | Create hackathon | ✅ | ✅ | ❌ | ❌ |
-| Upload problem statement / banner | ✅ | ✅ (own hackathons) | ❌ | ❌ |
+| Edit hackathon settings / replace banner | ✅ | ✅ (own hackathons) | ❌ | ❌ |
+| Upload problem statement | ✅ | ✅ (own hackathons) | ❌ | ❌ |
 | Delete hackathon / team | ✅ | ✅ (own hackathons) | ❌ | ❌ |
 | Create team | ✅ | ✅ (own hackathons) | ❌ | ✅ |
 | Join team by invite code | ❌ | ❌ | ❌ | ✅ |
 | Add member to team | ✅ | ✅ (own hackathons) | ❌ | ✅ (team leader) |
+| Remove member from team | ✅ | ✅ (own hackathons) | ❌ | ✅ (team leader) |
+| Change team leader | ✅ | ✅ (own hackathons) | ❌ | ✅ (team leader) |
 | Submit project | ✅ | ✅ (own hackathons) | ❌ | ✅ (team member) |
 | Evaluate submission | ✅ | ✅ (own hackathons) | ✅ | ❌ |
 | View per-team evaluation report | ✅ | ✅ (own hackathons) | ❌ | ❌ |
@@ -194,12 +197,15 @@ Key endpoints:
 - `GET /api/hackathons/public` — public upcoming hackathons (unauthenticated)
 - `GET /api/hackathons/public/stats` — public platform stats (unauthenticated)
 - `POST /api/hackathons` — create hackathon (organiser/admin)
+- `PUT /api/hackathons/{id}` — edit hackathon settings and custom rubric (organiser/admin)
 - `DELETE /api/hackathons/{id}` — delete hackathon and all data (organiser/admin)
 - `POST /api/hackathons/{id}/problem-statements` — upload problem statement (organiser/admin)
 - `POST /api/hackathons/{id}/banner` — upload hackathon banner image (organiser/admin)
 - `POST /api/teams` — create team (participant; organiser/admin can create on behalf of their hackathons)
 - `POST /api/teams/join-by-code` — join a team using its invite code (participant only)
 - `POST /api/teams/{team_id}/members` — add a user to a team by username (team leader / organiser of owner hackathon / admin)
+- `PATCH /api/teams/{team_id}/members/{member_id}` — change a member's role or promote a new leader (team leader / organiser of owner hackathon / admin)
+- `DELETE /api/teams/{team_id}/members/{member_id}` — remove a member from a team (team leader / organiser of owner hackathon / admin)
 - `POST /api/teams/{id}/join` — join a team by ID (legacy participant endpoint)
 - `DELETE /api/teams/{id}` — delete team and submissions (organiser of owner hackathon / admin)
 - `POST /api/submissions` — submit a project (participant; organiser/admin can submit on behalf of their hackathons)
@@ -218,7 +224,7 @@ Key endpoints:
 
 When creating a hackathon, organisers pick a **start date/time** and a **duration in hours**. The backend computes `end_date = start_date + duration_hours` and the frontend shows a live countdown on the hackathon card and detail page (time remaining until start or until end, depending on status).
 
-Organisers can upload a **banner image** (`POST /api/hackathons/{id}/banner`). Banners are displayed on the public landing page, the hackathon list, and the hackathon detail page.
+Organisers can upload a **banner image** (`POST /api/hackathons/{id}/banner`). Banners are displayed on the public landing page, the hackathon list, and the hackathon detail page. Hackathon settings and banners can be updated from the dedicated **Edit hackathon** page at any time.
 
 Each team gets a unique **8-character invite code** when it is created. The code is shown to the team leader and to hackathon managers in a copyable format. Participants join teams by pasting the code into the **Join by code** box. Managers and team leaders can also add members directly by username (`POST /api/teams/{team_id}/members`).
 

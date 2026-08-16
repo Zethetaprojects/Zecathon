@@ -234,6 +234,14 @@ export default function HackathonDetail() {
           >
             Leaderboard
           </Link>
+          {canManage && (
+            <Link
+              to={`/hackathons/${id}/edit`}
+              className="px-5 py-2.5 rounded neon-btn neon-btn-ghost text-xs"
+            >
+              Edit hackathon
+            </Link>
+          )}
         </div>
 
         {error && (

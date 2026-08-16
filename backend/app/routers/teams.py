@@ -10,7 +10,7 @@ from app.auth import get_current_active_user, require_participant, require_organ
 from app.database import get_db
 from app.models import Hackathon, Submission, Team, TeamMember, User, UserRole
 from app.routers.common import can_access_hackathon, can_manage_hackathon
-from app.schemas import TeamCreate, TeamJoinByCode, TeamMemberAdd, TeamOut
+from app.schemas import TeamCreate, TeamJoinByCode, TeamMemberAdd, TeamMemberUpdate, TeamOut
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -172,6 +172,77 @@ async def add_team_member(
     db.commit()
     db.refresh(team)
     logger.info("User id=%s added user id=%s to team id=%s", current_user.id, target_user.id, team_id)
+    return team
+
+
+@router.patch("/{team_id}/members/{member_id}", response_model=TeamOut)
+async def update_team_member(
+    team_id: int,
+    member_id: int,
+    payload: TeamMemberUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if not can_access_hackathon(current_user, team.hackathon):
+        raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
+    if not _can_manage_team(current_user, team):
+        raise HTTPException(status_code=403, detail="Only a team leader, hackathon organiser, or admin can manage members")
+
+    member = db.query(TeamMember).filter(TeamMember.id == member_id, TeamMember.team_id == team_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    new_role = payload.role.strip().lower()
+    if new_role not in ("leader", "member"):
+        raise HTTPException(status_code=400, detail="Role must be 'leader' or 'member'")
+
+    if new_role == "leader" and member.role != "leader":
+        # Demote any existing leaders so there is only one leader at a time.
+        for m in team.members:
+            if m.role == "leader":
+                m.role = "member"
+        member.role = "leader"
+    elif new_role == "member" and member.role == "leader":
+        other_leader = any(m.id != member.id and m.role == "leader" for m in team.members)
+        if not other_leader:
+            raise HTTPException(status_code=400, detail="Cannot demote the only team leader")
+        member.role = "member"
+
+    db.commit()
+    db.refresh(team)
+    logger.info("User id=%s updated member id=%s role to %s in team id=%s", current_user.id, member_id, new_role, team_id)
+    return team
+
+
+@router.delete("/{team_id}/members/{member_id}", response_model=TeamOut)
+async def remove_team_member(
+    team_id: int,
+    member_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    team = db.query(Team).filter(Team.id == team_id).first()
+    if not team:
+        raise HTTPException(status_code=404, detail="Team not found")
+    if not can_access_hackathon(current_user, team.hackathon):
+        raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
+    if not _can_manage_team(current_user, team):
+        raise HTTPException(status_code=403, detail="Only a team leader, hackathon organiser, or admin can manage members")
+
+    member = db.query(TeamMember).filter(TeamMember.id == member_id, TeamMember.team_id == team_id).first()
+    if not member:
+        raise HTTPException(status_code=404, detail="Member not found")
+
+    if member.role == "leader" and not any(m.id != member.id and m.role == "leader" for m in team.members):
+        raise HTTPException(status_code=400, detail="Cannot remove the only team leader")
+
+    db.delete(member)
+    db.commit()
+    db.refresh(team)
+    logger.info("User id=%s removed member id=%s from team id=%s", current_user.id, member_id, team_id)
     return team
 
 

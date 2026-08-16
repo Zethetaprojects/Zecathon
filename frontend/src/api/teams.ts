@@ -9,6 +9,10 @@ export const teamsApi = {
   joinByCode: (code: string) => api.post<Team>('/teams/join-by-code', { code }),
   addMember: (teamId: number, username: string) =>
     api.post<Team>(`/teams/${teamId}/members`, { username }),
+  updateMember: (teamId: number, memberId: number, role: string) =>
+    api.patch<Team>(`/teams/${teamId}/members/${memberId}`, { role }),
+  removeMember: (teamId: number, memberId: number) =>
+    api.delete<Team>(`/teams/${teamId}/members/${memberId}`),
   delete: (teamId: number) => api.delete(`/teams/${teamId}`),
 };
 

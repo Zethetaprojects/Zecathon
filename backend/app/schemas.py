@@ -131,6 +131,10 @@ class TeamMemberAdd(BaseModel):
     username: str
 
 
+class TeamMemberUpdate(BaseModel):
+    role: str  # "leader" or "member"
+
+
 class TeamJoinByCode(BaseModel):
     code: str
 

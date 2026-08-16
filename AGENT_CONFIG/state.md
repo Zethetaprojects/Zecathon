@@ -4,6 +4,12 @@
 - **Repo**: full-stack hackathon evaluation platform (ZECATHON) with RBAC, Gemini integration, dynamic rubrics, judge questions, evaluation retry, easter eggs, PWA baseline, mobile-friendly navigation, and GCP deployment artifacts.
 - **AGENT_CONFIG**: created; context, plan, state, and todo maintained.
 
+## Phase 22 — completed
+- **Team member management**: admins, hackathon organisers (own hackathons), and team leaders can change a member's role, promote a new leader, or remove a member. Promoting a member to leader demotes the previous leader automatically; removing or demoting the only leader is rejected by the backend.
+- **Edit hackathon page**: a dedicated `/hackathons/:id/edit` route lets organisers/admins update the name, description, start date/time, duration, and banner image, with a live preview of the banner.
+- **Frontend integration**: an **Edit hackathon** button appears on the hackathon detail page for managers, and the team management page shows per-member role selectors and remove buttons for managers/team leaders.
+- **Validation**: `pytest backend/tests` ✅ 22 passed, `npm run build` ✅, `seed_dev.py` ✅, `validate_flow.py` ✅ all flows passed.
+
 ## Phase 21 — completed
 - **Scheduling**: hackathons now use a `start_date` + `duration_hours` model; `end_date` is computed server-side. Live countdowns appear on the hackathon list, detail, and landing pages.
 - **Banners**: organisers/admins can upload hackathon banner images via `POST /api/hackathons/{id}/banner`. Banners render on cards, detail pages, and the public landing page.
@@ -32,13 +38,13 @@
 - **Logging**: **NEW Phase 20.3** `backend/app/logger.py` configures console + rotating file logging (`logs/app.log`, 10 MB, 5 backups) with cleanup of stale rotated files. Wired into `main.py` lifespan startup/shutdown and key routers (`evaluate`, `hackathons`, `teams`, `submissions`). `logs/` is ignored by Git.
 
 ## Frontend (completed)
-- **New routes**: `/admin` (admin-only), `/public/leaderboard/:id` (shareable), `/reports` (organiser/admin only), `/reports/submission/:id` (printable per-team report).
-- **New components**: `AdminDashboard`, `AdminRoute`, `OrganizerRoute`, `EvaluationReport`, `PublicLeaderboard`, `EasterEggOverlay`, `EasterEggProvider`, global `Footer` in `PageLayout`, `ReportsPage`, `TeamReportPage`, `BackButton`.
+- **New routes**: `/admin` (admin-only), `/public/leaderboard/:id` (shareable), `/reports` (organiser/admin only), `/reports/submission/:id` (printable per-team report), `/hackathons/:id/edit` (edit hackathon settings and banner).
+- **New components**: `AdminDashboard`, `AdminRoute`, `OrganizerRoute`, `EvaluationReport`, `PublicLeaderboard`, `EasterEggOverlay`, `EasterEggProvider`, global `Footer` in `PageLayout`, `ReportsPage`, `TeamReportPage`, `BackButton`, `EditHackathon`.
 - **Role-aware UI**: dashboard cards adapt to admin/organizer/judge/participant; admin and reports links in navbar for the appropriate roles; registration role selector (Student / Organizer).
 - **Navigation**: Dashboard now appears before Hackathons in the navbar; a mobile hamburger menu exposes all role-aware links on small screens.
 - **Back buttons**: every submenu page (`CreateHackathon`, `HackathonDetail`, `HackathonTeams`, `Submit`, `Leaderboard`, `ReportsPage`, `AdminDashboard`) has a consistent back button.
 - **Hackathons page**: uses backend counts; organisers/admins can delete hackathons from the card.
-- **Team page**: participants can create/join/submit; organisers/admins can also create teams and submit on behalf of a team, delete teams, and view per-team reports.
+- **Team page**: participants can create/join/submit; organisers/admins can also create teams and submit on behalf of a team, delete teams, view per-team reports, add/remove members, and change the team leader. Team leaders can also manage their own team's members and leader.
 - **Submit page**: participants submit their own projects; organisers/admins can submit on behalf of the selected team.
 - **PWA**: `manifest.json`, `sw.js`, registered service worker, theme-color / apple-mobile-web-app meta tags, and `viewport-fit=cover` viewport.
 - **Reports page team entries**: each evaluated row now has a **View report** button that opens the printable per-team report.
@@ -57,15 +63,15 @@
 
 ## Validation
 - Backend upload path fix: `save_upload` returns `/uploads/{filename}`; `document_extractor` resolves `/uploads/...` back to the local `upload_dir` before reading, so non-tech evaluations and problem-statement extraction work from public URLs and local tests.
-- `pytest backend/tests` ✅ 17 passed (includes new organizer/admin scope tests)
+- `pytest backend/tests` ✅ 22 passed (includes team member management and organizer/admin scope tests)
 - `npm run build` ✅ production build succeeded
 - `validate_flow.py` ✅ all flows passed with the new scoped access rules
+- Team member role update/remove endpoints tested for organisers and team leaders
 - Backend PDF endpoint returns a valid `%PDF` byte stream for evaluated submissions; WeasyPrint is the primary engine in Docker, fpdf2 fallback works on Windows dev without GTK.
 - Docker Compose files updated for PostgreSQL; backend Dockerfile includes WeasyPrint and PostgreSQL dependencies.
 - `seed_dev.py` ✅ idempotent; re-running creates a single demo hackathon with two evaluated submissions and a populated leaderboard
-- `validate_flow.py` ✅ all flows passed with the new participant-only team/submission rules
 - Reports endpoints verified on a fresh backend process; per-team printable report accessible to organisers/admins
-- Admin create-team/submit flow verified via API on a fresh backend process
+- Admin create-team/submit and member-management flows verified via API on a fresh backend process
 - Dev servers should be started with `start-dev.sh` / `start-dev.ps1` (backend on `http://127.0.0.1:8002`, frontend on `http://localhost:5173`)
 
 ## Dev workflow
@@ -89,11 +95,11 @@
 - **Per-team report**: includes score breakdown, authenticity band, category scores, category explanations, strengths, weaknesses, review flags, and suggested judge questions.
 
 ## Repository
-- Phase 21 changes will be committed and pushed to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
+- Phase 22 changes will be committed and pushed to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
 - No new author metadata is added; commits retain the existing `user.name`/`user.email` from the global git config.
 
 ## Next action
-- Phase 21 is complete and pushed to `main`.
+- Phase 22 is complete and pushed to `main`.
 - No further blockers; ready for user testing or deployment.
 
 ## Blockers

@@ -210,3 +210,68 @@ def test_other_organizer_cannot_access_teams_or_submissions(auth_client, client,
     assert r.status_code == 200
     r = admin_client.get(f"/api/submissions/{sub_id}")
     assert r.status_code == 200
+
+
+def test_manage_team_members_and_change_leader(auth_client, participant_client, client):
+    r = auth_client.post("/api/hackathons", json={"name": "Member Mgmt Hack", "description": "x"})
+    hackathon_id = r.json()["id"]
+    r = auth_client.post(
+        f"/api/hackathons/{hackathon_id}/problem-statements",
+        data={"title": "Problem"},
+    )
+    assert r.status_code == 201
+
+    r = participant_client.post("/api/teams", json={"hackathon_id": hackathon_id, "name": "Leaders"})
+    assert r.status_code == 201
+    team = r.json()
+    team_id = team["id"]
+    original_leader_member_id = team["members"][0]["id"]
+
+    # add a new member
+    r = client.post("/api/auth/register", json={"username": "bob", "email": "bob@example.com", "password": "Secret123!"})
+    assert r.status_code == 201
+    r = auth_client.post(f"/api/teams/{team_id}/members", json={"username": "bob"})
+    assert r.status_code == 200
+    team = r.json()
+    bob_member = next(m for m in team["members"] if m["username"] == "bob")
+    assert bob_member["role"] == "member"
+
+    # promote bob to leader (original leader becomes member)
+    r = auth_client.patch(f"/api/teams/{team_id}/members/{bob_member['id']}", json={"role": "leader"})
+    assert r.status_code == 200
+    team = r.json()
+    assert any(m["username"] == "bob" and m["role"] == "leader" for m in team["members"])
+    assert any(m["id"] == original_leader_member_id and m["role"] == "member" for m in team["members"])
+
+    # remove the original leader (now a member)
+    r = auth_client.delete(f"/api/teams/{team_id}/members/{original_leader_member_id}")
+    assert r.status_code == 200
+    team = r.json()
+    assert not any(m["id"] == original_leader_member_id for m in team["members"])
+
+    # cannot demote the only leader
+    r = auth_client.patch(f"/api/teams/{team_id}/members/{bob_member['id']}", json={"role": "member"})
+    assert r.status_code == 400
+
+
+def test_team_leader_can_change_leader_and_remove_member(auth_client, participant_client, client):
+    r = auth_client.post("/api/hackathons", json={"name": "Leader Mgmt Hack", "description": "x"})
+    hackathon_id = r.json()["id"]
+    r = auth_client.post(f"/api/hackathons/{hackathon_id}/problem-statements", data={"title": "Problem"})
+    assert r.status_code == 201
+
+    r = participant_client.post("/api/teams", json={"hackathon_id": hackathon_id, "name": "Squad"})
+    team = r.json()
+    team_id = team["id"]
+
+    r = client.post("/api/auth/register", json={"username": "carol", "email": "carol@example.com", "password": "Secret123!"})
+    assert r.status_code == 201
+    r = participant_client.post(f"/api/teams/{team_id}/members", json={"username": "carol"})
+    assert r.status_code == 200
+    carol_member_id = next(m["id"] for m in r.json()["members"] if m["username"] == "carol")
+
+    # team leader removes the member
+    r = participant_client.delete(f"/api/teams/{team_id}/members/{carol_member_id}")
+    assert r.status_code == 200
+    team = r.json()
+    assert not any(m["username"] == "carol" for m in team["members"])

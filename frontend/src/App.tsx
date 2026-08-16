@@ -12,6 +12,7 @@ import Hackathons from './pages/Hackathons';
 import CreateHackathon from './pages/CreateHackathon';
 import HackathonDetail from './pages/HackathonDetail';
 import HackathonTeams from './pages/HackathonTeams';
+import EditHackathon from './pages/EditHackathon';
 import Submit from './pages/Submit';
 import Leaderboard from './pages/Leaderboard';
 import PublicLeaderboard from './pages/PublicLeaderboard';
@@ -47,6 +48,7 @@ function App() {
                 <Route element={<OrganizerRoute />}>
                   <Route path="/reports" element={<ReportsPage />} />
                   <Route path="/reports/submission/:id" element={<TeamReportPage />} />
+                  <Route path="/hackathons/:id/edit" element={<EditHackathon />} />
                 </Route>
                 <Route path="/admin" element={<AdminRoute />}>
                   <Route index element={<AdminDashboard />} />
