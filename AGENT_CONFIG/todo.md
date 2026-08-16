@@ -167,6 +167,6 @@
 - [x] 20.2 PostgreSQL in Docker Compose (committed)
 - [x] 20.3 Structured logging with rotation (committed)
 - [x] 20.4 Harden organizer/admin scope
-- [ ] 20.5 Deployment-ready Docker/nginx/GCP docs
-- [ ] 20.6 PWA and mobile navbar polish
-- [ ] 20.7 Tests, validation, and commits
+- [x] 20.5 Deployment-ready Docker/nginx/GCP docs
+- [x] 20.6 PWA and mobile navbar polish
+- [x] 20.7 Tests, validation, and commits

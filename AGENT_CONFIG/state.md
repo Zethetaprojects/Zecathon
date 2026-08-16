@@ -5,7 +5,9 @@
 - **AGENT_CONFIG**: created; context, plan, state, and todo maintained.
 
 ## Backend (completed)
-- **Phase 20.4 ( organizer/admin scope hardening)**: added `backend/app/routers/common.py` with `can_access_hackathon`/`can_manage_hackathon`/`require_hackathon_access`; scoped `GET /api/hackathons` (organizers only see their own), `GET /api/hackathons/{id}`, `GET /api/problem-statements/{id}`, `GET /api/teams`, `GET /api/teams/{id}`, `POST /api/teams`, `POST /api/teams/{id}/join`, `GET /api/submissions`, `GET /api/submissions/{id}`, `POST /api/submissions`, `POST /api/evaluate/*`, and `GET /api/leaderboard/{id}` so admins see everything, judges see everything, participants see everything, and organizers only see/control their own hackathons; removed the duplicate `/api/reports/submission/{id}` route definition; proxied `/uploads` in `frontend/vite.config.ts` and `frontend/nginx/default.conf` so uploaded problem-statement files and non-tech submissions are viewable in dev and production.
+- **Phase 20.4 (organizer/admin scope hardening)**: added `backend/app/routers/common.py` with `can_access_hackathon`/`can_manage_hackathon`/`require_hackathon_access`; scoped `GET /api/hackathons`, `GET /api/hackathons/{id}`, `GET /api/problem-statements/{id}`, `GET /api/teams`, `GET /api/teams/{id}`, `POST /api/teams`, `POST /api/teams/{id}/join`, `GET /api/submissions`, `GET /api/submissions/{id}`, `POST /api/submissions`, `POST /api/evaluate/*`, and `GET /api/leaderboard/{id}` so admins/judges see everything, participants see everything, and organizers only see/control their own hackathons; removed the duplicate `/api/reports/submission/{id}` route; proxied `/uploads` in `frontend/vite.config.ts` and `frontend/nginx/default.conf`.
+- **Phase 20.5 (deployment docs)**: updated `README.md` RBAC matrix and API docs; rewrote `gcp/README.md` for Cloud SQL, Artifact Registry, Cloud Load Balancing, and nginx `/api` + `/uploads` proxy; added backend healthchecks to `docker-compose.yml` and `docker-compose.prod.yml`.
+- **Phase 20.6 (PWA / mobile polish)**: updated `frontend/public/manifest.json` with `id`, `scope`, and `categories`; added `<noscript>` fallback in `frontend/index.html`; improved mobile navbar with an always-visible hamburger menu, Escape-to-close, `aria-expanded`, and auth links for logged-out users; added an Escape key listener to close the report detail panel in `ReportsPage`.
 - **Models**: `Hackathon.rubric` (JSON), `Submission.github_url`, `Evaluation.judge_questions`; `Team.submissions` and `ProblemStatement.submissions` cascades configured.
 - **Schemas**: `UserCreate` password validator (8 chars, letter, digit, symbol), role validator (only `participant` or `organizer` allowed at registration), `HackathonCreate` rubric, `SubmissionCreate` github_url, `EvaluationOut` judge_questions, `SubmissionReport` with team/problem/hackathon names.
 - **Auth**: bcrypt rounds 12, sliding-window rate limiter on `/api/auth/register` and `/api/auth/login`, `require_participant` dependency added.
@@ -82,15 +84,13 @@
 - No new author metadata is added; commits retain the existing `user.name`/`user.email` from the global git config.
 
 ## Next action
-- Phase 20.4 committed to `main`.
-- Proceed to Phase 20.5: deployment-ready Docker/nginx/GCP docs.
+- Phase 20 is complete and pushed to `main`.
+- No further blockers; ready for user testing or deployment.
 
 ## Blockers
 - None.
 
 ## Leftovers / future improvements
-- Phase 20.5: deployment-ready Docker/nginx/GCP docs.
-- Phase 20.6: PWA and mobile navbar polish.
-- Phase 20.7: full validation and commits.
-- Move uploads to Cloud Storage.
+- Move uploads to Cloud Storage and update `app/services/file_storage.py` for S3-compatible storage.
 - Add real-time notifications for score updates (optional).
+- Add a Cloud Build / Cloud Deploy pipeline template if needed.
