@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useMusic } from './MusicProvider';
@@ -37,6 +37,15 @@ export default function Navbar() {
   const { discover, setMode } = useEasterEggs();
   const logoClicksRef = useRef<number[]>([]);
   const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [menuOpen]);
 
   const handleLogout = () => {
     logout();
@@ -140,45 +149,77 @@ export default function Navbar() {
             )}
 
             {/* Mobile hamburger */}
-            {user && (
-              <button
-                type="button"
-                onClick={() => setMenuOpen((prev) => !prev)}
-                className="md:hidden w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white flex items-center justify-center transition"
-                aria-label="Toggle menu"
-              >
-                {menuOpen ? (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                ) : (
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-                  </svg>
-                )}
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => setMenuOpen((prev) => !prev)}
+              className="md:hidden w-9 h-9 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-slate-300 hover:text-white flex items-center justify-center transition"
+              aria-label="Toggle menu"
+              aria-expanded={menuOpen}
+            >
+              {menuOpen ? (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              ) : (
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              )}
+            </button>
           </div>
         </div>
 
         {/* Mobile nav dropdown */}
-        {user && menuOpen && (
+        {menuOpen && (
           <div className="md:hidden mt-3 pt-3 border-t border-white/10">
             <div className="flex flex-col gap-1">
-              {navLinks.map((link) => (
-                <Link
-                  key={link.to}
-                  to={link.to}
-                  onClick={() => setMenuOpen(false)}
-                  className="px-4 py-2 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition"
-                >
-                  {link.label}
-                </Link>
-              ))}
+                {user ? (
+                  <>
+                    {navLinks.map((link) => (
+                      <Link
+                        key={link.to}
+                        to={link.to}
+                        onClick={() => setMenuOpen(false)}
+                        className="px-4 py-3 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition"
+                      >
+                        {link.label}
+                      </Link>
+                    ))}
+                    <div className="border-t border-white/10 my-1" />
+                    <span className="px-4 py-2 text-xs text-slate-500 uppercase tracking-wider">Signed in as {user.username}</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setMenuOpen(false);
+                        handleLogout();
+                      }}
+                      className="px-4 py-3 rounded-lg text-sm text-left text-neon-pink hover:bg-neon-pink/10 transition"
+                    >
+                      Log out
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link
+                      to="/login"
+                      onClick={() => setMenuOpen(false)}
+                      className="px-4 py-3 rounded-lg text-sm text-slate-300 hover:text-white hover:bg-white/5 transition"
+                    >
+                      Log in
+                    </Link>
+                    <Link
+                      to="/register"
+                      onClick={() => setMenuOpen(false)}
+                      className="px-4 py-3 rounded-lg text-sm text-neon-cyan hover:bg-neon-cyan/10 transition"
+                    >
+                      Register
+                    </Link>
+                  </>
+                )}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
-    </nav>
-  );
+          )}
+        </div>
+      </nav>
+    );
 }

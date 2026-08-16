@@ -1,12 +1,15 @@
 {
   "name": "ZECATHON - Hackathon Evaluation Platform",
   "short_name": "ZECATHON",
+  "id": "/",
   "description": "AI-powered evaluation platform for tech and non-tech hackathons.",
   "start_url": "/",
+  "scope": "/",
   "display": "standalone",
   "background_color": "#0a0e27",
   "theme_color": "#0a0e27",
   "orientation": "portrait-primary",
+  "categories": ["education", "productivity", "utilities"],
   "icons": [
     {
       "src": "/ZeTheta%20Logo.png",

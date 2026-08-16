@@ -93,6 +93,15 @@ export default function ReportsPage() {
   const [error, setError] = useState('');
 
   useEffect(() => {
+    if (!detail) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setDetail(null);
+    };
+    document.addEventListener('keydown', onKey);
+    return () => document.removeEventListener('keydown', onKey);
+  }, [detail]);
+
+  useEffect(() => {
     reportsApi
       .list()
       .then((res) => setReports(res.data))
