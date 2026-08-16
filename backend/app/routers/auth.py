@@ -16,7 +16,14 @@ from app.auth import (
 )
 from app.database import get_db
 from app.models import User, UserRole
-from app.schemas import Token, UserCreate, UserOut, UserRoleUpdate
+from app.schemas import (
+    AdminPasswordUpdate,
+    AdminUserCreate,
+    Token,
+    UserCreate,
+    UserOut,
+    UserRoleUpdate,
+)
 
 router = APIRouter()
 
@@ -69,16 +76,58 @@ async def list_users(
     return db.query(User).order_by(User.created_at.desc()).all()
 
 
-@router.put("/users/{user_id}/role", response_model=UserOut)
-async def update_user_role(
+@router.post("/admin/users", response_model=UserOut, status_code=status.HTTP_201_CREATED)
+async def admin_create_user(
+    payload: AdminUserCreate,
+    db: Session = Depends(get_db),
+    _: User = Depends(require_admin),
+):
+    if db.query(User).filter((User.username == payload.username) | (User.email == payload.email)).first():
+        raise HTTPException(status_code=400, detail="Username or email already registered")
+    user = User(
+        username=payload.username,
+        email=payload.email,
+        hashed_password=get_password_hash(payload.password),
+        role=payload.role,
+    )
+    db.add(user)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.put("/admin/users/{user_id}/password", response_model=UserOut)
+async def admin_update_password(
     user_id: int,
-    payload: UserRoleUpdate,
+    payload: AdminPasswordUpdate,
     db: Session = Depends(get_db),
     _: User = Depends(require_admin),
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    user.hashed_password = get_password_hash(payload.password)
+    db.commit()
+    db.refresh(user)
+    return user
+
+
+@router.put("/users/{user_id}/role", response_model=UserOut)
+async def update_user_role(
+    user_id: int,
+    payload: UserRoleUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_admin),
+):
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    if user.id == current_user.id and user.role == UserRole.admin and payload.role != UserRole.admin:
+        raise HTTPException(status_code=400, detail="You cannot demote yourself from admin")
+    if user.role == UserRole.admin and payload.role != UserRole.admin:
+        other_admin = db.query(User).filter(User.id != user.id, User.role == UserRole.admin).first()
+        if not other_admin:
+            raise HTTPException(status_code=400, detail="Cannot demote the last admin")
     user.role = payload.role
     db.commit()
     db.refresh(user)

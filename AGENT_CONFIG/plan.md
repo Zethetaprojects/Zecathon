@@ -204,10 +204,18 @@
 - Validate: `bash -n gcp/deploy-vm.sh` passes and `npm run build` / `pytest backend/tests` still pass.
 - Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
 
+## Phase 26 — Sound mixer, admin confirmation modal, and footer security cleanup
+- Refactor `frontend/src/components/MusicProvider.tsx` to persistent AudioContext engines with gain-node volume control; add separate `musicVolume` and `effectsVolume` states and a master mute toggle.
+- Replace the navbar speaker toggle with a `SoundMixer` popover containing two sliders and a master mute button.
+- Add a themed confirmation modal to `frontend/src/pages/AdminDashboard.tsx` for role changes and password resets.
+- Remove the **API Reference** link from `frontend/src/components/Footer.tsx` and restrict `/api-docs` to admin users only.
+- Validate: `npm run build` ✅, `pytest backend/tests` ✅ 22 passed, `validate_flow.py` ✅ all flows passed.
+- Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
+
 ## Leftovers / next steps
+- Redeploy the VM at `/opt/zecathon` so the footer/API-docs changes take effect on the public IP.
+- Provide the admin recovery command to recreate the initial admin account on the deployed VM if needed.
 - User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations.
-- Promote existing users to organizer/judge via admin endpoint or set_role script.
-- Deploy backend to Cloud Run and frontend to Firebase Hosting (see `gcp/README.md`).
 - Optional: migrate SQLite to Cloud SQL and local uploads to Cloud Storage for production scaling.
 - Optional: mobile hamburger menu refinement.
 

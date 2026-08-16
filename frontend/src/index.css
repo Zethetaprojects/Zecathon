@@ -137,6 +137,51 @@ body {
   box-shadow: 0 0 0 3px rgba(5, 217, 232, 0.15);
 }
 
+/* Custom range slider for sound mixer */
+.neon-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 999px;
+  outline: none;
+  cursor: pointer;
+}
+
+.neon-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(5, 217, 232, 0.6);
+  border: 2px solid #fff;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.neon-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.15);
+  box-shadow: 0 0 14px rgba(5, 217, 232, 0.9);
+}
+
+.neon-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--neon-cyan);
+  box-shadow: 0 0 10px rgba(5, 217, 232, 0.6);
+  border: 2px solid #fff;
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.neon-slider:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 @media print {
   .no-print,
   nav,

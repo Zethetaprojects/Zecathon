@@ -4,10 +4,18 @@ interface MusicContextType {
   playing: boolean;
   enabled: boolean;
   toggle: () => void;
+  musicVolume: number;
+  effectsVolume: number;
+  setMusicVolume: (v: number) => void;
+  setEffectsVolume: (v: number) => void;
   playClick: () => void;
 }
 
 const MusicContext = createContext<MusicContextType | undefined>(undefined);
+
+const MUSIC_BASE_VOLUME = 0.55;
+const EFFECTS_BASE_VOLUME = 0.2;
+const MIN_AUDIBLE = 0.02;
 
 // ---------------------------------------------------------------------------
 // Cinematic ambient music engine
@@ -17,8 +25,8 @@ const MusicContext = createContext<MusicContextType | undefined>(undefined);
 
 interface ChordVoicing {
   name: string;
-  notes: number[]; // Hz
-  bass: number; // Hz
+  notes: number[];
+  bass: number;
 }
 
 const CHORDS: ChordVoicing[] = [
@@ -28,10 +36,10 @@ const CHORDS: ChordVoicing[] = [
   { name: 'G6', notes: [196.0, 246.94, 293.66, 392.0], bass: 49.0 },
 ];
 
-const TEMPO = 66; // BPM
+const TEMPO = 66;
 const BEATS_PER_BAR = 4;
 const BARS_PER_CHORD = 4;
-const CHORD_DURATION_BEATS = BEATS_PER_BAR * BARS_PER_CHORD; // 16 beats
+const CHORD_DURATION_BEATS = BEATS_PER_BAR * BARS_PER_CHORD;
 
 class MusicEngine {
   private ctx: AudioContext;
@@ -44,7 +52,8 @@ class MusicEngine {
   private chordIndex = 0;
   private interval: number | null = null;
   private beatDuration = 60 / TEMPO;
-  private chordDuration = CHORD_DURATION_BEATS * this.beatDuration;
+  private chordDuration = CHORD_DURATION_BEATS * (60 / TEMPO);
+  private running = false;
 
   constructor() {
     const AC =
@@ -55,7 +64,7 @@ class MusicEngine {
     this.ctx = new AC();
 
     this.master = this.ctx.createGain();
-    this.master.gain.value = 0.55;
+    this.master.gain.value = 0;
     this.master.connect(this.ctx.destination);
 
     this.delay = this.ctx.createDelay();
@@ -64,8 +73,6 @@ class MusicEngine {
     this.delayGain.gain.value = 0.3;
     this.delay.connect(this.delayGain);
     this.delayGain.connect(this.master);
-
-    this.ctx.resume().catch(() => {});
   }
 
   private scheduleEnvelope(
@@ -162,19 +169,41 @@ class MusicEngine {
     }
   }
 
+  setVolume(volume: number) {
+    const clamped = Math.max(0, Math.min(1, volume));
+    const value = clamped * MUSIC_BASE_VOLUME;
+    if (this.ctx.state === 'running') {
+      const now = this.ctx.currentTime;
+      this.master.gain.setTargetAtTime(value, now, 0.05);
+    } else {
+      this.master.gain.value = value;
+    }
+  }
+
   start() {
+    if (this.running) return;
+    this.running = true;
     this.nextNoteTime = this.ctx.currentTime + 0.05;
+    this.ctx.resume().catch(() => {});
     this.interval = window.setInterval(() => this.tick(), 100);
   }
 
   stop() {
+    if (!this.running) return;
+    this.running = false;
     if (this.interval) {
       window.clearInterval(this.interval);
       this.interval = null;
     }
-    if (this.ctx.state !== 'closed') {
-      this.ctx.close().catch(() => {});
-    }
+    this.ctx.suspend().catch(() => {});
+  }
+
+  resume() {
+    this.ctx.resume().catch(() => {});
+  }
+
+  suspend() {
+    this.ctx.suspend().catch(() => {});
   }
 }
 
@@ -182,32 +211,37 @@ class MusicEngine {
 // UI click / interaction sound engine
 // ---------------------------------------------------------------------------
 class ClickEngine {
-  private ctx: AudioContext | null = null;
-  private master: GainNode | null = null;
+  private ctx: AudioContext;
+  private master: GainNode;
 
-  private ensureContext() {
-    if (this.ctx && this.ctx.state !== 'closed') return;
+  constructor() {
     const AC =
       (window as any).AudioContext ||
       ((window as any).webkitAudioContext as typeof AudioContext | undefined);
-    if (!AC) return;
-    const ctx = new AC();
-    this.ctx = ctx;
-    const master = ctx.createGain();
-    this.master = master;
-    master.gain.value = 0.2;
-    master.connect(ctx.destination);
-    ctx.resume().catch(() => {});
+    if (!AC) throw new Error('Web Audio not supported');
+
+    this.ctx = new AC();
+    this.master = this.ctx.createGain();
+    this.master.gain.value = 0;
+    this.master.connect(this.ctx.destination);
+  }
+
+  setVolume(volume: number) {
+    const clamped = Math.max(0, Math.min(1, volume));
+    const value = clamped * EFFECTS_BASE_VOLUME;
+    if (this.ctx.state === 'running') {
+      const now = this.ctx.currentTime;
+      this.master.gain.setTargetAtTime(value, now, 0.05);
+    } else {
+      this.master.gain.value = value;
+    }
   }
 
   play() {
-    this.ensureContext();
-    const ctx = this.ctx;
-    const master = this.master;
-    if (!ctx || !master) return;
-    const now = ctx.currentTime;
-    const osc = ctx.createOscillator();
-    const gain = ctx.createGain();
+    this.ctx.resume().catch(() => {});
+    const now = this.ctx.currentTime;
+    const osc = this.ctx.createOscillator();
+    const gain = this.ctx.createGain();
     osc.type = 'triangle';
     osc.frequency.setValueAtTime(880, now);
     osc.frequency.exponentialRampToValueAtTime(220, now + 0.08);
@@ -215,21 +249,25 @@ class ClickEngine {
     gain.gain.linearRampToValueAtTime(0.25, now + 0.005);
     gain.gain.exponentialRampToValueAtTime(0.0001, now + 0.08);
     osc.connect(gain);
-    gain.connect(master);
+    gain.connect(this.master);
     osc.start(now);
     osc.stop(now + 0.1);
   }
 
-  close() {
-    if (this.ctx && this.ctx.state !== 'closed') {
-      this.ctx.close().catch(() => {});
-    }
+  suspend() {
+    this.ctx.suspend().catch(() => {});
+  }
+
+  resume() {
+    this.ctx.resume().catch(() => {});
   }
 }
 
 export function MusicProvider({ children }: { children: ReactNode }) {
   const [enabled, setEnabled] = useState(false);
   const [playing, setPlaying] = useState(false);
+  const [musicVolume, setMusicVolumeState] = useState(0.55);
+  const [effectsVolume, setEffectsVolumeState] = useState(0.5);
   const engineRef = useRef<MusicEngine | null>(null);
   const clickEngineRef = useRef<ClickEngine | null>(null);
   const enabledRef = useRef(enabled);
@@ -238,27 +276,40 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     enabledRef.current = enabled;
   }, [enabled]);
 
+  const ensureEngines = useCallback(() => {
+    if (!engineRef.current) {
+      try {
+        engineRef.current = new MusicEngine();
+      } catch {
+        return false;
+      }
+    }
+    if (!clickEngineRef.current) {
+      try {
+        clickEngineRef.current = new ClickEngine();
+      } catch {
+        return false;
+      }
+    }
+    engineRef.current.setVolume(musicVolume);
+    clickEngineRef.current.setVolume(effectsVolume);
+    return true;
+  }, [musicVolume, effectsVolume]);
+
   const stopAll = useCallback(() => {
     engineRef.current?.stop();
-    engineRef.current = null;
-    clickEngineRef.current?.close();
-    clickEngineRef.current = null;
+    clickEngineRef.current?.suspend();
     setPlaying(false);
     setEnabled(false);
   }, []);
 
   const startAll = useCallback(() => {
-    try {
-      const engine = new MusicEngine();
-      engineRef.current = engine;
-      engine.start();
-      setPlaying(true);
-      setEnabled(true);
-    } catch {
-      setPlaying(false);
-      setEnabled(false);
-    }
-  }, []);
+    if (!ensureEngines()) return;
+    engineRef.current?.start();
+    clickEngineRef.current?.resume();
+    setPlaying(true);
+    setEnabled(true);
+  }, [ensureEngines]);
 
   const toggle = useCallback(() => {
     if (enabledRef.current) {
@@ -268,18 +319,39 @@ export function MusicProvider({ children }: { children: ReactNode }) {
     }
   }, [startAll, stopAll]);
 
-  const playClick = useCallback(() => {
-    if (!enabledRef.current) return;
-    if (!clickEngineRef.current) {
-      clickEngineRef.current = new ClickEngine();
-    }
-    clickEngineRef.current.play();
+  const setMusicVolume = useCallback((value: number) => {
+    const clamped = Math.max(0, Math.min(1, value));
+    setMusicVolumeState(clamped);
+    engineRef.current?.setVolume(clamped);
   }, []);
 
-  // Global click sound effect for all interactive elements (buttons, links, role=button)
+  const setEffectsVolume = useCallback((value: number) => {
+    const clamped = Math.max(0, Math.min(1, value));
+    setEffectsVolumeState(clamped);
+    clickEngineRef.current?.setVolume(clamped);
+  }, []);
+
+  const playClick = useCallback(() => {
+    if (!enabledRef.current || effectsVolume < MIN_AUDIBLE) return;
+    if (!clickEngineRef.current) {
+      try {
+        clickEngineRef.current = new ClickEngine();
+      } catch {
+        return;
+      }
+    }
+    clickEngineRef.current.setVolume(effectsVolume);
+    clickEngineRef.current.resume();
+    clickEngineRef.current.play();
+  }, [effectsVolume]);
+
+  // Global click sound effect for all interactive elements (buttons, links, role=button).
+  // Sliders and the sound mixer are ignored so adjusting volume does not spam clicks.
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       const target = e.target as HTMLElement;
+      if (target.closest('[data-sound-ignore]')) return;
+      if (target.tagName === 'INPUT' && (target as HTMLInputElement).type === 'range') return;
       const isInteractive =
         target.tagName === 'BUTTON' ||
         target.tagName === 'A' ||
@@ -297,7 +369,18 @@ export function MusicProvider({ children }: { children: ReactNode }) {
   }, [playClick]);
 
   return (
-    <MusicContext.Provider value={{ playing, enabled, toggle, playClick }}>
+    <MusicContext.Provider
+      value={{
+        playing,
+        enabled,
+        toggle,
+        musicVolume,
+        effectsVolume,
+        setMusicVolume,
+        setEffectsVolume,
+        playClick,
+      }}
+    >
       {children}
     </MusicContext.Provider>
   );

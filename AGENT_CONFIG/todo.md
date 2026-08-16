@@ -201,3 +201,12 @@
 - [x] 25.5 Create `gcp/deploy-vm.sh` single-script VM deployment
 - [x] 25.6 Update `gcp/README.md` with VM deployment instructions
 - [x] 25.7 Validation: `bash -n gcp/deploy-vm.sh` ✅, `npm run build` ✅, `pytest backend/tests` ✅ 22 passed
+
+## Phase 26 — Sound mixer, admin confirmation modal, and footer security cleanup
+- [x] 26.1 Refactor `MusicProvider` to persistent engines and gain-node volume control
+- [x] 26.2 Add `musicVolume`/`effectsVolume` states and master mute toggle
+- [x] 26.3 Build navbar `SoundMixer` popover with two volume sliders and master mute button
+- [x] 26.4 Add themed confirmation modal to `AdminDashboard` for role changes and password resets
+- [x] 26.5 Remove **API Reference** link from footer and restrict `/api-docs` to admins
+- [x] 26.6 Validation: `npm run build` ✅, `pytest backend/tests` ✅ 22 passed, `validate_flow.py` ✅ all flows passed
+- [x] 26.7 Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`

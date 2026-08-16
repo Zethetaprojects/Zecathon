@@ -1,8 +1,16 @@
 # Current State
 
-- **Date**: 2026-08-15
-- **Repo**: full-stack hackathon evaluation platform (ZECATHON) with RBAC, Gemini integration, dynamic rubrics, judge questions, evaluation retry, easter eggs, PWA baseline, mobile-friendly navigation, and GCP deployment artifacts.
-- **AGENT_CONFIG**: created; context, plan, state, and todo maintained.
+- **Date**: 2026-08-16
+- **Repo**: full-stack hackathon evaluation platform (ZECATHON) with RBAC, Gemini integration, dynamic rubrics, judge questions, evaluation retry, easter eggs, PWA baseline, mobile-friendly navigation, GCP deployment artifacts, and a new sound mixer with separate background/effects volume controls.
+- **AGENT_CONFIG**: maintained.
+
+## Phase 26 — completed
+- **Sound mixer**: refactored `MusicProvider` to keep persistent AudioContext engines and control volume via gain nodes; added `musicVolume`/`effectsVolume` states and a master mute toggle. Replaced the navbar speaker icon with a `SoundMixer` popover containing two sliders and a master mute button.
+- **Admin confirmation modal**: added a themed overlay modal in `AdminDashboard` that confirms role changes and password resets before executing the action.
+- **Footer security cleanup**: removed the **API Reference** footer link entirely; restricted `/api-docs` to admin users only (non-admins are redirected to `/dashboard`).
+- **Validation**: `npm run build` ✅, `pytest backend/tests` ✅ 22 passed, `validate_flow.py` ✅ all flows passed.
+- **Committed and pushed to `main`**.
+- **Next**: redeploy the VM at `/opt/zecathon` so the footer/API-docs changes take effect on the public IP; provide admin recovery command.
 
 ## Phase 22 — completed
 - **Team member management**: admins, hackathon organisers (own hackathons), and team leaders can change a member's role, promote a new leader, or remove a member. Promoting a member to leader demotes the previous leader automatically; removing or demoting the only leader is rejected by the backend.
