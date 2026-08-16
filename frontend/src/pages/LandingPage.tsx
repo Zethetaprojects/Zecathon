@@ -8,6 +8,7 @@ import { Hackathon, PublicStats, User } from '../types';
 import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget } from '../utils/hackathon';
 import Countdown from '../components/Countdown';
 import PageLayout from '../components/PageLayout';
+import LoadingScreen from '../components/LoadingScreen';
 
 const colorAccent = {
   pink: 'border-neon-pink/50 hover:border-neon-pink shadow-neon-pink',
@@ -123,7 +124,10 @@ function HackathonCard({ h, user }: { h: Hackathon; user?: User | null }) {
         )}
         <div className="absolute top-3 right-3">
           <span
-            className={`px-2 py-1 rounded text-[10px] border uppercase tracking-wider ${statusStyles[status.status]}`}
+            className={`px-2 py-1 rounded text-[10px] border uppercase tracking-wider cursor-pointer ${statusStyles[status.status]}`}
+            data-egg-trigger="status-badge"
+            data-egg-message="Status checked! +25 XP"
+            data-egg-color="cyan"
           >
             {status.label}
           </span>
@@ -132,7 +136,12 @@ function HackathonCard({ h, user }: { h: Hackathon; user?: User | null }) {
       <div className="p-5 flex flex-col flex-1">
         <h3 className="font-pixel text-xs text-white mb-2">{h.name}</h3>
         <p className="text-sm text-slate-400 line-clamp-2 mb-3 flex-1">{h.description || 'No description provided.'}</p>
-        <div className="text-xs font-mono text-neon-cyan mb-3">
+        <div
+          className="text-xs font-mono text-neon-cyan mb-3 cursor-pointer inline-block"
+          data-egg-trigger="countdown-click"
+          data-egg-message="Time is ticking... +25 XP"
+          data-egg-color="yellow"
+        >
           {status.status === 'ended' ? 'Ended' : <Countdown targetDate={target} label={label} />}
         </div>
         <p className="text-[10px] text-slate-500 mb-4">{formatHackathonDateRange(h.start_date, h.end_date)}</p>
@@ -194,7 +203,12 @@ function FeaturedBanner({ h, user }: { h: Hackathon; user?: User | null }) {
         </div>
         <h3 className="font-pixel text-xl sm:text-2xl text-white text-shadow-neon mb-2">{h.name}</h3>
         <p className="text-sm text-slate-300 max-w-2xl mb-3 line-clamp-2">{h.description || 'No description provided.'}</p>
-        <div className="text-xs font-mono text-neon-cyan mb-4">
+        <div
+          className="text-xs font-mono text-neon-cyan mb-4 cursor-pointer inline-block"
+          data-egg-trigger="countdown-click"
+          data-egg-message="Time is ticking... +25 XP"
+          data-egg-color="yellow"
+        >
           {status.status === 'ended' ? 'Ended' : <Countdown targetDate={target} label={label} />}
         </div>
         <Link
@@ -262,7 +276,12 @@ export default function LandingPage() {
               />
             </div>
 
-            <h1 className="font-pixel text-3xl sm:text-5xl md:text-6xl text-white mb-6 text-shadow-neon leading-tight">
+            <h1
+              className="font-pixel text-3xl sm:text-5xl md:text-6xl text-white mb-6 text-shadow-neon leading-tight cursor-default select-none"
+              data-egg-trigger="hero-title"
+              data-egg-message="Title clicked! +25 XP"
+              data-egg-color="purple"
+            >
               ZECATHON
             </h1>
             <p className="text-lg sm:text-xl text-neon-cyan mb-2 pixel-caps">
@@ -329,12 +348,16 @@ export default function LandingPage() {
             </div>
 
             {loadingUpcoming ? (
-              <div className="text-center py-12">
-                <div className="w-10 h-10 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-                <p className="text-slate-400 text-sm">Loading hackathons...</p>
+              <div className="py-12">
+                <LoadingScreen message="Loading arenas..." />
               </div>
             ) : upcoming.length === 0 ? (
-              <div className="glass-panel p-8 text-center">
+              <div
+                className="glass-panel p-8 text-center cursor-pointer"
+                data-egg-trigger="empty-state"
+                data-egg-message="Still hopeful! +25 XP"
+                data-egg-color="pink"
+              >
                 <p className="text-slate-300 text-sm">No upcoming hackathons right now. Check back soon.</p>
               </div>
             ) : (

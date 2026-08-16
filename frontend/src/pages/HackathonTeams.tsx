@@ -9,6 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import PageLayout from '../components/PageLayout';
 import EvaluationReport from '../components/EvaluationReport';
 import BackButton from '../components/BackButton';
+import LoadingScreen from '../components/LoadingScreen';
 
 export default function HackathonTeams() {
   const { id } = useParams<{ id: string }>();
@@ -219,10 +220,7 @@ export default function HackathonTeams() {
   if (loading) {
     return (
       <PageLayout className="flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-400 text-sm">Loading teams...</p>
-        </div>
+        <LoadingScreen message="Loading teams..." />
       </PageLayout>
     );
   }
@@ -291,7 +289,12 @@ export default function HackathonTeams() {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2 space-y-6">
             {teams.length === 0 ? (
-              <div className="glass-panel p-8 text-center">
+              <div
+                className="glass-panel p-8 text-center cursor-pointer"
+                data-egg-trigger="empty-state"
+                data-egg-message="Still hopeful! +25 XP"
+                data-egg-color="pink"
+              >
                 <p className="text-slate-300">No teams yet. Create the first team to start.</p>
               </div>
             ) : (

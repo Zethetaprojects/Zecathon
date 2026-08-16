@@ -5,6 +5,7 @@ import { LeaderboardEntry } from '../types';
 import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 import BackButton from '../components/BackButton';
+import LoadingScreen from '../components/LoadingScreen';
 
 const verdictColor: Record<string, string> = {
   OUTSTANDING: 'text-neon-yellow',
@@ -69,12 +70,16 @@ export default function Leaderboard() {
           )}
 
           {loading ? (
-            <div className="text-center py-16">
-              <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-              <p className="text-slate-400 text-sm">Loading leaderboard...</p>
+            <div className="py-16">
+              <LoadingScreen message="Loading leaderboard..." />
             </div>
           ) : entries.length === 0 ? (
-            <div className="text-center py-12">
+            <div
+              className="text-center py-12 cursor-pointer"
+              data-egg-trigger="empty-state"
+              data-egg-message="Still hopeful! +25 XP"
+              data-egg-color="pink"
+            >
               <p className="text-slate-300 mb-4">No evaluated submissions yet.</p>
               <Link
                 to={`/hackathons/${hackathonId}/teams`}

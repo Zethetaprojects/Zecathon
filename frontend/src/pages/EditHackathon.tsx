@@ -5,6 +5,7 @@ import { Hackathon } from '../types';
 import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 import BackButton from '../components/BackButton';
+import LoadingScreen from '../components/LoadingScreen';
 
 function toDatetimeLocalValue(iso?: string): string {
   if (!iso) return '';
@@ -105,10 +106,7 @@ export default function EditHackathon() {
   if (loading) {
     return (
       <PageLayout className="flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-400 text-sm">Loading hackathon...</p>
-        </div>
+        <LoadingScreen message="Loading arena..." />
       </PageLayout>
     );
   }

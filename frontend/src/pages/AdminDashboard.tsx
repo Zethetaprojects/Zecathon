@@ -4,6 +4,7 @@ import { User, UserRole } from '../types';
 import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 import BackButton from '../components/BackButton';
+import LoadingScreen from '../components/LoadingScreen';
 
 const ROLES: UserRole[] = ['admin', 'organizer', 'judge', 'participant'];
 
@@ -57,9 +58,8 @@ export default function AdminDashboard() {
         )}
 
         {loading ? (
-          <div className="text-center py-16">
-            <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-slate-400 text-sm">Loading users...</p>
+          <div className="py-16">
+            <LoadingScreen message="Loading users..." />
           </div>
         ) : users.length === 0 ? (
           <div className="glass-panel p-8 text-center">

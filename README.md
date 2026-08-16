@@ -15,6 +15,8 @@ A web app for organising hackathons, collecting project submissions, and evaluat
 - Hackathon-oriented rubrics with admissibility gate, authenticity multiplier, and server-side score reconciliation.
 - Live leaderboard with discrete, non-clustered scores and a public shareable link.
 - Organiser/admin reports with verdict and submission-type breakdowns, plus per-team printable PDF reports.
+- Themed gaming-style loading screen (rocket, neon flame, animated progress bar) on all loading states.
+- Hidden easter eggs throughout the site — click secrets, open the browser console, and use the Egg Hunt panel to track discoveries.
 
 ## System overview
 

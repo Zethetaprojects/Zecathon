@@ -178,6 +178,14 @@
 - Validate: `pytest backend/tests`, `npm run build`, `seed_dev.py`, `validate_flow.py` all pass.
 - Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
 
+## Phase 23 — Themed loading screen, console easter egg, and more hidden eggs
+- Frontend: build a reusable `LoadingScreen` component with a retro space/rocket animation (bobbing rocket, neon flame, animated gradient progress bar) and a pixel-font status message.
+- Frontend: replace every plain spinner across route guards and pages with the themed `LoadingScreen`.
+- Frontend: add a `ConsoleEasterEgg` component that logs stylized ASCII art and a secret message to the browser console on app startup.
+- Frontend: extend the click-based easter egg hunt with new triggers (hero title, status badges, countdowns, empty states, rubric toggle) and add corresponding hints.
+- Validate: `npm run build` and `pytest backend/tests` pass.
+- Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
+
 ## Leftovers / next steps
 - User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations.
 - Promote existing users to organizer/judge via admin endpoint or set_role script.

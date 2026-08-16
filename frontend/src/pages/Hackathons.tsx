@@ -8,10 +8,16 @@ import { useAuth } from '../hooks/useAuth';
 import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget } from '../utils/hackathon';
 import Countdown from '../components/Countdown';
 import PageLayout from '../components/PageLayout';
+import LoadingScreen from '../components/LoadingScreen';
 
 function EmptyState({ canCreate }: { canCreate: boolean }) {
   return (
-    <div className="glass-panel p-10 sm:p-16 text-center micro-lift">
+    <div
+      className="glass-panel p-10 sm:p-16 text-center micro-lift cursor-pointer"
+      data-egg-trigger="empty-state"
+      data-egg-message="Still hopeful! +25 XP"
+      data-egg-color="pink"
+    >
       <div className="w-24 h-24 mx-auto mb-6 rounded-full bg-neon-cyan/10 border border-neon-cyan/20 flex items-center justify-center">
         <svg className="w-12 h-12 text-neon-cyan" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M19.428 15.428a2 2 0 00-1.022-.547l-2.384-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z" />
@@ -112,9 +118,8 @@ export default function Hackathons() {
         )}
 
         {loading ? (
-          <div className="text-center py-16">
-            <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-slate-400 text-sm">Loading hackathons...</p>
+          <div className="py-16">
+            <LoadingScreen message="Loading arenas..." />
           </div>
         ) : hackathons.length === 0 ? (
           <EmptyState canCreate={canCreate} />

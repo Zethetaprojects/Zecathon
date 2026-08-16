@@ -5,6 +5,7 @@ import PageLayout from '../components/PageLayout';
 import { HackathonReportSummary, HackathonReportDetail, TeamReportEntry } from '../types';
 import { formatError } from '../utils/formatError';
 import BackButton from '../components/BackButton';
+import LoadingScreen from '../components/LoadingScreen';
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
@@ -135,12 +136,16 @@ export default function ReportsPage() {
         )}
 
         {loading ? (
-          <div className="text-center py-16">
-            <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-slate-400 text-sm">Loading reports...</p>
+          <div className="py-16">
+            <LoadingScreen message="Loading reports..." />
           </div>
         ) : reports.length === 0 ? (
-          <div className="glass-panel p-10 text-center">
+          <div
+            className="glass-panel p-10 text-center cursor-pointer"
+            data-egg-trigger="empty-state"
+            data-egg-message="Still hopeful! +25 XP"
+            data-egg-color="pink"
+          >
             <p className="text-slate-300 text-sm">No hackathons to report on yet.</p>
           </div>
         ) : (

@@ -9,6 +9,7 @@ import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget } from
 import Countdown from '../components/Countdown';
 import PageLayout from '../components/PageLayout';
 import BackButton from '../components/BackButton';
+import LoadingScreen from '../components/LoadingScreen';
 
 const statusStyles = {
   upcoming: 'bg-neon-purple/10 text-neon-purple border-neon-purple/20',
@@ -156,10 +157,7 @@ export default function HackathonDetail() {
   if (loading) {
     return (
       <PageLayout className="flex items-center justify-center">
-        <div className="text-center">
-          <div className="w-12 h-12 border-4 border-neon-cyan border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-          <p className="text-slate-400 text-sm">Loading hackathon...</p>
-        </div>
+        <LoadingScreen message="Loading arena..." />
       </PageLayout>
     );
   }
@@ -206,11 +204,21 @@ export default function HackathonDetail() {
             <div className="absolute inset-0 bg-gradient-to-t from-space-900/90 via-space-900/30 to-transparent" />
             <div className="absolute bottom-0 left-0 right-0 p-6">
               <div className="flex flex-wrap items-center gap-3 mb-3">
-                <span className={`px-2.5 py-1 rounded text-[10px] border uppercase tracking-wider ${statusStyles[status.status]}`}>
+                <span
+                  className={`px-2.5 py-1 rounded text-[10px] border uppercase tracking-wider cursor-pointer ${statusStyles[status.status]}`}
+                  data-egg-trigger="status-badge"
+                  data-egg-message="Status checked! +25 XP"
+                  data-egg-color="cyan"
+                >
                   {status.label}
                 </span>
                 {status.status !== 'ended' && target && (
-                  <span className="font-mono text-xs text-white">
+                  <span
+                    className="font-mono text-xs text-white cursor-pointer"
+                    data-egg-trigger="countdown-click"
+                    data-egg-message="Time is ticking... +25 XP"
+                    data-egg-color="yellow"
+                  >
                     <Countdown targetDate={target} label={label} />
                   </span>
                 )}
@@ -266,7 +274,12 @@ export default function HackathonDetail() {
             </div>
             <div className="p-4 rounded bg-black/20 border border-white/10">
               <p className="text-[10px] text-slate-500 uppercase tracking-wider mb-1">Countdown</p>
-              <p className="text-sm font-semibold text-neon-cyan font-mono">
+              <p
+                className="text-sm font-semibold text-neon-cyan font-mono cursor-pointer"
+                data-egg-trigger="countdown-click"
+                data-egg-message="Time is ticking... +25 XP"
+                data-egg-color="yellow"
+              >
                 {status.status === 'ended' ? 'Ended' : <Countdown targetDate={target} label={label} />}
               </p>
             </div>
@@ -381,6 +394,9 @@ export default function HackathonDetail() {
                 type="button"
                 onClick={() => setEditingRubric((prev) => !prev)}
                 className="px-3 py-1.5 rounded text-xs neon-btn neon-btn-ghost"
+                data-egg-trigger="rubric-toggle"
+                data-egg-message="Rubric curious! +25 XP"
+                data-egg-color="purple"
               >
                 {editingRubric ? 'Cancel' : 'Edit rubric'}
               </button>

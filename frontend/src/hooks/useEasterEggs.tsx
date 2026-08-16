@@ -30,6 +30,11 @@ export const EGG_HINTS: EggHint[] = [
   { id: 'command-deck', name: 'Captain on Deck', hint: 'Triple-click the dashboard title', points: 75 },
   { id: 'mascot-click', name: 'Mascot Friend', hint: 'Click the floating Z-bot mascot', points: 100 },
   { id: 'sound-toggle', name: 'Sound Seeker', hint: 'Toggle the space music from the navbar', points: 25 },
+  { id: 'hero-title', name: 'Title Tinker', hint: 'Click the giant ZECATHON title on the landing page', points: 25 },
+  { id: 'status-badge', name: 'Status Checker', hint: 'Click a hackathon status badge', points: 25 },
+  { id: 'countdown-click', name: 'Time Traveller', hint: 'Click a live countdown timer', points: 25 },
+  { id: 'empty-state', name: 'Optimist', hint: 'Click an empty-state message like "No arenas yet"', points: 25 },
+  { id: 'rubric-toggle', name: 'Rubric Curious', hint: 'Click the Edit rubric button on a hackathon detail page', points: 25 },
 ];
 
 interface EasterEggContextType {

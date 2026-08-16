@@ -4,6 +4,7 @@ import { MusicProvider } from './components/MusicProvider';
 import { EasterEggProvider } from './hooks/useEasterEggs';
 import ErrorBoundary from './components/ErrorBoundary';
 import EasterEggOverlay from './components/EasterEggOverlay';
+import ConsoleEasterEgg from './components/ConsoleEasterEgg';
 import LandingPage from './pages/LandingPage';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -34,6 +35,7 @@ function App() {
         <EasterEggProvider>
           <AuthProvider>
             <EasterEggOverlay />
+            <ConsoleEasterEgg />
             <Routes>
               <Route path="/" element={<LandingPage />} />
               <Route path="/login" element={<Login />} />
