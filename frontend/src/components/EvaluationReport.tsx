@@ -1,4 +1,4 @@
-import { Evaluation } from '../types';
+import { Evaluation, isFallbackScore } from '../types';
 
 interface EvaluationReportProps {
   evaluation: Evaluation;
@@ -42,6 +42,13 @@ export default function EvaluationReport({ evaluation }: EvaluationReportProps) 
 
   return (
     <div className="space-y-6">
+      {isFallbackScore(evaluation.llm_source) && (
+        <div className="px-4 py-3 rounded bg-yellow-400/10 border border-yellow-400/30 text-yellow-200 text-sm">
+          {evaluation.llm_source === 'suspected_mock'
+            ? 'This score looks like it came from the offline fallback scorer during an AI outage, not from a real AI evaluation. Re-run the evaluation before relying on it.'
+            : 'This score came from the offline fallback scorer because no AI evaluator is configured. It is not a real evaluation.'}
+        </div>
+      )}
       {/* Score header */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <div className="glass-panel p-4 text-center">

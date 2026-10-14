@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { reportsApi } from '../api/reports';
 import PageLayout from '../components/PageLayout';
-import { HackathonReportSummary, HackathonReportDetail, TeamReportEntry } from '../types';
+import { HackathonReportSummary, HackathonReportDetail, TeamReportEntry, isFallbackScore } from '../types';
 import { formatError } from '../utils/formatError';
 import BackButton from '../components/BackButton';
 import LoadingScreen from '../components/LoadingScreen';
@@ -246,6 +246,14 @@ export default function ReportsPage() {
                             <td className="px-4 py-3 text-slate-400 uppercase text-[10px]">{entry.status}</td>
                             <td className="px-4 py-3 text-neon-cyan font-mono">
                               {entry.total_score ?? '-'}
+                              {isFallbackScore(entry.llm_source) && (
+                                <span
+                                  title="Not a real AI score. Re-run the evaluation from the teams page."
+                                  className="ml-2 font-sans text-[10px] px-1.5 py-0.5 rounded bg-yellow-400/10 text-yellow-300 border border-yellow-400/30"
+                                >
+                                  Fallback
+                                </span>
+                              )}
                             </td>
                             <td className="px-4 py-3">
                               {entry.verdict ? <VerdictBadge verdict={entry.verdict} /> : <span className="text-slate-500">-</span>}

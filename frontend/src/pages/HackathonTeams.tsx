@@ -2,9 +2,8 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { teamsApi, submissionsApi } from '../api/teams';
-import { Hackathon, Team, ProblemStatement, Submission, Evaluation } from '../types';
+import { Hackathon, Team, ProblemStatement, Submission, Evaluation, isFallbackScore } from '../types';
 import { formatError } from '../utils/formatError';
-import { isJudge, isParticipant, isOrganizer } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
 import PageLayout from '../components/PageLayout';
 import EvaluationReport from '../components/EvaluationReport';
@@ -14,11 +13,16 @@ import LoadingScreen from '../components/LoadingScreen';
 export default function HackathonTeams() {
   const { id } = useParams<{ id: string }>();
   const hackathonId = Number(id);
-  const { user } = useAuth();
-  const canEvaluate = isJudge(user?.role);
-  const isParticipantUser = isParticipant(user?.role);
-  const canManage = isOrganizer(user?.role);
-  const canActOnTeams = isParticipantUser || canManage;
+  const { user, can } = useAuth();
+  // What the user may do comes from the superadmin's permission matrix. The
+  // backend also scopes managers to hackathons they own.
+  const canEvaluate = can('evaluate_submission');
+  const canManage = user?.role === 'superadmin' || user?.role === 'admin' || user?.role === 'organizer';
+  const canCreateTeam = can('create_team') && can('participate');
+  const canJoinTeam = can('join_team') && can('participate');
+  const canSubmit = can('submit_project') && user?.role !== 'judge';
+  const canDeleteTeam = canManage && can('delete_team');
+  const canViewReports = can('view_reports');
   const [hackathon, setHackathon] = useState<Hackathon | null>(null);
   const [teams, setTeams] = useState<Team[]>([]);
   const [submissionsByTeam, setSubmissionsByTeam] = useState<Record<number, Submission[]>>({});
@@ -55,28 +59,21 @@ export default function HackathonTeams() {
 
   const fetchSubmissions = (currentTeams: Team[]) => {
     if (currentTeams.length === 0) return;
-    Promise.all(currentTeams.map((t) => submissionsApi.listByTeam(t.id)))
-      .then((results) => {
-        const map: Record<number, Submission[]> = {};
-        results.forEach((res, i) => {
-          map[currentTeams[i].id] = res.data;
-        });
-        setSubmissionsByTeam(map);
-      })
-      .catch((err: any) => {
-        // Managers can view all team submissions regardless of membership.
-        if (canManage) {
-          setSubmissionsByTeam({});
-          return;
+    // Load each team separately: participants may only see their own team's
+    // submissions, and one 403 must not hide the teams they can see.
+    Promise.allSettled(currentTeams.map((t) => submissionsApi.listByTeam(t.id))).then((results) => {
+      const map: Record<number, Submission[]> = {};
+      let firstError: any = null;
+      results.forEach((res, i) => {
+        if (res.status === 'fulfilled') {
+          map[currentTeams[i].id] = res.value.data;
+        } else if (res.reason?.response?.status !== 403) {
+          firstError = firstError ?? res.reason;
         }
-        const msg = err?.response?.data?.detail || '';
-        if (typeof msg === 'string' && msg.toLowerCase().includes('not a member')) {
-          // Non-members get a silent empty map; no red banner.
-          setSubmissionsByTeam({});
-          return;
-        }
-        setError(formatError(err, 'Failed to load submissions'));
       });
+      setSubmissionsByTeam(map);
+      if (firstError) setError(formatError(firstError, 'Failed to load submissions'));
+    });
   };
 
   useEffect(() => {
@@ -213,7 +210,7 @@ export default function HackathonTeams() {
   const isTeamLeader = (team: Team) =>
     team.members?.some((m) => m.user_id === user?.id && m.role === 'leader') ?? false;
 
-  const canManageTeam = (team: Team) => canManage || isTeamLeader(team);
+  const canManageTeam = (team: Team) => can('manage_team_members') && (canManage || isTeamLeader(team));
 
   const userInAnyTeam = teams.some((t) => t.members?.some((m) => m.user_id === user?.id));
 
@@ -362,7 +359,7 @@ export default function HackathonTeams() {
                       )}
                     </div>
                     <div className="flex items-center gap-2">
-                      {canManage && (
+                      {canDeleteTeam && (
                         <button
                           onClick={() => deleteTeam(team.id)}
                           disabled={deletingTeam[team.id]}
@@ -418,7 +415,15 @@ export default function HackathonTeams() {
                                     >
                                       {sub.evaluation.total_score} pts — {sub.evaluation.verdict}
                                     </button>
-                                    {canManage && (
+                                    {isFallbackScore(sub.evaluation.llm_source) && (
+                                      <span
+                                        title="Not a real AI score. Re-run the evaluation."
+                                        className="text-[10px] px-1.5 py-0.5 rounded bg-yellow-400/10 text-yellow-300 border border-yellow-400/30"
+                                      >
+                                        Fallback score
+                                      </span>
+                                    )}
+                                    {canViewReports && (
                                       <Link
                                         to={`/reports/submission/${sub.id}`}
                                         className="text-[10px] px-2 py-1 rounded border border-neon-cyan/30 text-neon-cyan hover:bg-neon-cyan/10 transition"
@@ -449,7 +454,7 @@ export default function HackathonTeams() {
                                 )}
                               </>
                             ) : (
-                              canActOnTeams && (
+                              canSubmit && (canManage || team.members?.some((m) => m.user_id === user?.id)) && (
                                 <button
                                   onClick={() => submitFor(team.id, ps)}
                                   className="px-3 py-1.5 rounded neon-btn neon-btn-cyan text-xs"
@@ -472,7 +477,7 @@ export default function HackathonTeams() {
           </div>
 
           <div className="space-y-6">
-            {canActOnTeams && (
+            {canCreateTeam && (canManage || !userInAnyTeam) && (
               <div className="glass-panel p-6 h-fit">
                 <h3 className="font-pixel text-xs text-white mb-4">CREATE TEAM</h3>
                 <form onSubmit={createTeam} className="space-y-4">
@@ -494,7 +499,7 @@ export default function HackathonTeams() {
               </div>
             )}
 
-            {isParticipantUser && !userInAnyTeam && (
+            {canJoinTeam && !canManage && !userInAnyTeam && (
               <div className="glass-panel p-6 h-fit">
                 <h3 className="font-pixel text-xs text-white mb-4">JOIN A TEAM</h3>
                 <p className="text-xs text-slate-400 mb-3">
@@ -519,7 +524,7 @@ export default function HackathonTeams() {
               </div>
             )}
 
-            {isParticipantUser && userInAnyTeam && (
+            {!canManage && userInAnyTeam && (
               <div className="glass-panel p-6 h-fit">
                 <p className="text-xs text-slate-300">
                   You are already in a team. View your team above or submit a project for a problem statement.

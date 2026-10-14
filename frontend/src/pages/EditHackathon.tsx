@@ -256,7 +256,7 @@ export default function EditHackathon() {
               </div>
               <input
                 type="file"
-                accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+                accept="image/png,image/jpeg,image/gif,image/webp"
                 onChange={handleBannerChange}
                 className="w-full text-sm text-slate-300 file:mr-4 file:px-3 file:py-2 file:rounded file:border-0 file:text-xs file:bg-neon-cyan/20 file:text-neon-cyan file:cursor-pointer"
               />

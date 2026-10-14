@@ -1,11 +1,12 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { isOrganizer } from '../utils/role';
+import { Feature } from '../types';
 import PageLayout from './PageLayout';
 import LoadingScreen from './LoadingScreen';
 
-export default function OrganizerRoute() {
-  const { user, loading } = useAuth();
+/** Renders child routes only when the current user has the given feature permission. */
+export default function PermissionRoute({ feature }: { feature: Feature }) {
+  const { user, loading, can } = useAuth();
 
   if (loading) {
     return (
@@ -15,6 +16,7 @@ export default function OrganizerRoute() {
     );
   }
 
-  if (!user || !isOrganizer(user.role)) return <Navigate to="/dashboard" replace />;
+  if (!user) return <Navigate to="/login" replace />;
+  if (!can(feature)) return <Navigate to="/dashboard" replace />;
   return <Outlet />;
 }

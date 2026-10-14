@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useEasterEggs } from '../hooks/useEasterEggs';
-import { isOrganizer } from '../utils/role';
 
 function SocialIcon({ href, label, children, ...rest }: { href: string; label: string; children: React.ReactNode; [key: string]: any }) {
   return (
@@ -28,7 +27,7 @@ function FooterLink({ to, children }: { to: string; children: React.ReactNode })
 }
 
 export default function Footer() {
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const { discover } = useEasterEggs();
   const [ccClicks, setCcClicks] = useState(0);
 
@@ -74,7 +73,7 @@ export default function Footer() {
               {user ? (
                 <>
                   <FooterLink to="/hackathons">Hackathons</FooterLink>
-                  {isOrganizer(user.role) && <FooterLink to="/hackathons/new">Host a Hackathon</FooterLink>}
+                  {can('create_hackathon') && <FooterLink to="/hackathons/new">Host a Hackathon</FooterLink>}
                   <FooterLink to="/hackathons">Leaderboards</FooterLink>
                   <FooterLink to="/dashboard">Dashboard</FooterLink>
                 </>

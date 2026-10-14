@@ -25,8 +25,7 @@ import ApiDocsPage from './pages/ApiDocsPage';
 import RubricsPage from './pages/RubricsPage';
 import SupportPage from './pages/SupportPage';
 import PrivateRoute from './components/PrivateRoute';
-import AdminRoute from './components/AdminRoute';
-import OrganizerRoute from './components/OrganizerRoute';
+import PermissionRoute from './components/PermissionRoute';
 import SuperAdminRoute from './components/SuperAdminRoute';
 import ReportsPage from './pages/ReportsPage';
 import TeamReportPage from './pages/TeamReportPage';
@@ -46,29 +45,35 @@ function App() {
               <Route path="/register" element={<Register />} />
               <Route path="/public/leaderboard/:id" element={<PublicLeaderboard />} />
               <Route path="/docs" element={<DocsPage />} />
-              <Route element={<SuperAdminRoute />}>
-                <Route path="/api-docs" element={<ApiDocsPage />} />
-              </Route>
               <Route path="/rubrics" element={<RubricsPage />} />
               <Route path="/support" element={<SupportPage />} />
               <Route element={<PrivateRoute />}>
                 <Route path="/dashboard" element={<Dashboard />} />
-                <Route element={<OrganizerRoute />}>
+                <Route element={<PermissionRoute feature="view_api_docs" />}>
+                  <Route path="/api-docs" element={<ApiDocsPage />} />
+                </Route>
+                <Route element={<PermissionRoute feature="view_reports" />}>
                   <Route path="/reports" element={<ReportsPage />} />
                   <Route path="/reports/submission/:id" element={<TeamReportPage />} />
+                </Route>
+                <Route element={<PermissionRoute feature="edit_hackathon" />}>
                   <Route path="/hackathons/:id/edit" element={<EditHackathon />} />
                 </Route>
-                <Route path="/admin" element={<AdminRoute />}>
+                <Route element={<PermissionRoute feature="create_hackathon" />}>
+                  <Route path="/hackathons/new" element={<CreateHackathon />} />
+                </Route>
+                <Route path="/admin" element={<PermissionRoute feature="view_admin_panel" />}>
                   <Route index element={<AdminDashboard />} />
                   <Route element={<SuperAdminRoute />}>
                     <Route path="settings" element={<SuperadminSettings />} />
                   </Route>
                 </Route>
                 <Route path="/hackathons" element={<Hackathons />} />
-                <Route path="/hackathons/new" element={<CreateHackathon />} />
                 <Route path="/hackathons/:id" element={<HackathonDetail />} />
                 <Route path="/hackathons/:id/teams" element={<HackathonTeams />} />
-                <Route path="/hackathons/:id/leaderboard" element={<Leaderboard />} />
+                <Route element={<PermissionRoute feature="view_leaderboard" />}>
+                  <Route path="/hackathons/:id/leaderboard" element={<Leaderboard />} />
+                </Route>
                 <Route path="/hackathons/:hackathonId/submit/:teamId/:problemStatementId" element={<Submit />} />
               </Route>
               <Route path="*" element={<Navigate to="/" replace />} />

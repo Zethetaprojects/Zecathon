@@ -3,7 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { hackathonsApi, problemStatementsApi } from '../api/hackathons';
 import { Hackathon, ProblemStatement } from '../types';
 import { formatError } from '../utils/formatError';
-import { isOrganizer } from '../utils/role';
+import { isManagerRole } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
 import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget } from '../utils/hackathon';
 import Countdown from '../components/Countdown';
@@ -25,8 +25,12 @@ function resolveBannerUrl(path?: string | null) {
 
 export default function HackathonDetail() {
   const { id } = useParams<{ id: string }>();
-  const { user } = useAuth();
-  const canManage = isOrganizer(user?.role);
+  const { user, can } = useAuth();
+  // The backend only lets organizers see their own hackathons, so a manager role
+  // on this page means the user manages it; the toggles decide which actions.
+  const isManager = isManagerRole(user?.role);
+  const canEdit = isManager && can('edit_hackathon');
+  const canManageStatements = isManager && can('manage_problem_statements');
   const [hackathon, setHackathon] = useState<Hackathon | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -242,7 +246,7 @@ export default function HackathonDetail() {
           >
             Leaderboard
           </Link>
-          {canManage && (
+          {canEdit && (
             <Link
               to={`/hackathons/${id}/edit`}
               className="px-5 py-2.5 rounded neon-btn neon-btn-ghost text-xs"
@@ -286,14 +290,14 @@ export default function HackathonDetail() {
           </div>
         </div>
 
-        {canManage && (
+        {canEdit && (
           <div className="glass-panel p-6 sm:p-8 mb-8">
             <h2 className="font-pixel text-sm text-white mb-4">BANNER</h2>
             <form onSubmit={handleBannerUpload} className="flex flex-col sm:flex-row gap-4 items-start">
               <input
                 ref={bannerRef}
                 type="file"
-                accept="image/png,image/jpeg,image/gif,image/webp,image/svg+xml"
+                accept="image/png,image/jpeg,image/gif,image/webp"
                 onChange={(e) => setBannerFile(e.target.files?.[0] || null)}
                 className="flex-1 text-sm text-slate-300 file:mr-4 file:px-3 file:py-2 file:rounded file:border-0 file:text-xs file:bg-neon-cyan/20 file:text-neon-cyan file:cursor-pointer"
               />
@@ -341,7 +345,7 @@ export default function HackathonDetail() {
             </ul>
           )}
 
-          {canManage && (
+          {canManageStatements && (
             <form onSubmit={handleUpload} className="p-5 rounded bg-black/20 border border-white/10">
               <h3 className="font-pixel text-xs text-white mb-4">UPLOAD NEW STATEMENT</h3>
               <div className="space-y-4">
@@ -386,7 +390,7 @@ export default function HackathonDetail() {
           )}
         </div>
 
-        {canManage && (
+        {canEdit && (
           <div className="glass-panel p-6 sm:p-8 mb-8">
             <div className="flex items-center justify-between gap-4 mb-4">
               <h2 className="font-pixel text-sm text-white">CUSTOM RUBRIC</h2>

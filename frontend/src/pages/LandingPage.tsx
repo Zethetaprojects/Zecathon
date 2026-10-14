@@ -1,7 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
-import { isOrganizer } from '../utils/role';
 import { ScrollReveal } from '../hooks/useInView';
 import { hackathonsApi } from '../api/hackathons';
 import { Hackathon, PublicStats, User } from '../types';
@@ -223,7 +222,7 @@ function FeaturedBanner({ h, user }: { h: Hackathon; user?: User | null }) {
 }
 
 export default function LandingPage() {
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const [upcoming, setUpcoming] = useState<Hackathon[]>([]);
   const [stats, setStats] = useState<PublicStats>({
     total_hackathons: 0,
@@ -298,7 +297,7 @@ export default function LandingPage() {
                   <Link to="/hackathons" className="px-8 py-4 rounded neon-btn neon-btn-primary micro-lift micro-pop text-sm">
                     Enter the Arena
                   </Link>
-                  {isOrganizer(user.role) && (
+                  {can('create_hackathon') && (
                     <Link to="/hackathons/new" className="px-8 py-4 rounded neon-btn neon-btn-ghost micro-lift micro-pop text-sm">
                       Host a Hackathon
                     </Link>
@@ -555,7 +554,7 @@ export default function LandingPage() {
                 <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
                   {user ? (
                     <>
-                      {isOrganizer(user.role) ? (
+                      {can('create_hackathon') ? (
                         <Link to="/hackathons/new" className="px-8 py-4 rounded neon-btn neon-btn-cyan micro-lift micro-pop text-sm">
                           Host a Hackathon
                         </Link>

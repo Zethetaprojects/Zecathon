@@ -3,7 +3,6 @@ import { useAuth } from '../hooks/useAuth';
 import { Link } from 'react-router-dom';
 import PageLayout from '../components/PageLayout';
 import { useEasterEggs } from '../hooks/useEasterEggs';
-import { isOrganizer, isAdmin } from '../utils/role';
 
 function ActionCard({
   to,
@@ -35,7 +34,7 @@ function ActionCard({
 }
 
 export default function Dashboard() {
-  const { user, logout } = useAuth();
+  const { user, logout, can } = useAuth();
   const { discover } = useEasterEggs();
   const [titleClicks, setTitleClicks] = useState(0);
 
@@ -77,15 +76,15 @@ export default function Dashboard() {
             desc="Explore all hackathons on the platform."
             color="pink"
           />
-          {isOrganizer(user?.role) && (
+          {can('view_reports') && (
             <ActionCard
               to="/reports"
               title="Reports"
-              desc="Analytics, verdict breakdowns, and team performance summaries for organisers."
+              desc="Analytics, verdict breakdowns, and team performance summaries."
               color="purple"
             />
           )}
-          {isAdmin(user?.role) && (
+          {can('view_admin_panel') && (
             <ActionCard
               to="/admin"
               title="Admin Panel"
@@ -93,7 +92,7 @@ export default function Dashboard() {
               color="purple"
             />
           )}
-          {isOrganizer(user?.role) && (
+          {can('create_hackathon') && (
             <ActionCard
               to="/hackathons/new"
               title="Host Hackathon"

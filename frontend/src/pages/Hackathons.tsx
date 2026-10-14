@@ -3,7 +3,7 @@ import { Link } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { Hackathon } from '../types';
 import { formatError } from '../utils/formatError';
-import { isOrganizer } from '../utils/role';
+import { isManagerRole } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
 import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget } from '../utils/hackathon';
 import Countdown from '../components/Countdown';
@@ -55,8 +55,9 @@ export default function Hackathons() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState<Record<number, boolean>>({});
-  const { user } = useAuth();
-  const canCreate = isOrganizer(user?.role);
+  const { user, can } = useAuth();
+  const canCreate = can('create_hackathon');
+  const canDelete = isManagerRole(user?.role) && can('delete_hackathon');
 
   useEffect(() => {
     hackathonsApi
@@ -185,7 +186,7 @@ export default function Hackathons() {
                         )}
                       </div>
                       <div className="flex items-center gap-3">
-                        {canCreate && (
+                        {canDelete && (
                           <button
                             onClick={(e) => {
                               e.preventDefault();

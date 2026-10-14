@@ -1,8 +1,4 @@
-import { useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
 import PageLayout from '../components/PageLayout';
-import { useAuth } from '../hooks/useAuth';
-import { isSuperAdmin } from '../utils/role';
 
 function Endpoint({ method, path, desc }: { method: string; path: string; desc: string }) {
   const color =
@@ -17,19 +13,6 @@ function Endpoint({ method, path, desc }: { method: string; path: string; desc: 
 }
 
 export default function ApiDocsPage() {
-  const { user } = useAuth();
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (!user || !isSuperAdmin(user.role)) {
-      navigate('/dashboard', { replace: true });
-    }
-  }, [user, navigate]);
-
-  if (!user || !isSuperAdmin(user.role)) {
-    return null;
-  }
-
   return (
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-3xl mx-auto">
@@ -54,7 +37,7 @@ export default function ApiDocsPage() {
           <Endpoint method="GET" path="/hackathons" desc="List all hackathons." />
           <Endpoint method="POST" path="/hackathons" desc="Organizer/Admin — create a hackathon." />
           <Endpoint method="POST" path="/hackathons/{id}/problem-statements" desc="Upload a problem statement." />
-          <Endpoint method="GET" path="/hackathons/{id}/leaderboard" desc="Authenticated leaderboard." />
+          <Endpoint method="GET" path="/leaderboard/{id}" desc="Authenticated leaderboard." />
           <Endpoint method="GET" path="/leaderboard/public/{id}" desc="Public shareable leaderboard." />
         </div>
 

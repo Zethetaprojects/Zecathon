@@ -9,6 +9,27 @@ export interface User {
   created_at: string;
 }
 
+// Feature toggles a superadmin can switch per role (mirrors backend FEATURES).
+export type Feature =
+  | 'create_hackathon'
+  | 'edit_hackathon'
+  | 'delete_hackathon'
+  | 'manage_problem_statements'
+  | 'create_team'
+  | 'join_team'
+  | 'manage_team_members'
+  | 'delete_team'
+  | 'submit_project'
+  | 'evaluate_submission'
+  | 'view_reports'
+  | 'view_leaderboard'
+  | 'manage_users'
+  | 'view_admin_panel'
+  | 'view_api_docs'
+  | 'participate';
+
+export type Permissions = Partial<Record<Feature, boolean>>;
+
 export interface Rubric {
   tech: Record<string, number>;
   non_tech: Record<string, number>;
@@ -92,12 +113,19 @@ export interface Evaluation {
   needs_review: boolean;
   evaluated_at: string;
   judge_questions?: string[];
+  llm_source?: LlmSource | null;
   overall_assessment?: string;
   key_strengths?: string[];
   areas_for_improvement?: string[];
   red_flags?: string[];
   recommendation?: string;
 }
+
+// Which scorer produced an evaluation. 'mock' and 'suspected_mock' are not real AI scores.
+export type LlmSource = 'gemini' | 'generic' | 'mock' | 'suspected_mock' | 'gate';
+
+export const isFallbackScore = (source?: LlmSource | string | null) =>
+  source === 'mock' || source === 'suspected_mock';
 
 export interface LeaderboardEntry {
   team_id: number;
@@ -123,6 +151,7 @@ export interface TeamReportEntry {
   verdict?: string;
   status?: SubmissionStatus | string;
   needs_review?: boolean;
+  llm_source?: LlmSource | null;
 }
 
 export interface SubmissionReport extends Submission {

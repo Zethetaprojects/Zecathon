@@ -1,5 +1,5 @@
 import api from './client';
-import { User, UserRole } from '../types';
+import { Permissions, User, UserRole } from '../types';
 
 export const authApi = {
   register: (data: { username: string; email: string; password: string; role?: UserRole }) =>
@@ -13,4 +13,5 @@ export const authApi = {
     });
   },
   me: () => api.get<User>('/auth/me'),
+  myPermissions: () => api.get<{ role: UserRole; permissions: Permissions }>('/auth/me/permissions'),
 };

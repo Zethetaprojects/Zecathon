@@ -1,6 +1,6 @@
-import { useEffect, useState } from 'react';
+import { Fragment, useEffect, useState } from 'react';
 import { adminApi, GlobalSettings, RolePermissions } from '../api/admin';
-import { UserRole } from '../types';
+import { Feature, UserRole } from '../types';
 import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 import BackButton from '../components/BackButton';
@@ -8,7 +8,7 @@ import LoadingScreen from '../components/LoadingScreen';
 
 const ROLES: UserRole[] = ['superadmin', 'admin', 'organizer', 'judge', 'participant'];
 
-const FEATURE_META: { key: string; label: string; group: string }[] = [
+const FEATURE_META: { key: Feature; label: string; group: string }[] = [
   { key: 'create_hackathon', label: 'Create hackathons', group: 'Hackathons' },
   { key: 'edit_hackathon', label: 'Edit hackathons', group: 'Hackathons' },
   { key: 'delete_hackathon', label: 'Delete hackathons', group: 'Hackathons' },
@@ -16,6 +16,7 @@ const FEATURE_META: { key: string; label: string; group: string }[] = [
   { key: 'create_team', label: 'Create teams', group: 'Teams' },
   { key: 'join_team', label: 'Join teams', group: 'Teams' },
   { key: 'manage_team_members', label: 'Manage team members', group: 'Teams' },
+  { key: 'delete_team', label: 'Delete teams', group: 'Teams' },
   { key: 'submit_project', label: 'Submit projects', group: 'Submissions' },
   { key: 'evaluate_submission', label: 'Evaluate submissions', group: 'Submissions' },
   { key: 'view_reports', label: 'View reports', group: 'Reports' },
@@ -23,8 +24,7 @@ const FEATURE_META: { key: string; label: string; group: string }[] = [
   { key: 'manage_users', label: 'Manage users', group: 'Admin' },
   { key: 'view_admin_panel', label: 'View admin panel', group: 'Admin' },
   { key: 'view_api_docs', label: 'View API docs', group: 'Admin' },
-  { key: 'manage_settings', label: 'Manage settings', group: 'Admin' },
-  { key: 'participate', label: 'Participate (teams / submissions)', group: 'General' },
+  { key: 'participate', label: 'Be a team member', group: 'General' },
 ];
 
 const GROUP_ORDER = ['Hackathons', 'Teams', 'Submissions', 'Reports', 'Admin', 'General'];
@@ -88,13 +88,6 @@ export default function SuperadminSettings() {
       if (!prev) return prev;
       const next: RolePermissions = { ...prev.role_permissions };
       next[role] = { ...next[role], [feature]: enabled };
-      // Prevent locking superadmin out of settings.
-      if (role === 'superadmin' && feature === 'manage_settings') {
-        next.superadmin.manage_settings = true;
-      }
-      if (role === 'superadmin' && feature === 'view_admin_panel') {
-        next.superadmin.view_admin_panel = true;
-      }
       return { ...prev, role_permissions: next };
     });
   };
@@ -133,7 +126,8 @@ export default function SuperadminSettings() {
         <div className="glass-panel p-6 mb-6">
           <h1 className="font-pixel text-lg text-white text-shadow-neon mb-2">PLATFORM SETTINGS</h1>
           <p className="text-slate-400 text-sm">
-            Toggle registration and granular privileges for every role.
+            Toggle registration and granular privileges for every role. Superadmins always keep every
+            privilege, and platform settings can only be changed by a superadmin.
           </p>
         </div>
 
@@ -195,8 +189,8 @@ export default function SuperadminSettings() {
                   </thead>
                   <tbody>
                     {grouped.map((group) => (
-                      <>
-                        <tr key={group.group} className="bg-white/5">
+                      <Fragment key={group.group}>
+                        <tr className="bg-white/5">
                           <td
                             colSpan={ROLES.length + 1}
                             className="py-2 px-4 text-[10px] pixel-caps text-neon-purple tracking-wider"
@@ -217,17 +211,14 @@ export default function SuperadminSettings() {
                                 <Toggle
                                   checked={!!settings.role_permissions[role]?.[feature.key]}
                                   onChange={(v) => setPermission(role, feature.key, v)}
-                                  disabled={
-                                    role === 'superadmin' &&
-                                    (feature.key === 'manage_settings' || feature.key === 'view_admin_panel')
-                                  }
+                                  disabled={role === 'superadmin'}
                                   ariaLabel={`${role} ${feature.label}`}
                                 />
                               </td>
                             ))}
                           </tr>
                         ))}
-                      </>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>

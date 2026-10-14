@@ -4,7 +4,6 @@ import { hackathonsApi } from '../api/hackathons';
 import { submissionsApi } from '../api/teams';
 import { Hackathon, Team, ProblemStatement } from '../types';
 import { formatError } from '../utils/formatError';
-import { isParticipant, isOrganizer } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
 import PageLayout from '../components/PageLayout';
 import BackButton from '../components/BackButton';
@@ -17,9 +16,8 @@ export default function Submit() {
     problemStatementId: string;
   }>();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const isParticipantUser = isParticipant(user?.role);
-  const canSubmit = isParticipantUser || isOrganizer(user?.role);
+  const { user, can } = useAuth();
+  const canSubmit = can('submit_project') && user?.role !== 'judge';
   const [hackathon, setHackathon] = useState<Hackathon | null>(null);
   const [team, setTeam] = useState<Team | null>(null);
   const [ps, setPs] = useState<ProblemStatement | null>(null);
@@ -99,7 +97,7 @@ export default function Submit() {
       <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
         <div className="max-w-3xl mx-auto glass-panel p-8 text-center">
           <h2 className="font-pixel text-lg text-neon-pink mb-2">NOT ALLOWED</h2>
-          <p className="text-slate-300 mb-4">Only participants can submit their own projects. Organisers and admins can submit on behalf of a team they manage.</p>
+          <p className="text-slate-300 mb-4">Your role is not allowed to submit projects. Team members submit their own projects; organisers and admins can submit on behalf of a team they manage.</p>
           <Link to={`/hackathons/${hackathonId}/teams`} className="text-neon-cyan hover:text-white text-sm">
             ← Back to teams
           </Link>

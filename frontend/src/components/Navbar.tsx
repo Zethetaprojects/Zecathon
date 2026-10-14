@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 import { useMusic } from './MusicProvider';
 import { useEasterEggs } from '../hooks/useEasterEggs';
-import { isAdmin, isOrganizer } from '../utils/role';
 import EasterEggHunt from './EasterEggHunt';
 
 function SoundMixer() {
@@ -148,7 +147,7 @@ function SoundMixer() {
 }
 
 export default function Navbar() {
-  const { user, logout } = useAuth();
+  const { user, logout, can } = useAuth();
   const navigate = useNavigate();
   const { discover, setMode } = useEasterEggs();
   const logoClicksRef = useRef<number[]>([]);
@@ -183,8 +182,8 @@ export default function Navbar() {
     ? [
         { to: '/dashboard', label: 'Dashboard' },
         { to: '/hackathons', label: 'Hackathons' },
-        ...(isAdmin(user.role) ? [{ to: '/admin', label: 'Admin' }] : []),
-        ...(isOrganizer(user.role) ? [{ to: '/reports', label: 'Reports' }] : []),
+        ...(can('view_admin_panel') ? [{ to: '/admin', label: 'Admin' }] : []),
+        ...(can('view_reports') ? [{ to: '/reports', label: 'Reports' }] : []),
       ]
     : [];
 

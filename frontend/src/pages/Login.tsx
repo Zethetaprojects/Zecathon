@@ -21,7 +21,7 @@ export default function Login() {
       const { data: tokenData } = await authApi.login({ username, password });
       localStorage.setItem('token', tokenData.access_token);
       const { data: user } = await authApi.me();
-      login(tokenData.access_token, user);
+      await login(tokenData.access_token, user);
       navigate('/dashboard');
     } catch (err: any) {
       setError(formatError(err, 'Login failed'));
