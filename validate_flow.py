@@ -24,7 +24,11 @@ UPLOAD_DIR = BASE_DIR / "_validate_uploads"
 os.environ["DATABASE_URL"] = f"sqlite:///{TEST_DB.as_posix()}"
 os.environ["UPLOAD_DIR"] = str(UPLOAD_DIR.resolve())
 os.environ["SECRET_KEY"] = "validation-secret"
-os.environ["AI_BACKEND_URL"] = ""  # force deterministic fallback evaluator
+# Ignore backend/.env (and any Gemini key in it) so the run uses the deterministic
+# offline scorer and is repeatable. Setting the vars to "" does not work on Windows.
+os.environ["ZECATHON_ENV_FILE"] = str(BASE_DIR / "_no_env_file")
+os.environ.pop("GEMINI_API_KEY", None)
+os.environ.pop("AI_BACKEND_URL", None)
 
 TECH_REPO = "https://github.com/octocat/Spoon-Knife"
 
@@ -40,6 +44,21 @@ def wait_for(url, timeout=30):
             pass
         time.sleep(0.5)
     return False
+
+
+def stop_process_tree(proc):
+    """Stop a process and its children. With shell=True the real server (vite) is a
+    grandchild, and terminate() alone leaves it running on Windows."""
+    if proc.poll() is not None:
+        return
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(proc.pid)], capture_output=True)
+    else:
+        proc.terminate()
+    try:
+        proc.wait(timeout=5)
+    except subprocess.TimeoutExpired:
+        proc.kill()
 
 
 def start_process(cmd, cwd, shell=False):
@@ -232,16 +251,8 @@ def main():
 
     finally:
         print("\nStopping servers...")
-        backend.terminate()
-        frontend.terminate()
-        try:
-            backend.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            backend.kill()
-        try:
-            frontend.wait(timeout=5)
-        except subprocess.TimeoutExpired:
-            frontend.kill()
+        for proc in (backend, frontend):
+            stop_process_tree(proc)
 
 
 if __name__ == "__main__":

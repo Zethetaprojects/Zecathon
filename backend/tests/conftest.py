@@ -1,9 +1,8 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker
 
-from app.auth import RateLimiter
 from app.database import Base, get_db
 from app.main import app
 from app.models import User, UserRole
@@ -12,25 +11,35 @@ SQLALCHEMY_DATABASE_URL = "sqlite:///./test.db"
 engine = create_engine(SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False})
 
 
+# pysqlite does not emit BEGIN itself, which breaks SAVEPOINT-based test
+# isolation. Let SQLAlchemy control transactions (the documented recipe).
+@event.listens_for(engine, "connect")
+def _disable_pysqlite_transactions(dbapi_connection, _record):
+    dbapi_connection.isolation_level = None
+
+
+@event.listens_for(engine, "begin")
+def _emit_begin(conn):
+    conn.exec_driver_sql("BEGIN")
+
+
 @pytest.fixture(scope="session", autouse=True)
 def setup_db():
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
-    RateLimiter._windows.clear()
     yield
     Base.metadata.drop_all(bind=engine)
 
 
-@pytest.fixture(autouse=True)
-def reset_rate_limiter():
-    RateLimiter._windows.clear()
-    yield
-
-
+# Rate-limit attempts are stored in the database, so the per-test transaction
+# rollback in the `db` fixture resets them between tests.
 @pytest.fixture
 def db():
     connection = engine.connect()
     transaction = connection.begin()
-    session = sessionmaker(bind=connection)()
+    # Savepoint mode: a rollback inside an endpoint only undoes that endpoint's
+    # work, like in production, instead of discarding the whole test transaction.
+    session = sessionmaker(bind=connection, join_transaction_mode="create_savepoint")()
     yield session
     session.close()
     transaction.rollback()
