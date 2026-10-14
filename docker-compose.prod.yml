@@ -1,11 +1,9 @@
-version: "3.8"
-
 # Production Docker Compose for ZECATHON.
 # This file does NOT include a Postgres service; point DATABASE_URL to a managed
 # Postgres instance (e.g., Cloud SQL) via environment variables.
 #
-# Required environment variables:
-#   SECRET_KEY            - strong random JWT secret
+# Required environment variables (startup fails if missing):
+#   SECRET_KEY            - strong random JWT secret (at least 32 characters)
 #   DATABASE_URL          - PostgreSQL connection string (e.g., postgresql+psycopg2://user:pass@host/db)
 #   GEMINI_API_KEY        - valid Google Gemini API key (optional but recommended)
 #   GITHUB_TOKEN          - optional, for higher GitHub API rate limits
@@ -24,8 +22,10 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=${DATABASE_URL}
-      - SECRET_KEY=${SECRET_KEY}
+      - ENVIRONMENT=production
+      - DATABASE_URL=${DATABASE_URL:?DATABASE_URL must be set}
+      - SECRET_KEY=${SECRET_KEY:?SECRET_KEY must be set}
+      - DISABLE_API_DOCS=${DISABLE_API_DOCS:-true}
       - GEMINI_API_KEY=${GEMINI_API_KEY:-}
       - GEMINI_MODEL=${GEMINI_MODEL:-gemini-3.5-flash-lite}
       - GITHUB_TOKEN=${GITHUB_TOKEN:-}
@@ -36,7 +36,7 @@ services:
       - zecathon_uploads:/data/uploads
       - zecathon_logs:/app/logs
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health", "||", "exit", "1"]
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/health || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -48,10 +48,7 @@ services:
           memory: 2G
 
   frontend:
-    build:
-      context: ./frontend
-      args:
-        VITE_API_BASE_URL: /api
+    build: ./frontend
     container_name: zecathon-frontend-prod
     ports:
       - "80:80"

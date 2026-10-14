@@ -3,59 +3,47 @@
 #
 # Designed to be run inside a GCP Compute Engine VM via the browser SSH terminal.
 # Uses:
-#   - Docker for PostgreSQL
+#   - Docker for PostgreSQL and the backend (gunicorn + uvicorn workers)
 #   - systemd to keep the stack alive
-#   - gunicorn + uvicorn workers for the backend
 #   - host nginx for SSL and static frontend hosting
 #
 # What you need before running this:
-#   1. A GCP Compute Engine VM (Ubuntu 22.04/24.04 LTS recommended, e2-medium or larger).
+#   1. A GCP Compute Engine VM (Ubuntu 22.04/24.04 or Debian 12, e2-medium or larger)
+#      with a boot disk of at least 30 GB. 10 GB fills up with Docker images and caches.
 #   2. Firewall rules in the GCP Console allowing TCP 80 and 443 to the VM.
 #   3. (Optional) A DNS A record pointing a domain to the VM's external IP. If you don't
-#      provide one, the script automatically detects the VM's external IP and uses a
-#      self-signed certificate.
-#   4. SSH into the VM using the browser terminal and run this script from the repo root.
+#      provide one, the script detects the VM's external IP and uses a self-signed certificate.
 #
-# Usage:
+# Usage (first install):
 #   sudo ./gcp/deploy-vm.sh
+#
+# Re-running is safe: secrets are stored once in /etc/zecathon/zecathon.env and reused,
+# so the database password never changes. For routine code updates use gcp/update-vm.sh.
+#
+# Non-interactive use: preset DOMAIN, EMAIL, GEMINI_API_KEY, GITHUB_TOKEN in the environment
+# (sudo -E) to skip their prompts.
 
 set -euo pipefail
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+# shellcheck source=gcp/lib-vm.sh
+source "${SCRIPT_DIR}/lib-vm.sh"
 
-APP_DIR="/opt/zecathon"
 REPO_URL="https://github.com/Zethetaprojects/Zecathon.git"
-DOMAIN=""
-EMAIL=""
-DB_PASSWORD=""
-SECRET_KEY=""
-GEMINI_API_KEY=""
-GITHUB_TOKEN=""
+DOMAIN="${DOMAIN:-}"
+EMAIL="${EMAIL:-}"
+GEMINI_API_KEY="${GEMINI_API_KEY:-}"
+GITHUB_TOKEN="${GITHUB_TOKEN:-}"
 
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-CYAN='\033[0;36m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
-
-log_info()  { echo -e "${CYAN}[INFO]${NC}  $1"; }
-log_warn()  { echo -e "${YELLOW}[WARN]${NC}  $1"; }
-log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
-log_ok()    { echo -e "${GREEN}[OK]${NC}   $1"; }
-
-random_password() { openssl rand -base64 24 | tr '+/' '-_' | cut -c1-24; }
-random_secret()   { openssl rand -hex 48; }
-
+# Ask for a value unless it is already set. Uses printf -v instead of eval so
+# input can never be executed as shell code.
 prompt() {
   local var_name="$1"
   local prompt_text="$2"
   local current_value="${!var_name:-}"
   if [[ -z "$current_value" ]]; then
     read -rp "$prompt_text" current_value
-    eval "export $var_name=\"$current_value\""
+    printf -v "$var_name" '%s' "$current_value"
   fi
-}
-
-is_ip() {
-  [[ "$1" =~ ^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$ ]]
 }
 
 is_ip() {
@@ -72,9 +60,6 @@ detect_external_ip() {
     ip=$(curl -fsS -m 5 https://ifconfig.me 2>/dev/null || true)
   fi
   if [[ -z "$ip" ]]; then
-    ip=$(curl -fsS -m 5 https://icanhazip.com 2>/dev/null || true)
-  fi
-  if [[ -z "$ip" ]]; then
     ip=$(curl -fsS -m 5 https://api.ipify.org 2>/dev/null || true)
   fi
   if is_ip "$ip"; then
@@ -82,21 +67,29 @@ detect_external_ip() {
   fi
 }
 
+write_self_signed_cert() {
+  mkdir -p /etc/nginx/ssl
+  # Keep an existing certificate so browsers that already accepted it keep working.
+  if [[ ! -f /etc/nginx/ssl/zecathon.crt ]]; then
+    openssl req -x509 -nodes -days 825 -newkey rsa:2048 \
+      -keyout /etc/nginx/ssl/zecathon.key \
+      -out /etc/nginx/ssl/zecathon.crt \
+      -subj "/CN=${DOMAIN}"
+  fi
+  sed -i '/listen 80;/a\    listen 443 ssl;\n    ssl_certificate /etc/nginx/ssl/zecathon.crt;\n    ssl_certificate_key /etc/nginx/ssl/zecathon.key;' /etc/nginx/sites-available/zecathon
+  nginx -t && systemctl reload nginx
+}
+
 # -----------------------------------------------------------------------------
 # Preflight
 # -----------------------------------------------------------------------------
 log_info "ZECATHON VM deployment starting..."
+require_root
 
-if [[ $EUID -ne 0 ]]; then
-  log_error "This script must be run as root or with sudo."
-  exit 1
+if [[ -d "$APP_DIR" ]]; then
+  log_warn "${APP_DIR} already exists. The script will update the code and redeploy, keeping existing secrets."
 fi
 
-if [[ -d /opt/zecathon ]]; then
-  log_warn "${APP_DIR} already exists. The script will update the code and redeploy."
-fi
-
-# Auto-detect external IP if no domain was provided
 if [[ -z "$DOMAIN" ]]; then
   log_info "Detecting VM external IP address..."
   DETECTED_IP=$(detect_external_ip)
@@ -106,13 +99,16 @@ if [[ -z "$DOMAIN" ]]; then
   fi
 fi
 
-# Allow the user to override with a custom domain if they want
 if [[ -z "$DOMAIN" ]]; then
   prompt DOMAIN "External IP could not be detected. Enter domain or IP (e.g. zecathon.example.com or 34.123.45.67): "
 fi
 
 if [[ -z "$DOMAIN" ]]; then
   log_error "A domain or IP address is required."
+  exit 1
+fi
+if ! [[ "$DOMAIN" =~ ^[A-Za-z0-9.-]+$ ]]; then
+  log_error "Invalid domain or IP: ${DOMAIN}"
   exit 1
 fi
 
@@ -122,27 +118,18 @@ if is_ip "$DOMAIN"; then
   log_info "Using IP address ${DOMAIN}. Only a self-signed certificate is possible."
 fi
 
-prompt EMAIL "Email address for Let's Encrypt SSL (press Enter for self-signed): "
+if [[ "$USE_IP" != true ]]; then
+  prompt EMAIL "Email address for Let's Encrypt SSL (press Enter for self-signed): "
+fi
 if [[ -z "$EMAIL" ]]; then
   log_warn "No email provided; SSL certificate will use a self-signed fallback."
 fi
-if [[ "$USE_IP" == true && -n "$EMAIL" ]]; then
-  log_warn "Let's Encrypt cannot issue certificates for bare IP addresses. Reverting to self-signed."
-  EMAIL=""
-fi
 
-prompt GEMINI_API_KEY "Gemini API key (optional, press Enter to skip): "
+# Reuse saved optional keys on re-runs instead of prompting again.
+GEMINI_API_KEY="${GEMINI_API_KEY:-$(env_get GEMINI_API_KEY)}"
+GITHUB_TOKEN="${GITHUB_TOKEN:-$(env_get GITHUB_TOKEN)}"
+prompt GEMINI_API_KEY "Gemini API key (needed for real evaluations; press Enter to skip): "
 prompt GITHUB_TOKEN "GitHub token (optional, press Enter to skip): "
-
-if [[ -z "$SECRET_KEY" ]]; then
-  SECRET_KEY=$(random_secret)
-  log_info "Generated a 96-char SECRET_KEY."
-fi
-
-if [[ -z "$DB_PASSWORD" ]]; then
-  DB_PASSWORD=$(random_password)
-  log_info "Generated a 24-char PostgreSQL password."
-fi
 
 # -----------------------------------------------------------------------------
 # 1. Install system dependencies
@@ -152,7 +139,6 @@ export DEBIAN_FRONTEND=noninteractive
 apt-get update
 apt-get install -y --no-install-recommends \
   curl \
-  wget \
   ca-certificates \
   gnupg \
   lsb-release \
@@ -161,7 +147,6 @@ apt-get install -y --no-install-recommends \
   certbot \
   python3-certbot-nginx \
   openssl \
-  unzip \
   xz-utils
 
 # Install Node.js 20 LTS from the official binary distribution.
@@ -181,17 +166,16 @@ fi
 if ! command -v docker >/dev/null 2>&1; then
   log_info "Installing Docker..."
   install -m 0755 -d /etc/apt/keyrings
-  curl -fsSL https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
+  curl -fsSL "https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]')/gpg" | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
   chmod a+r /etc/apt/keyrings/docker.gpg
   echo "deb [arch=$(dpkg --print-architecture) signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/$(lsb_release -is | tr '[:upper:]' '[:lower:]') $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
   apt-get update
   apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin
 fi
 
-# Ensure docker runs on boot
 systemctl enable docker
 systemctl start docker
-
+apt-get clean
 log_ok "Dependencies installed."
 
 # -----------------------------------------------------------------------------
@@ -202,145 +186,63 @@ if [[ ! -d "$APP_DIR" ]]; then
   git clone "$REPO_URL" "$APP_DIR"
   log_ok "Repository cloned."
 else
-  cd "$APP_DIR"
-  git pull origin main
+  # The checkout may be owned by the login user; let root's git operate on it.
+  git config --global --get-all safe.directory | grep -qx "$APP_DIR" || git config --global --add safe.directory "$APP_DIR"
+  git -C "$APP_DIR" pull --ff-only origin main
   log_ok "Repository updated."
 fi
-
 cd "$APP_DIR"
 
 # -----------------------------------------------------------------------------
-# 3. Build the frontend
+# 3. Secrets (created once, reused forever) and disk space
 # -----------------------------------------------------------------------------
-log_info "Building frontend..."
-cd frontend
-npm ci
-npm run build
-cd "$APP_DIR"
-log_ok "Frontend built to ${APP_DIR}/frontend/dist."
+ensure_env_file
+env_set GEMINI_API_KEY "$GEMINI_API_KEY"
+env_set GITHUB_TOKEN "$GITHUB_TOKEN"
+if [[ -z "$GEMINI_API_KEY" ]]; then
+  log_warn "No GEMINI_API_KEY: evaluations will be refused until one is added to ${ENV_FILE}."
+fi
+ensure_disk_space
+backup_database
 
 # -----------------------------------------------------------------------------
-# 4. Create backend environment file
+# 4. Build the frontend
 # -----------------------------------------------------------------------------
-log_info "Configuring backend environment..."
-cat > backend/.env <<EOF
-DATABASE_URL=postgresql+psycopg2://zecathon:${DB_PASSWORD}@postgres:5432/zecathon
-SECRET_KEY=${SECRET_KEY}
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=60
-AI_BACKEND_URL=http://localhost:5000
-AI_BACKEND_TOKEN=
-GEMINI_API_KEY=${GEMINI_API_KEY}
-GEMINI_MODEL=gemini-3.5-flash-lite
-GITHUB_TOKEN=${GITHUB_TOKEN}
-UPLOAD_DIR=/data/uploads
-MAX_UPLOAD_SIZE=20971520
-DISABLE_API_DOCS=true
-EOF
-log_ok "Backend .env created."
+build_frontend
+remove_legacy_backend_env
 
 # -----------------------------------------------------------------------------
 # 5. Configure nginx
 # -----------------------------------------------------------------------------
 log_info "Configuring nginx..."
-
-# Backup default nginx config if it exists and is enabled
-if [[ -f /etc/nginx/sites-enabled/default ]]; then
-  rm -f /etc/nginx/sites-enabled/default
-fi
-
+rm -f /etc/nginx/sites-enabled/default
 cp gcp/nginx-zecathon.conf /etc/nginx/sites-available/zecathon
 sed -i "s/{{DOMAIN}}/${DOMAIN}/g" /etc/nginx/sites-available/zecathon
-
-if [[ ! -f /etc/nginx/sites-enabled/zecathon ]]; then
-  ln -s /etc/nginx/sites-available/zecathon /etc/nginx/sites-enabled/zecathon
-fi
-
-# Test nginx config before reloading
+ln -sf /etc/nginx/sites-available/zecathon /etc/nginx/sites-enabled/zecathon
 nginx -t && systemctl reload nginx || { log_error "nginx configuration failed"; exit 1; }
 log_ok "nginx configured."
 
 # -----------------------------------------------------------------------------
 # 6. SSL certificate
 # -----------------------------------------------------------------------------
-if [[ "$USE_IP" == true ]]; then
-  log_warn "Using a self-signed SSL certificate for IP address ${DOMAIN}."
-  mkdir -p /etc/nginx/ssl
-  openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout /etc/nginx/ssl/zecathon.key \
-    -out /etc/nginx/ssl/zecathon.crt \
-    -subj "/CN=${DOMAIN}"
-
-  # Patch the nginx config to listen on 443 with the self-signed cert
-  sed -i '/listen 80;/a\    listen 443 ssl;\n    ssl_certificate /etc/nginx/ssl/zecathon.crt;\n    ssl_certificate_key /etc/nginx/ssl/zecathon.key;' /etc/nginx/sites-available/zecathon
-  nginx -t && systemctl reload nginx
-  log_ok "SSL configured for IP address."
-elif [[ -n "$EMAIL" ]]; then
+if [[ "$USE_IP" != true && -n "$EMAIL" ]]; then
   log_info "Obtaining Let's Encrypt SSL certificate for ${DOMAIN}..."
-  certbot --nginx --non-interactive --agree-tos --email "$EMAIL" -d "$DOMAIN" || {
+  if ! certbot --nginx --non-interactive --agree-tos --email "$EMAIL" -d "$DOMAIN"; then
     log_warn "certbot failed; falling back to a self-signed certificate."
     EMAIL=""
-  }
+  fi
 fi
-
-if [[ "$USE_IP" != true && -z "$EMAIL" ]]; then
-  log_warn "Using a self-signed SSL certificate for ${DOMAIN}."
-  mkdir -p /etc/nginx/ssl
-  openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-    -keyout /etc/nginx/ssl/zecathon.key \
-    -out /etc/nginx/ssl/zecathon.crt \
-    -subj "/CN=${DOMAIN}"
-
-  # Patch the nginx config to listen on 443 with the self-signed cert
-  sed -i '/listen 80;/a\    listen 443 ssl;\n    ssl_certificate /etc/nginx/ssl/zecathon.crt;\n    ssl_certificate_key /etc/nginx/ssl/zecathon.key;' /etc/nginx/sites-available/zecathon
-  nginx -t && systemctl reload nginx
-  log_ok "SSL configured."
+if [[ -z "$EMAIL" ]]; then
+  log_warn "Using a self-signed SSL certificate for ${DOMAIN} (browsers will warn)."
+  write_self_signed_cert
 fi
+log_ok "SSL configured."
 
 # -----------------------------------------------------------------------------
-# 7. Create systemd service for the Docker stack
+# 7. systemd service, backend image, start
 # -----------------------------------------------------------------------------
-log_info "Creating systemd service..."
-
-cat > /etc/systemd/system/zecathon.service <<EOF
-[Unit]
-Description=ZECATHON application stack (PostgreSQL + backend)
-Requires=docker.service
-After=docker.service network.target
-
-[Service]
-Type=oneshot
-RemainAfterExit=yes
-WorkingDirectory=${APP_DIR}/gcp
-Environment=DB_PASSWORD=${DB_PASSWORD}
-Environment=SECRET_KEY=${SECRET_KEY}
-Environment=GEMINI_API_KEY=${GEMINI_API_KEY}
-Environment=GITHUB_TOKEN=${GITHUB_TOKEN}
-ExecStart=/usr/bin/docker compose -f docker-compose.vm.yml up -d --build
-ExecStop=/usr/bin/docker compose -f docker-compose.vm.yml down
-ExecReload=/usr/bin/docker compose -f docker-compose.vm.yml up -d --build
-TimeoutStartSec=300
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-systemctl daemon-reload
-systemctl enable zecathon.service
-systemctl start zecathon.service
-
-# Wait for backend health
-log_info "Waiting for backend to become healthy..."
-for i in {1..30}; do
-  if curl -fsS http://127.0.0.1:8000/api/health >/dev/null 2>&1; then
-    log_ok "Backend is healthy."
-    break
-  fi
-  sleep 2
-  if [[ $i -eq 30 ]]; then
-    log_warn "Backend health check timed out; check logs with: journalctl -u zecathon -n 100"
-  fi
-done
+install_unit
+build_and_start
 
 # -----------------------------------------------------------------------------
 # 8. Final summary
@@ -355,15 +257,17 @@ else
   echo "  Application URL: https://${DOMAIN}"
 fi
 echo "  VM directory:    ${APP_DIR}"
+echo "  Secrets:         ${ENV_FILE} (root-only)"
 echo "  systemd service: zecathon.service"
-echo "  nginx config:    /etc/nginx/sites-available/zecathon"
+echo
+echo "Next steps:"
+echo "  Create the first superadmin:"
+echo "    sudo docker exec -it zecathon-backend python -m scripts.create_superadmin <username> <email>"
+echo "  Update later:"
+echo "    cd ${APP_DIR} && sudo git pull --ff-only origin main && sudo bash gcp/update-vm.sh"
+echo "  Set up an uptime check on https://${DOMAIN}/api/health (see gcp/README.md)."
 echo
 echo "Useful commands:"
 echo "  sudo systemctl status zecathon"
-echo "  sudo systemctl restart zecathon"
-echo "  sudo journalctl -u zecathon -f"
-echo "  sudo docker compose -f ${APP_DIR}/gcp/docker-compose.vm.yml logs -f"
-echo
-echo "  View backend logs:  sudo docker logs -f zecathon-backend"
-echo "  View postgres logs: sudo docker logs -f zecathon-postgres"
-echo
+echo "  sudo docker logs -f zecathon-backend"
+echo "  sudo docker compose --env-file ${ENV_FILE} -f ${COMPOSE_FILE} ps"

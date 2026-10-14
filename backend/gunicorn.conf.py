@@ -17,8 +17,9 @@ workers = min(multiprocessing.cpu_count() * 2 + 1, 4)
 threads = 1
 worker_connections = 1000
 
-# Timeouts: evaluations can take a while
-timeout = 120
+# Timeouts: an evaluation makes GitHub calls plus one LLM call (LLM_TIMEOUT_SECONDS, default 60s).
+# Keep this at or below the nginx proxy_read_timeout (180s).
+timeout = 180
 keepalive = 5
 graceful_timeout = 30
 

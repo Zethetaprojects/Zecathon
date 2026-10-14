@@ -1,6 +1,22 @@
 # ZECATHON production deployment for a single GCP VM.
 # PostgreSQL runs in Docker; backend runs in Docker with gunicorn + uvicorn workers.
 # The host nginx server serves the built frontend and proxies /api and /uploads here.
+#
+# Secrets live in /etc/zecathon/zecathon.env (root-only), written by deploy-vm.sh.
+# systemd loads that file for zecathon.service. To run compose by hand, pass it explicitly:
+#   sudo docker compose --env-file /etc/zecathon/zecathon.env -f docker-compose.vm.yml ps
+# Without it, compose refuses to start instead of falling back to insecure defaults.
+
+# Pinned project name: the data volumes are gcp_zecathon_pg_data / gcp_zecathon_uploads.
+# Changing this would make compose create new, empty volumes.
+name: gcp
+
+x-logging: &default-logging
+  # Cap container logs so they cannot fill the disk.
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
 
 services:
   postgres:
@@ -8,7 +24,7 @@ services:
     container_name: zecathon-postgres
     environment:
       POSTGRES_USER: ${DB_USER:-zecathon}
-      POSTGRES_PASSWORD: ${DB_PASSWORD:-zecathon_secret}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?DB_PASSWORD is not set. Use --env-file /etc/zecathon/zecathon.env}
       POSTGRES_DB: ${DB_NAME:-zecathon}
     volumes:
       - zecathon_pg_data:/var/lib/postgresql/data
@@ -19,24 +35,29 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    logging: *default-logging
     restart: unless-stopped
 
   backend:
     build:
       context: ../backend
       dockerfile: Dockerfile
+    image: zecathon-backend:latest
     container_name: zecathon-backend
     command: >
       gunicorn app.main:app
       -c /app/gunicorn.conf.py
     environment:
-      DATABASE_URL: postgresql+psycopg2://${DB_USER:-zecathon}:${DB_PASSWORD:-zecathon_secret}@postgres:5432/${DB_NAME:-zecathon}
-      SECRET_KEY: ${SECRET_KEY}
+      ENVIRONMENT: production
+      DATABASE_URL: postgresql+psycopg2://${DB_USER:-zecathon}:${DB_PASSWORD:?DB_PASSWORD is not set}@postgres:5432/${DB_NAME:-zecathon}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY is not set. Use --env-file /etc/zecathon/zecathon.env}
       GEMINI_API_KEY: ${GEMINI_API_KEY:-}
       GEMINI_MODEL: ${GEMINI_MODEL:-gemini-3.5-flash-lite}
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       AI_BACKEND_URL: ${AI_BACKEND_URL:-}
       AI_BACKEND_TOKEN: ${AI_BACKEND_TOKEN:-}
+      LLM_TIMEOUT_SECONDS: ${LLM_TIMEOUT_SECONDS:-60}
+      CORS_ORIGINS: ${CORS_ORIGINS:-*}
       UPLOAD_DIR: /data/uploads
       MAX_UPLOAD_SIZE: 20971520
       ACCESS_TOKEN_EXPIRE_MINUTES: 60
@@ -50,11 +71,12 @@ services:
     ports:
       - "127.0.0.1:8000:8000"
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:8000/api/health", "||", "exit", "1"]
-      interval: 10s
+      test: ["CMD-SHELL", "curl -fsS http://localhost:8000/api/health || exit 1"]
+      interval: 30s
       timeout: 5s
       retries: 5
-      start_period: 15s
+      start_period: 30s
+    logging: *default-logging
     restart: unless-stopped
     deploy:
       resources:

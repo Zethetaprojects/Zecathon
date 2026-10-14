@@ -37,55 +37,100 @@ For automated deploys on every push to `main`, use `gcp/cloudbuild.yaml`:
    - `_SERVICE_NAME` — Cloud Run service name (default: `zecathon-backend`)
    - `_DB_INSTANCE` — Cloud SQL connection name: `PROJECT_ID:REGION:INSTANCE_ID`
 3. Ensure the four Secret Manager secrets below exist before the first run.
+4. Commit the `firebase.json` that `gcp/deploy.sh` generates in the repository root; the pipeline's Firebase step needs it.
 
 ## Self-hosted VM deployment (no gcloud CLI)
 
 If you prefer to run everything on a single GCP Compute Engine VM and manage it through the browser SSH terminal, use this path instead. It does **not** require `gcloud`, Cloud Run, Cloud SQL, or Firebase Hosting.
 
 Architecture:
-- **VM**: GCP Compute Engine (Ubuntu 22.04/24.04 LTS, e2-medium or larger).
-- **Database**: PostgreSQL running inside Docker with a persistent volume.
+- **VM**: GCP Compute Engine (Ubuntu 22.04/24.04 LTS or Debian 12, e2-medium or larger, **30 GB boot disk**).
+- **Database**: PostgreSQL running inside Docker with a persistent volume (`gcp_zecathon_pg_data`).
 - **Backend**: Docker container running **gunicorn** + uvicorn workers.
 - **Frontend**: Built React SPA served by host **nginx**.
 - **Reverse proxy / SSL**: Host **nginx** with optional Let's Encrypt (via certbot) or a self-signed certificate.
-- **Process management**: **systemd** `zecathon.service` keeps the Docker stack up.
+- **Process management**: **systemd** `zecathon.service` starts the Docker stack on boot.
+- **Secrets**: `/etc/zecathon/zecathon.env`, readable by root only. Created once and reused on every redeploy.
 
-### Steps
+### First install
 
-1. In the GCP Console, create a Compute Engine VM and add firewall rules for **TCP 80** and **TCP 443**.
-2. (Optional) Point a domain's DNS A record to the VM's external IP. If you don't provide a domain, the script automatically detects the VM's external IP and uses a self-signed certificate.
+1. In the GCP Console, create a Compute Engine VM with a **30 GB** boot disk and add firewall rules for **TCP 80** and **TCP 443**.
+2. (Optional) Point a domain's DNS A record to the VM's external IP. If you don't provide a domain, the script detects the VM's external IP and uses a self-signed certificate.
 3. Open the browser SSH terminal and run:
 
 ```bash
 sudo apt update && sudo apt install -y git
-git clone https://github.com/Zethetaprojects/Zecathon.git /opt/zecathon
+sudo git clone https://github.com/Zethetaprojects/Zecathon.git /opt/zecathon
 cd /opt/zecathon
 sudo ./gcp/deploy-vm.sh
 ```
 
-The script will:
-1. Install Docker, nginx, certbot, and Node.js.
-2. Build the frontend SPA.
-3. Configure nginx and obtain an SSL certificate.
-4. Create a systemd service that starts PostgreSQL + backend via `gcp/docker-compose.vm.yml`.
-5. Start the application and wait for the backend health check.
+4. Create the first superadmin (prompts for the password):
 
-After deployment:
+```bash
+sudo docker exec -it zecathon-backend python -m scripts.create_superadmin <username> <email>
+```
+
+The same command resets the password of an existing account and makes it superadmin, so it is also the recovery path if every superadmin is locked out.
+
+Without a `GEMINI_API_KEY`, production **refuses to score** submissions rather than storing made-up scores. Add one later with:
+
+```bash
+sudo sed -i 's/^GEMINI_API_KEY=.*/GEMINI_API_KEY=AIza.../' /etc/zecathon/zecathon.env
+sudo systemctl restart zecathon
+```
+
+### Updating to new code
+
+```bash
+cd /opt/zecathon && sudo git pull --ff-only origin main && sudo bash gcp/update-vm.sh
+```
+
+`update-vm.sh` checks free disk space (and cleans caches if needed), dumps the database to `/var/backups/zecathon/` (last 7 kept), rebuilds the frontend and backend image, restarts the stack, waits for `/api/health`, and removes old images. It never changes secrets and never deletes Docker volumes. Re-running `deploy-vm.sh` is also safe.
+
+### Day-to-day commands
 
 ```bash
 sudo systemctl status zecathon
-sudo journalctl -u zecathon -f
-sudo docker compose -f /opt/zecathon/gcp/docker-compose.vm.yml logs -f
+sudo docker logs -f zecathon-backend
+sudo docker compose --env-file /etc/zecathon/zecathon.env -f /opt/zecathon/gcp/docker-compose.vm.yml ps
 ```
 
-To redeploy after code changes:
+Always pass `--env-file /etc/zecathon/zecathon.env` when running `docker compose` by hand. Without it, compose stops with "DB_PASSWORD is not set" instead of starting with insecure defaults.
+
+How the service behaves:
+- `systemctl stop zecathon` stops the containers but keeps them; `start` brings them back. Nothing is rebuilt on start, so a restart works without network access or spare disk.
+- The unit only *wants* Docker (not *requires*), so a Docker upgrade or restart does not tear the stack down. Containers restart themselves (`restart: unless-stopped`).
+- Container logs are capped at 3 × 10 MB per container.
+
+### Disk size
+
+Docker images, build cache, Node.js and the OS need about 9 GB, so a 10 GB disk fills up and builds fail. To grow it (no downtime):
+
+1. GCP Console → **Compute Engine → Disks** → the VM's boot disk → **Create snapshot** (backup first).
+2. **Edit** the disk and set the size to 30 GB.
+3. On the VM (device names from `df -h /`, e.g. `/dev/sda1` or `/dev/sdb1`):
 
 ```bash
-cd /opt/zecathon
-git pull origin main
-sudo systemctl restart zecathon
-sudo systemctl reload nginx
+sudo growpart /dev/sdb 1
+sudo resize2fs /dev/sdb1
+df -h /
 ```
+
+### Uptime monitoring
+
+Set up a free alert so an outage is noticed within minutes:
+
+1. GCP Console → **Monitoring → Uptime checks → Create uptime check**.
+2. Protocol **HTTPS** (or HTTP for a bare IP), host = your domain or IP, path `/api/health`, check every 5 minutes.
+3. For a self-signed certificate, untick **SSL certificate validation**.
+4. Add an **email notification channel** and create the alert policy.
+
+### Backups
+
+- Automatic: `update-vm.sh` dumps the database before every update.
+- Manual: `sudo docker exec zecathon-postgres pg_dump -U zecathon zecathon | gzip > ~/zecathon-$(date +%F).sql.gz`
+- Whole VM: create a disk snapshot (or a snapshot schedule) in **Compute Engine → Snapshots**.
 
 ## Manual deployment steps
 
@@ -210,7 +255,7 @@ cp backend/.env.example backend/.env
 docker compose -f docker-compose.yml up --build
 ```
 
-- Backend API docs: http://localhost:8000/docs
+- Backend API docs: http://localhost:8000/api/docs
 - Frontend: http://localhost
 - PostgreSQL: localhost:5432 (user `zecathon`, password `zecathon_secret`, database `zecathon`)
 - The frontend nginx container proxies `/api` and `/uploads` to the backend service.
@@ -221,8 +266,8 @@ For an external managed database, use `docker-compose.prod.yml` and set `DATABAS
 
 ## 6. Post-deployment checklist
 
-- [ ] Create the first admin or organiser account via `/api/auth/register`.
-- [ ] Upgrade a user role to `admin` via the admin dashboard or the `PUT /api/auth/users/{id}/role` endpoint.
+- [ ] Register an account, then make it superadmin with `python -m scripts.set_role <username> superadmin` run against the production database (VM: `scripts.create_superadmin` inside the backend container).
+- [ ] Manage further roles and per-role permissions from the Admin panel (`/admin`, `/admin/settings`).
 - [ ] Create a hackathon, upload problem statements, and test an evaluation.
 - [ ] Verify the public leaderboard share link works without authentication.
 - [ ] Confirm uploaded problem statements and non-tech submissions are reachable via `/uploads/{filename}` (proxied by nginx or served by the backend).
@@ -234,7 +279,7 @@ For an external managed database, use `docker-compose.prod.yml` and set `DATABAS
 
 - Use **Cloud SQL** for PostgreSQL instead of SQLite for data persistence and multi-instance scaling. The Cloud Run service must be connected to the Cloud SQL instance (see `--add-cloudsql-instances` above).
 - Move uploads to **Cloud Storage** and update `app/services/file_storage.py` to upload/download objects from the bucket. Serve public uploads through a Cloud Storage bucket or proxy them via the load balancer under `/uploads`.
-- Use **Cloud Armor** or a load balancer for rate limiting and DDoS protection; the in-memory limiter resets on each container instance.
+- Login/registration rate limits are stored in the database, so they hold across workers and instances. Use **Cloud Armor** or a load balancer for broader DDoS protection.
 - Enable HTTPS for both frontend and backend; Cloud Run, Firebase Hosting, and Cloud Load Balancing provide HTTPS by default.
 - Rotate `SECRET_KEY`, `GEMINI_API_KEY`, and database credentials regularly via Secret Manager.
 - The `frontend/nginx/default.conf` included in the Docker image already proxies `/api` and `/uploads` to the backend service. If you serve the frontend from Cloud Storage instead, replicate those path rules in the load balancer.

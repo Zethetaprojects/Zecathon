@@ -65,10 +65,12 @@ log_ok()    { echo -e "${GREEN}[OK]${NC}   $1"; }
 prompt_if_missing() {
   local var_name="$1"
   local prompt_text="$2"
-  local current_value="${!var_name}"
+  local current_value="${!var_name:-}"
   if [[ -z "$current_value" ]]; then
     read -rp "$prompt_text" current_value
-    eval "export $var_name=\"$current_value\""
+    # printf -v instead of eval, so input can never be executed as shell code.
+    printf -v "$var_name" '%s' "$current_value"
+    export "${var_name?}"
   fi
 }
 
@@ -105,6 +107,10 @@ gcloud config set project "$PROJECT_ID" >/dev/null 2>&1
 prompt_if_missing GEMINI_API_KEY "Gemini API key (optional, press Enter to skip): "
 prompt_if_missing GITHUB_TOKEN "GitHub token (optional, press Enter to skip): "
 
+if [[ -z "$SECRET_KEY" ]]; then
+  # Reuse the existing JWT secret on re-runs so users are not all logged out.
+  SECRET_KEY=$(gcloud secrets versions access latest --secret=zecathon-secret-key 2>/dev/null || true)
+fi
 if [[ -z "$SECRET_KEY" ]]; then
   SECRET_KEY=$(random_secret)
   log_info "Generated a 96-char SECRET_KEY."
@@ -223,6 +229,8 @@ log_ok "Backend image pushed to ${IMAGE_TAG}:latest"
 log_info "Deploying backend to Cloud Run..."
 
 ENV_VARS=(
+  "ENVIRONMENT=production"
+  "DISABLE_API_DOCS=true"
   "GEMINI_MODEL=gemini-3.5-flash-lite"
   "UPLOAD_DIR=/data/uploads"
   "MAX_UPLOAD_SIZE=20971520"
@@ -330,9 +338,10 @@ printf "  %-24s : %s\n" "Database" "$DB_NAME"
 printf "  %-24s : %s\n" "Artifact Registry" "${IMAGE_TAG}:latest"
 echo
 log_info "Next steps:"
-echo "  1. Register an admin account at ${FRONTEND_URL}/register"
-echo "  2. Upgrade the first user to admin via the DB or the role endpoint:"
-echo "     PUT ${BACKEND_URL}/api/auth/users/1/role?role=admin  (bearer token required)"
+echo "  1. Register an account at ${FRONTEND_URL}/register"
+echo "  2. Make it superadmin by running the backend image as a one-off job, e.g.:"
+echo "     python -m scripts.set_role <username> superadmin   (with the same DATABASE_URL)"
+echo "     After that, manage roles from the Admin panel."
 echo "  3. Create a hackathon and upload problem statements."
 echo "  4. Test a tech or non-tech evaluation."
 echo
