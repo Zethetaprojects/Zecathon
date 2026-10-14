@@ -46,7 +46,7 @@ def _hackathon_counts(db: Session, hackathon: Hackathon) -> dict:
 
 
 @router.get("", response_model=List[HackathonOut])
-async def list_hackathons(
+def list_hackathons(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
@@ -62,7 +62,7 @@ async def list_hackathons(
 
 
 @router.post("", response_model=HackathonOut, status_code=status.HTTP_201_CREATED)
-async def create_hackathon(
+def create_hackathon(
     payload: HackathonCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("create_hackathon")),
@@ -87,7 +87,7 @@ async def create_hackathon(
 
 
 @router.get("/public", response_model=List[HackathonPublicOut])
-async def list_public_hackathons(db: Session = Depends(get_db)):
+def list_public_hackathons(db: Session = Depends(get_db)):
     """Return upcoming/active hackathons for the public landing page."""
     now = datetime.utcnow()
     hacks = (
@@ -115,7 +115,7 @@ async def list_public_hackathons(db: Session = Depends(get_db)):
 
 
 @router.get("/public/stats", response_model=HackathonPublicStats)
-async def public_hackathon_stats(db: Session = Depends(get_db)):
+def public_hackathon_stats(db: Session = Depends(get_db)):
     from app.models import Submission, Evaluation
 
     total_hackathons = db.query(func.count(Hackathon.id)).scalar() or 0
@@ -131,7 +131,7 @@ async def public_hackathon_stats(db: Session = Depends(get_db)):
 
 
 @router.get("/{hackathon_id}", response_model=HackathonDetail)
-async def get_hackathon(
+def get_hackathon(
     hackathon_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -146,7 +146,7 @@ async def get_hackathon(
 
 
 @router.put("/{hackathon_id}", response_model=HackathonOut)
-async def update_hackathon(
+def update_hackathon(
     hackathon_id: int,
     payload: HackathonUpdate,
     db: Session = Depends(get_db),
@@ -171,9 +171,10 @@ async def update_hackathon(
         hackathon.end_date = payload.end_date
     if payload.rubric is not None:
         hackathon.rubric = payload.rubric
-    if payload.max_participants is not None:
+    # Limits can be cleared by sending an explicit null.
+    if "max_participants" in payload.model_fields_set:
         hackathon.max_participants = payload.max_participants
-    if payload.max_team_members is not None:
+    if "max_team_members" in payload.model_fields_set:
         hackathon.max_team_members = payload.max_team_members
 
     # Recompute end_date whenever scheduling inputs change.
@@ -241,7 +242,7 @@ async def create_problem_statement(
 
 
 @router.delete("/{hackathon_id}", status_code=status.HTTP_204_NO_CONTENT)
-async def delete_hackathon(
+def delete_hackathon(
     hackathon_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("delete_hackathon")),

@@ -5,9 +5,10 @@ from fastapi import UploadFile, HTTPException
 
 from app.config import settings
 
+# SVG is deliberately excluded: it can carry scripts and uploads are served from the app's origin.
 ALLOWED_EXTENSIONS = {
     ".pdf", ".doc", ".docx", ".ppt", ".pptx", ".xls", ".xlsx", ".txt", ".md",
-    ".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg",
+    ".png", ".jpg", ".jpeg", ".gif", ".webp",
 }
 
 

@@ -1,39 +1,35 @@
-"""Set a user's role directly in the database.
+"""Set a user's role directly in the database (SQLite or PostgreSQL).
 
-Usage:
-    python -m scripts.set_role <username> <role>
+Usage (local):      python -m scripts.set_role <username> <role>
+Usage (VM/Docker):  sudo docker exec -it zecathon-backend python -m scripts.set_role <username> <role>
 
-Roles: admin, organizer, judge, participant
+Roles: superadmin, admin, organizer, judge, participant
 """
 import sys
-from pathlib import Path
 
-import sqlite3
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-DB_PATH = BASE_DIR / "hackathon.db"
-
-VALID_ROLES = {"admin", "organizer", "judge", "participant"}
+from app.database import Base, SessionLocal, engine
+from app.models import User, UserRole
 
 
 def set_role(username: str, role: str) -> None:
-    if role not in VALID_ROLES:
-        print(f"Invalid role. Choose one of: {', '.join(VALID_ROLES)}")
+    try:
+        new_role = UserRole(role)
+    except ValueError:
+        print(f"Invalid role. Choose one of: {', '.join(r.value for r in UserRole)}")
         sys.exit(1)
 
-    db_path = str(DB_PATH)
-    con = sqlite3.connect(db_path)
-    cur = con.execute("SELECT id FROM users WHERE username = ?", (username,))
-    user = cur.fetchone()
-    if not user:
-        print(f"User '{username}' not found in {db_path}")
-        con.close()
-        sys.exit(1)
-
-    con.execute("UPDATE users SET role = ? WHERE username = ?", (role, username))
-    con.commit()
-    con.close()
-    print(f"Updated '{username}' to role '{role}'")
+    Base.metadata.create_all(bind=engine)
+    db = SessionLocal()
+    try:
+        user = db.query(User).filter(User.username == username).first()
+        if not user:
+            print(f"User '{username}' not found")
+            sys.exit(1)
+        user.role = new_role
+        db.commit()
+        print(f"Updated '{username}' to role '{new_role.value}'")
+    finally:
+        db.close()
 
 
 if __name__ == "__main__":

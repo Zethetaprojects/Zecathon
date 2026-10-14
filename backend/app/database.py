@@ -1,3 +1,5 @@
+import logging
+
 from sqlalchemy import create_engine, inspect, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
@@ -30,8 +32,13 @@ MIGRATION_SPECS = {
         ("category_max_points", "JSON"),
         ("category_explanations", "JSON"),
         ("judge_questions", "JSON"),
+        ("llm_source", "VARCHAR"),
     ],
 }
+
+# Before llm_source existed, a failed LLM call silently stored the mock scorer's
+# output. Those rows have no category explanations and the fallback judge questions.
+_MOCK_FINGERPRINT = "%biggest trade-off you made%"
 
 
 def _sql_type(dialect: str, logical_type: str) -> str:
@@ -62,12 +69,38 @@ def ensure_columns(engine):
                         text(f"ALTER TABLE {table} ADD COLUMN {col_name} {_sql_type(dialect, col_type)}")
                     )
 
+    _flag_legacy_mock_evaluations(engine)
+
     # Ensure unique index on team join codes (existing NULLs are allowed by most DBs).
     try:
         with engine.begin() as conn:
             conn.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS idx_teams_join_code ON teams(join_code)"))
     except Exception:
         pass
+
+
+def _flag_legacy_mock_evaluations(engine):
+    """Mark legacy evaluations that look like silent mock fallbacks so organisers can re-run them."""
+    try:
+        if "evaluations" not in inspect(engine).get_table_names():
+            return
+        cast = "::text" if engine.dialect.name == "postgresql" else ""
+        with engine.begin() as conn:
+            conn.execute(
+                text(
+                    f"""
+                    UPDATE evaluations
+                    SET llm_source = 'suspected_mock', needs_review = :true
+                    WHERE llm_source IS NULL
+                      AND verdict <> 'NOT ASSESSABLE'
+                      AND judge_questions{cast} LIKE :fingerprint
+                      AND (category_explanations IS NULL OR category_explanations{cast} IN ('{{}}', 'null'))
+                    """
+                ),
+                {"fingerprint": _MOCK_FINGERPRINT, "true": True},
+            )
+    except Exception:
+        logging.getLogger(__name__).exception("Could not flag legacy mock evaluations")
 
 
 def _add_user_role_column():

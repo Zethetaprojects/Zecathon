@@ -1,7 +1,5 @@
 from datetime import datetime, timedelta
 from typing import Optional
-from collections import defaultdict
-import time
 
 import bcrypt
 from fastapi import Depends, HTTPException, status, Request
@@ -11,10 +9,15 @@ from sqlalchemy.orm import Session
 
 from app.config import settings
 from app.database import get_db
-from app.models import User, UserRole, GlobalSettings, _default_role_permissions
-from app.schemas import TokenData
+from app.models import (
+    GlobalSettings,
+    RateLimitEvent,
+    User,
+    UserRole,
+    _default_role_permissions,
+    effective_role_permissions,
+)
 
-pwd_context = None  # legacy placeholder removed; using bcrypt directly
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/auth/login")
 
 
@@ -44,7 +47,7 @@ def decode_access_token(token: str) -> Optional[str]:
         return None
 
 
-async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
+def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(get_db)) -> User:
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -59,22 +62,19 @@ async def get_current_user(token: str = Depends(oauth2_scheme), db: Session = De
     return user
 
 
-async def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
+def get_current_active_user(current_user: User = Depends(get_current_user)) -> User:
     if not current_user.is_active:
         raise HTTPException(status_code=400, detail="Inactive user")
     return current_user
 
 
-def require_role(*roles: UserRole):
-    def checker(current_user: User = Depends(get_current_active_user)) -> User:
-        if current_user.role not in roles:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Requires one of the following roles: {', '.join(r.value for r in roles)}",
-            )
-        return current_user
+def is_superadmin(user: User) -> bool:
+    return user.role == UserRole.superadmin
 
-    return checker
+
+def is_platform_admin(user: User) -> bool:
+    """Admins and superadmins have platform-wide access to every hackathon."""
+    return user.role in (UserRole.admin, UserRole.superadmin)
 
 
 def get_global_settings(db: Session) -> GlobalSettings:
@@ -90,17 +90,26 @@ def get_global_settings(db: Session) -> GlobalSettings:
     return settings_row
 
 
+def get_role_permissions(db: Session) -> dict:
+    """The full permission matrix, with defaults filled in for any missing feature."""
+    return effective_role_permissions(get_global_settings(db).role_permissions)
+
+
+def permissions_for_user(user: User, db: Session) -> dict:
+    matrix = get_role_permissions(db)
+    if user.role == UserRole.superadmin:
+        # Superadmin always passes to avoid lockouts.
+        return {f: True for f in matrix["superadmin"]}
+    return matrix.get(user.role.value, {})
+
+
 def has_permission(user: User, permission: str, db: Session) -> bool:
     """Check whether a user has a granular feature permission.
 
-    Superadmin always passes to avoid lockouts; other roles are gated by
-    the global `role_permissions` settings.
+    Superadmin always passes; other roles are gated by the global
+    `role_permissions` settings, falling back to defaults for unset features.
     """
-    if user.role == UserRole.superadmin:
-        return True
-    gs = get_global_settings(db)
-    perms = gs.role_permissions.get(user.role.value, {})
-    return bool(perms.get(permission, False))
+    return bool(permissions_for_user(user, db).get(permission, False))
 
 
 def require_permission(permission: str):
@@ -133,13 +142,6 @@ def _require_role(*roles: UserRole):
 
 require_superadmin = _require_role(UserRole.superadmin)
 require_admin = _require_role(UserRole.admin, UserRole.superadmin)
-require_organizer = _require_role(UserRole.organizer, UserRole.admin, UserRole.superadmin)
-require_judge = _require_role(UserRole.judge, UserRole.admin, UserRole.superadmin)
-require_participant = _require_role(UserRole.participant, UserRole.admin, UserRole.superadmin)
-
-
-def is_superadmin(user: User) -> bool:
-    return user.role == UserRole.superadmin
 
 
 def registration_open(db: Session) -> bool:
@@ -147,9 +149,8 @@ def registration_open(db: Session) -> bool:
 
 
 class RateLimiter:
-    """Simple in-memory sliding-window rate limiter."""
-
-    _windows: defaultdict = defaultdict(list)
+    """Sliding-window rate limiter backed by the database, so the limit is
+    shared by every gunicorn worker instead of being multiplied by them."""
 
     def __init__(self, action: str, key_func, max_requests: int = 5, window_seconds: int = 300):
         self.action = action
@@ -157,23 +158,31 @@ class RateLimiter:
         self.max_requests = max_requests
         self.window_seconds = window_seconds
 
-    def __call__(self, request: Request):
+    def __call__(self, request: Request, db: Session = Depends(get_db)):
         key = self.key_func(request)
-        now = time.time()
-        entries = self._windows[(key, self.action)]
-        # expire old entries
-        entries[:] = [t for t in entries if now - t < self.window_seconds]
-        if len(entries) >= self.max_requests:
+        cutoff = datetime.utcnow() - timedelta(seconds=self.window_seconds)
+        query = db.query(RateLimitEvent).filter(
+            RateLimitEvent.key == key,
+            RateLimitEvent.action == self.action,
+        )
+        # Expire old attempts for this key so the table stays small.
+        query.filter(RateLimitEvent.created_at < cutoff).delete(synchronize_session=False)
+        recent = query.filter(RateLimitEvent.created_at >= cutoff).count()
+        if recent >= self.max_requests:
+            db.commit()
             raise HTTPException(
                 status_code=status.HTTP_429_TOO_MANY_REQUESTS,
                 detail=f"Rate limit exceeded for {self.action}. Please try again later.",
             )
-        entries.append(now)
+        db.add(RateLimitEvent(key=key, action=self.action))
+        db.commit()
         return True
 
 
 def _client_ip(request: Request) -> str:
-    forwarded = request.headers.get("x-forwarded-for")
-    if forwarded:
-        return forwarded.split(",")[0].strip()
+    # nginx sets X-Real-IP to the connecting address and overwrites anything the
+    # client sent. X-Forwarded-For is not used: its first entry is client-controlled.
+    real_ip = request.headers.get("x-real-ip")
+    if real_ip:
+        return real_ip.strip()
     return request.client.host if request.client else "unknown"

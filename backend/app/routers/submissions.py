@@ -6,33 +6,24 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user, require_permission
 from app.database import get_db
-from app.models import Hackathon, ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User, UserRole
-from app.routers.common import can_access_hackathon, can_manage_hackathon
-from app.schemas import SubmissionCreate, SubmissionDetail, SubmissionOut
+from app.models import ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User, UserRole
+from app.routers.common import can_manage_hackathon, is_manager
+from app.schemas import SubmissionDetail, SubmissionOut
 from app.services.file_storage import save_upload
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
 
-def _is_manager(user: User) -> bool:
-    return user.role in (UserRole.admin, UserRole.organizer)
-
-
-def _is_judge(user: User) -> bool:
-    return user.role in (UserRole.admin, UserRole.organizer, UserRole.judge)
-
-
 def _ensure_team_access(team_id: int, user: User, db: Session) -> Team:
+    """Managers of the hackathon and judges see any team; everyone else only their own."""
     team = db.query(Team).filter(Team.id == team_id).first()
     if not team:
         raise HTTPException(status_code=404, detail="Team not found")
-    if user.role == UserRole.admin:
-        return team
-    if user.role == UserRole.organizer:
+    if is_manager(user):
         if can_manage_hackathon(user, team.hackathon):
             return team
-        logger.warning("Organizer id=%s denied access to team id=%s in unowned hackathon id=%s", user.id, team_id, team.hackathon_id)
+        logger.warning("Manager id=%s denied access to team id=%s in unowned hackathon id=%s", user.id, team_id, team.hackathon_id)
         raise HTTPException(status_code=403, detail="You do not have access to this team")
     if user.role == UserRole.judge:
         return team
@@ -60,18 +51,11 @@ async def create_submission(
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid submission type")
 
-    if current_user.role not in (UserRole.participant, UserRole.admin, UserRole.organizer):
-        raise HTTPException(status_code=403, detail="Only participants, organizers, or admins can submit")
-
-    if _is_manager(current_user):
-        team = db.query(Team).filter(Team.id == team_id).first()
-        if team and not can_manage_hackathon(current_user, team.hackathon):
-            logger.warning("Manager id=%s denied submission for team id=%s in unowned hackathon id=%s", current_user.id, team_id, team.hackathon_id)
-            raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
-    else:
-        team = _ensure_team_access(team_id, current_user, db)
-    if not team:
-        raise HTTPException(status_code=404, detail="Team not found")
+    if current_user.role == UserRole.judge:
+        raise HTTPException(status_code=403, detail="Judges cannot submit projects")
+    # Managers may submit on behalf of any team in a hackathon they manage;
+    # everyone else must be a member of the team.
+    team = _ensure_team_access(team_id, current_user, db)
 
     ps = db.query(ProblemStatement).filter(ProblemStatement.id == problem_statement_id).first()
     if not ps:
@@ -126,7 +110,7 @@ async def create_submission(
 
 
 @router.get("/{submission_id}", response_model=SubmissionDetail)
-async def get_submission(
+def get_submission(
     submission_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
@@ -139,7 +123,7 @@ async def get_submission(
 
 
 @router.get("", response_model=List[SubmissionOut])
-async def list_submissions(
+def list_submissions(
     team_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),

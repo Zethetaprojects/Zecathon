@@ -15,6 +15,7 @@ class UserRole(str, enum.Enum):
 
 
 # Granular features that can be toggled per role by a superadmin.
+# Global settings management is not a toggle: it is always superadmin-only.
 FEATURES = [
     "create_hackathon",
     "edit_hackathon",
@@ -23,6 +24,7 @@ FEATURES = [
     "create_team",
     "join_team",
     "manage_team_members",
+    "delete_team",
     "submit_project",
     "evaluate_submission",
     "view_reports",
@@ -30,7 +32,6 @@ FEATURES = [
     "manage_users",
     "view_admin_panel",
     "view_api_docs",
-    "manage_settings",
     "participate",
 ]
 
@@ -38,7 +39,7 @@ FEATURES = [
 def _default_role_permissions():
     return {
         "superadmin": {f: True for f in FEATURES},
-        "admin": {f: True for f in FEATURES},
+        "admin": {**{f: True for f in FEATURES}, "view_api_docs": False},
         "organizer": {
             "create_hackathon": True,
             "edit_hackathon": True,
@@ -47,6 +48,7 @@ def _default_role_permissions():
             "create_team": True,
             "join_team": True,
             "manage_team_members": True,
+            "delete_team": True,
             "submit_project": True,
             "evaluate_submission": True,
             "view_reports": True,
@@ -54,7 +56,6 @@ def _default_role_permissions():
             "manage_users": False,
             "view_admin_panel": False,
             "view_api_docs": False,
-            "manage_settings": False,
             "participate": True,
         },
         "judge": {
@@ -65,6 +66,7 @@ def _default_role_permissions():
             "create_team": False,
             "join_team": False,
             "manage_team_members": False,
+            "delete_team": False,
             "submit_project": False,
             "evaluate_submission": True,
             "view_reports": True,
@@ -72,7 +74,6 @@ def _default_role_permissions():
             "manage_users": False,
             "view_admin_panel": False,
             "view_api_docs": False,
-            "manage_settings": False,
             "participate": False,
         },
         "participant": {
@@ -83,6 +84,7 @@ def _default_role_permissions():
             "create_team": True,
             "join_team": True,
             "manage_team_members": True,
+            "delete_team": False,
             "submit_project": True,
             "evaluate_submission": False,
             "view_reports": False,
@@ -90,10 +92,24 @@ def _default_role_permissions():
             "manage_users": False,
             "view_admin_panel": False,
             "view_api_docs": False,
-            "manage_settings": False,
             "participate": True,
         },
     }
+
+
+def effective_role_permissions(stored: dict | None) -> dict:
+    """Overlay stored toggles on the defaults.
+
+    New features get their default value on databases created before they
+    existed, and keys that are no longer features are dropped.
+    """
+    defaults = _default_role_permissions()
+    stored = stored or {}
+    result = {}
+    for role, role_defaults in defaults.items():
+        saved = stored.get(role) or {}
+        result[role] = {f: bool(saved.get(f, role_defaults[f])) for f in FEATURES}
+    return result
 
 
 def _default_global_settings():
@@ -237,6 +253,21 @@ class Evaluation(Base):
     review_flags = Column(JSON, default=list)
     judge_questions = Column(JSON, default=list)  # suggested questions for the judging panel
     needs_review = Column(Boolean, default=False)
+    # Which scorer produced this evaluation: gemini, generic, mock, gate (admissibility reject),
+    # suspected_mock (legacy rows that match the old silent fallback), or NULL (legacy).
+    llm_source = Column(String, nullable=True)
     evaluated_at = Column(DateTime, default=dt.datetime.utcnow)
 
     submission = relationship("Submission", back_populates="evaluation")
+
+
+class RateLimitEvent(Base):
+    """One attempt against a rate-limited action. Stored in the database so the
+    limit is shared across all gunicorn workers."""
+
+    __tablename__ = "rate_limit_events"
+
+    id = Column(Integer, primary_key=True)
+    key = Column(String, nullable=False, index=True)
+    action = Column(String, nullable=False, index=True)
+    created_at = Column(DateTime, default=dt.datetime.utcnow, nullable=False, index=True)

@@ -3,7 +3,7 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.auth import get_current_active_user, require_permission
+from app.auth import require_permission
 from app.database import get_db
 from app.models import Evaluation, Hackathon, ProblemStatement, Submission, Team, User
 from app.routers.common import can_access_hackathon
@@ -40,7 +40,7 @@ def _build_leaderboard(db: Session, hackathon_id: int) -> List[LeaderboardEntry]
 
 
 @router.get("/{hackathon_id}", response_model=List[LeaderboardEntry])
-async def get_leaderboard(
+def get_leaderboard(
     hackathon_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("view_leaderboard")),
@@ -54,7 +54,7 @@ async def get_leaderboard(
 
 
 @router.get("/public/{hackathon_id}", response_model=List[LeaderboardEntry])
-async def get_public_leaderboard(hackathon_id: int, db: Session = Depends(get_db)):
+def get_public_leaderboard(hackathon_id: int, db: Session = Depends(get_db)):
     hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")

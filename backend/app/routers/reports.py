@@ -7,7 +7,8 @@ from sqlalchemy.orm import Session
 
 from app.auth import require_permission
 from app.database import get_db
-from app.models import Evaluation, Hackathon, ProblemStatement, Submission, Team, User, UserRole
+from app.models import Evaluation, Hackathon, ProblemStatement, Submission, Team, User
+from app.routers.common import can_access_hackathon
 from app.schemas import HackathonReportDetail, HackathonReportSummary, SubmissionReport, TeamReportEntry, EvaluationOut
 from app.services.pdf_generator import generate_pdf
 
@@ -76,6 +77,7 @@ def _build_report(db: Session, hackathon: Hackathon) -> HackathonReportDetail:
             verdict=ev.verdict if ev else None,
             status=sub.status.value if sub.status else None,
             needs_review=ev.needs_review if ev else None,
+            llm_source=ev.llm_source if ev else None,
         )
         for team, ps, sub, ev in rows
     ]
@@ -92,14 +94,14 @@ def _build_report(db: Session, hackathon: Hackathon) -> HackathonReportDetail:
 
 
 @router.get("", response_model=List[HackathonReportSummary])
-async def list_reports(
+def list_reports(
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("view_reports")),
 ):
     hackathons = db.query(Hackathon).order_by(Hackathon.created_at.desc()).all()
     reports: List[HackathonReportSummary] = []
     for hackathon in hackathons:
-        if current_user.role != UserRole.admin and hackathon.created_by != current_user.id:
+        if not can_access_hackathon(current_user, hackathon):
             continue
         problem_statement_count = (
             db.query(ProblemStatement).filter(ProblemStatement.hackathon_id == hackathon.id).count()
@@ -127,7 +129,7 @@ async def list_reports(
 
 
 @router.get("/submission/{submission_id}", response_model=SubmissionReport)
-async def get_submission_report(
+def get_submission_report(
     submission_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("view_reports")),
@@ -144,8 +146,8 @@ async def get_submission_report(
     problem_statement = db.query(ProblemStatement).filter(ProblemStatement.id == submission.problem_statement_id).first()
     hackathon = db.query(Hackathon).filter(Hackathon.id == team.hackathon_id).first() if team else None
 
-    if current_user.role != UserRole.admin and hackathon and hackathon.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can view this report")
+    if not can_access_hackathon(current_user, hackathon):
+        raise HTTPException(status_code=403, detail="You do not have access to this hackathon's reports")
 
     return _build_submission_report(submission, team, problem_statement, hackathon)
 
@@ -175,7 +177,7 @@ def _build_submission_report(
 
 
 @router.get("/submission/{submission_id}/pdf")
-async def download_submission_report_pdf(
+def download_submission_report_pdf(
     submission_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("view_reports")),
@@ -192,8 +194,8 @@ async def download_submission_report_pdf(
     problem_statement = db.query(ProblemStatement).filter(ProblemStatement.id == submission.problem_statement_id).first()
     hackathon = db.query(Hackathon).filter(Hackathon.id == team.hackathon_id).first() if team else None
 
-    if current_user.role != UserRole.admin and hackathon and hackathon.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can view this report")
+    if not can_access_hackathon(current_user, hackathon):
+        raise HTTPException(status_code=403, detail="You do not have access to this hackathon's reports")
 
     report = _build_submission_report(submission, team, problem_statement, hackathon)
 
@@ -213,7 +215,7 @@ async def download_submission_report_pdf(
 
 
 @router.get("/{hackathon_id}", response_model=HackathonReportDetail)
-async def get_report(
+def get_report(
     hackathon_id: int,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("view_reports")),
@@ -221,6 +223,6 @@ async def get_report(
     hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    if current_user.role != UserRole.admin and hackathon.created_by != current_user.id:
-        raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can view this report")
+    if not can_access_hackathon(current_user, hackathon):
+        raise HTTPException(status_code=403, detail="You do not have access to this hackathon's reports")
     return _build_report(db, hackathon)

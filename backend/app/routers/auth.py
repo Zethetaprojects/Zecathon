@@ -11,20 +11,22 @@ from app.auth import (
     get_current_active_user,
     get_global_settings,
     get_password_hash,
+    get_role_permissions,
     is_superadmin,
+    permissions_for_user,
     registration_open,
-    require_admin,
     require_permission,
     require_superadmin,
     verify_password,
 )
 from app.database import get_db
-from app.models import User, UserRole, GlobalSettings, _default_role_permissions
+from app.models import User, UserRole, effective_role_permissions
 from app.schemas import (
     AdminPasswordUpdate,
     AdminUserCreate,
     GlobalSettingsOut,
     GlobalSettingsUpdate,
+    MyPermissionsOut,
     Token,
     UserCreate,
     UserOut,
@@ -35,7 +37,7 @@ router = APIRouter()
 
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def register(
+def register(
     payload: UserCreate,
     request: Request,
     db: Session = Depends(get_db),
@@ -58,7 +60,7 @@ async def register(
 
 
 @router.post("/login", response_model=Token)
-async def login(
+def login(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
@@ -67,17 +69,28 @@ async def login(
     user = db.query(User).filter(User.username == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect username or password")
+    if not user.is_active:
+        raise HTTPException(status_code=403, detail="This account has been deactivated")
     token = create_access_token(data={"sub": user.username})
     return {"access_token": token, "token_type": "bearer"}
 
 
 @router.get("/me", response_model=UserOut)
-async def me(current_user: User = Depends(get_current_active_user)):
+def me(current_user: User = Depends(get_current_active_user)):
     return current_user
 
 
+@router.get("/me/permissions", response_model=MyPermissionsOut)
+def my_permissions(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Effective feature toggles for the current user, used by the frontend to show or hide actions."""
+    return MyPermissionsOut(role=current_user.role, permissions=permissions_for_user(current_user, db))
+
+
 @router.get("/admin/users", response_model=List[UserOut])
-async def list_users(
+def list_users(
     db: Session = Depends(get_db),
     _: User = Depends(require_permission("manage_users")),
 ):
@@ -85,13 +98,13 @@ async def list_users(
 
 
 @router.post("/admin/users", response_model=UserOut, status_code=status.HTTP_201_CREATED)
-async def admin_create_user(
+def admin_create_user(
     payload: AdminUserCreate,
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("manage_users")),
 ):
-    if payload.role == UserRole.superadmin and not is_superadmin(current_user):
-        raise HTTPException(status_code=403, detail="Only superadmin can create superadmin users")
+    if payload.role in (UserRole.superadmin, UserRole.admin) and not is_superadmin(current_user):
+        raise HTTPException(status_code=403, detail="Only superadmin can create admin or superadmin users")
     if db.query(User).filter((User.username == payload.username) | (User.email == payload.email)).first():
         raise HTTPException(status_code=400, detail="Username or email already registered")
     user = User(
@@ -107,15 +120,17 @@ async def admin_create_user(
 
 
 @router.put("/admin/users/{user_id}/password", response_model=UserOut)
-async def admin_update_password(
+def admin_update_password(
     user_id: int,
     payload: AdminPasswordUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(require_permission("manage_users")),
+    current_user: User = Depends(require_permission("manage_users")),
 ):
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
+    if user.role in (UserRole.superadmin, UserRole.admin) and not is_superadmin(current_user) and user.id != current_user.id:
+        raise HTTPException(status_code=403, detail="Only superadmin can reset admin or superadmin passwords")
     user.hashed_password = get_password_hash(payload.password)
     db.commit()
     db.refresh(user)
@@ -123,7 +138,7 @@ async def admin_update_password(
 
 
 @router.put("/users/{user_id}/role", response_model=UserOut)
-async def update_user_role(
+def update_user_role(
     user_id: int,
     payload: UserRoleUpdate,
     db: Session = Depends(get_db),
@@ -160,7 +175,7 @@ async def update_user_role(
 
 
 @router.get("/admin/stats", response_model=dict)
-async def admin_stats(
+def admin_stats(
     db: Session = Depends(get_db),
     _: User = Depends(require_superadmin),
 ):
@@ -183,19 +198,19 @@ async def admin_stats(
 
 
 @router.get("/admin/settings", response_model=GlobalSettingsOut)
-async def get_settings(
+def get_settings(
     db: Session = Depends(get_db),
     _: User = Depends(require_superadmin),
 ):
     gs = get_global_settings(db)
     return GlobalSettingsOut(
         registration_open=gs.registration_open,
-        role_permissions=gs.role_permissions,
+        role_permissions=get_role_permissions(db),
     )
 
 
 @router.put("/admin/settings", response_model=GlobalSettingsOut)
-async def update_settings(
+def update_settings(
     payload: GlobalSettingsUpdate,
     db: Session = Depends(get_db),
     _: User = Depends(require_superadmin),
@@ -204,14 +219,13 @@ async def update_settings(
     if payload.registration_open is not None:
         gs.registration_open = payload.registration_open
     if payload.role_permissions is not None:
-        # Prevent locking the superadmin out of settings management.
-        updated = payload.role_permissions.model_dump()
-        updated["superadmin"]["manage_settings"] = True
-        updated["superadmin"]["view_admin_panel"] = True
+        updated = effective_role_permissions(payload.role_permissions.model_dump())
+        # Superadmin always keeps every feature, so it cannot be locked out.
+        updated["superadmin"] = {f: True for f in updated["superadmin"]}
         gs.role_permissions = updated
     db.commit()
     db.refresh(gs)
     return GlobalSettingsOut(
         registration_open=gs.registration_open,
-        role_permissions=gs.role_permissions,
+        role_permissions=get_role_permissions(db),
     )

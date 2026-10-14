@@ -5,6 +5,18 @@ from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
 from app.models import SubmissionType, SubmissionStatus, UserRole
 
 
+def check_password_strength(v: str) -> str:
+    if len(v) < 8:
+        raise ValueError("Password must be at least 8 characters long")
+    if not any(c.isalpha() for c in v):
+        raise ValueError("Password must contain at least one letter")
+    if not any(c.isdigit() for c in v):
+        raise ValueError("Password must contain at least one digit")
+    if not any(c in "!@#$%^&*()_+-=[]{}|;':\",./<>?" for c in v):
+        raise ValueError("Password must contain at least one symbol")
+    return v
+
+
 # Auth schemas
 class UserCreate(BaseModel):
     username: str
@@ -15,15 +27,7 @@ class UserCreate(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters long")
-        if not any(c.isalpha() for c in v):
-            raise ValueError("Password must contain at least one letter")
-        if not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain at least one digit")
-        if not any(c in "!@#$%^&*()_+-=[]{}|;':\",./<>?" for c in v):
-            raise ValueError("Password must contain at least one symbol")
-        return v
+        return check_password_strength(v)
 
     @field_validator("role")
     @classmethod
@@ -51,15 +55,7 @@ class AdminUserCreate(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters long")
-        if not any(c.isalpha() for c in v):
-            raise ValueError("Password must contain at least one letter")
-        if not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain at least one digit")
-        if not any(c in "!@#$%^&*()_+-=[]{}|;':\",./<>?" for c in v):
-            raise ValueError("Password must contain at least one symbol")
-        return v
+        return check_password_strength(v)
 
 
 class AdminPasswordUpdate(BaseModel):
@@ -68,15 +64,7 @@ class AdminPasswordUpdate(BaseModel):
     @field_validator("password")
     @classmethod
     def validate_password(cls, v: str) -> str:
-        if len(v) < 8:
-            raise ValueError("Password must be at least 8 characters long")
-        if not any(c.isalpha() for c in v):
-            raise ValueError("Password must contain at least one letter")
-        if not any(c.isdigit() for c in v):
-            raise ValueError("Password must contain at least one digit")
-        if not any(c in "!@#$%^&*()_+-=[]{}|;':\",./<>?" for c in v):
-            raise ValueError("Password must contain at least one symbol")
-        return v
+        return check_password_strength(v)
 
 
 class UserOut(BaseModel):
@@ -247,6 +235,7 @@ class EvaluationOut(BaseModel):
     review_flags: List[str]
     needs_review: bool
     judge_questions: List[str] = []
+    llm_source: Optional[str] = None
     evaluated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
@@ -293,6 +282,7 @@ class TeamReportEntry(BaseModel):
     verdict: Optional[str] = None
     status: Optional[str] = None
     needs_review: Optional[bool] = None
+    llm_source: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -362,3 +352,8 @@ class GlobalSettingsOut(BaseModel):
 class GlobalSettingsUpdate(BaseModel):
     registration_open: Optional[bool] = None
     role_permissions: Optional[RolePermissions] = None
+
+
+class MyPermissionsOut(BaseModel):
+    role: UserRole
+    permissions: Dict[str, bool]
