@@ -133,7 +133,7 @@
 - [x] Add Mermaid architecture/auth/lifecycle/evaluation/RBAC diagrams to `README.md` and update env var docs for Gemini.
 - [x] Validate: `npm run build` ✅, `pytest backend/tests` ✅ 12 passed, `validate_flow.py` ✅ all flows passed, reports endpoints verified.
 - [x] Commit.
-- [ ] Push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main` (SSH failed; need a GitHub token or deploy key).
+- [x] Push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main` (done in later phases).
 
 ## Phase 18 — Counts, RBAC cleanup, deletions, per-team reports, UI polish, and upload path resolution
 - [x] Backend counts on `GET /api/hackathons`
@@ -159,7 +159,7 @@
 - [x] `npm run build` ✅
 - [x] Admin create-team/submit and reports verified via API on a fresh backend process
 - [x] Commit and push
-- [ ] User fully restarts the dev stack to clear stale port 8002 processes
+- [x] User fully restarts the dev stack to clear stale port 8002 processes
 
 ## Phase 20 — Production hardening
 
@@ -219,3 +219,26 @@
 - [x] 27.5 Add PostgreSQL enum migration for `superadmin` role value
 - [x] 27.6 Validation: `npm run build` ✅, `pytest backend/tests` ✅ 29 passed, `validate_flow.py` ✅ all flows passed
 - [x] 27.7 Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`
+
+## Phase 28 — Page title and tab attention
+- [x] 28.1 Page title + meta description
+- [x] 28.2 `TabAttention` component wired into `App.tsx`
+- [x] 28.3 Validation and push
+
+## Phase 29 — Role permission toggles, registration switch, participation limits
+- [x] 29.1 `GlobalSettings` model, `require_permission`, settings endpoints
+- [x] 29.2 `max_participants` / `max_team_members` enforced
+- [x] 29.3 `SuperadminSettings.tsx` and limit inputs
+- [x] 29.4 Validation and push
+
+## Phase 30 — Production hardening after the VM outage
+- [x] 30.1 Safe redeploys: secrets file, migration from the old unit, `update-vm.sh`, unit without `--build`/`down`, disk check, pre-update backup, log rotation, healthchecks
+- [x] 30.2 Security: no SVG uploads, upload CSP/nosniff, DB-backed rate limiter on `X-Real-IP`, production startup checks, admin password-reset guard, inactive login block, no `eval`
+- [x] 30.3 Evaluation integrity: 503 on LLM failure, no silent mock scores, `llm_source` + legacy backfill, safe retry, timeouts, threadpool routes
+- [x] 30.4 Superadmin access via `is_platform_admin`
+- [x] 30.5 Permission matrix consistency: merged defaults, `/auth/me/permissions`, `can()` + `PermissionRoute`, `delete_team`, judge reports, enforced toggles
+- [x] 30.6 Docs, scripts (`create_superadmin`, `set_role`), AGENT_CONFIG
+- [x] 30.7 Validation: pytest 54 ✅, `npm run build` ✅, `validate_flow.py` ✅
+- [ ] 30.8 Commit and push (awaiting user approval)
+- [ ] 30.9 VM: snapshot disk, grow to 30 GB, `git pull`, `sudo bash gcp/update-vm.sh`, verify `/api/health`
+- [ ] 30.10 VM: create/confirm superadmin; add a GCP uptime check on `/api/health`

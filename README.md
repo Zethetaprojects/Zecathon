@@ -99,28 +99,33 @@ flowchart LR
 
 ### RBAC matrix
 
-| Action | Admin | Organiser | Judge | Participant |
+Defaults below. A **superadmin** can switch each feature on or off per role at `/admin/settings`; the backend enforces the toggles and the UI hides what the current user cannot do (`GET /api/auth/me/permissions`). Superadmins always keep every permission and have the same platform-wide access as admins. Organisers only ever see and manage hackathons they created.
+
+| Action (toggle) | Admin / Superadmin | Organiser | Judge | Participant |
 |---|---|---|---|---|
-| Create hackathon | ✅ | ✅ | ❌ | ❌ |
-| Edit hackathon settings / replace banner | ✅ | ✅ (own hackathons) | ❌ | ❌ |
-| Upload problem statement | ✅ | ✅ (own hackathons) | ❌ | ❌ |
-| Delete hackathon / team | ✅ | ✅ (own hackathons) | ❌ | ❌ |
-| Create team | ✅ | ✅ (own hackathons) | ❌ | ✅ |
-| Join team by invite code | ❌ | ❌ | ❌ | ✅ |
-| Add member to team | ✅ | ✅ (own hackathons) | ❌ | ✅ (team leader) |
-| Remove member from team | ✅ | ✅ (own hackathons) | ❌ | ✅ (team leader) |
-| Change team leader | ✅ | ✅ (own hackathons) | ❌ | ✅ (team leader) |
-| Submit project | ✅ | ✅ (own hackathons) | ❌ | ✅ (team member) |
-| Evaluate submission | ✅ | ✅ (own hackathons) | ✅ | ❌ |
-| View per-team evaluation report | ✅ | ✅ (own hackathons) | ❌ | ❌ |
-| View authenticated leaderboard | ✅ | ✅ (own hackathons) | ✅ | ✅ |
+| Create hackathon (`create_hackathon`) | ✅ | ✅ | ❌ | ❌ |
+| Edit hackathon / banner / rubric (`edit_hackathon`) | ✅ | ✅ (own) | ❌ | ❌ |
+| Upload problem statement (`manage_problem_statements`) | ✅ | ✅ (own) | ❌ | ❌ |
+| Delete hackathon (`delete_hackathon`) | ✅ | ✅ (own) | ❌ | ❌ |
+| Delete team (`delete_team`) | ✅ | ✅ (own) | ❌ | ❌ |
+| Create team (`create_team` + `participate`) | ✅ | ✅ (own) | ❌ | ✅ |
+| Join team by invite code (`join_team` + `participate`) | ✅ | ✅ | ❌ | ✅ |
+| Be added to a team (`participate`) | ✅ | ✅ | ❌ | ✅ |
+| Add / remove members, change leader (`manage_team_members`) | ✅ | ✅ (own) | ❌ | ✅ (team leader) |
+| Submit project (`submit_project`) | ✅ | ✅ (own) | ❌ | ✅ (team member) |
+| Evaluate submission (`evaluate_submission`) | ✅ | ✅ (own) | ✅ | ❌ |
+| View reports (`view_reports`) | ✅ | ✅ (own) | ✅ | ❌ |
+| View authenticated leaderboard (`view_leaderboard`) | ✅ | ✅ (own) | ✅ | ✅ |
+| Manage users (`manage_users`) / admin panel (`view_admin_panel`) | ✅ | ❌ | ❌ | ❌ |
+| API reference page (`view_api_docs`) | Superadmin only | ❌ | ❌ | ❌ |
+| Platform settings, platform stats, manage admin accounts | Superadmin only | ❌ | ❌ | ❌ |
 | View public leaderboard / upcoming hackathons | ✅ | ✅ | ✅ | ✅ |
 
 ## Tech stack
 - **Backend**: FastAPI, SQLAlchemy, PostgreSQL (via Docker Compose), Pydantic.
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS.
 - **Deployment**: Docker, Docker Compose, nginx, GCP Cloud Run / Firebase Hosting.
-- **LLM**: Google Gemini REST API (`GEMINI_API_KEY`, `GEMINI_MODEL`) with automatic model fallbacks. If no key is set, a deterministic fallback evaluator is used for demo/testing.
+- **LLM**: Google Gemini REST API (`GEMINI_API_KEY`, `GEMINI_MODEL`). If the configured model is unavailable it tries other aliases. If Gemini is down or rate-limited, the evaluation fails with HTTP 503 and nothing is stored; it is never replaced by a fake score. Without any LLM configured, development uses a deterministic offline scorer whose results are flagged "Fallback score" and marked for review; production refuses to score.
 
 ## Quick start
 
@@ -133,7 +138,7 @@ cp backend/.env.example backend/.env   # optional: set GEMINI_API_KEY, SECRET_KE
 docker compose up --build
 ```
 
-- Backend API docs: http://localhost:8000/docs
+- Backend API docs: http://localhost:8000/api/docs
 - Frontend: http://localhost
 - PostgreSQL: localhost:5432 (user `zecathon`, password `zecathon_secret`, database `zecathon`)
 
@@ -177,25 +182,30 @@ Create `backend/.env` from `.env.example`:
 
 | Variable | Description |
 |----------|-------------|
+| `ENVIRONMENT` | `development` (default) or `production`. Production refuses to start with a weak/default `SECRET_KEY` or SQLite, and refuses offline mock scoring. |
 | `DATABASE_URL` | Database connection. Default: `sqlite:///./hackathon.db`. Docker Compose uses `postgresql+psycopg2://zecathon:zecathon_secret@postgres:5432/zecathon`. |
-| `SECRET_KEY` | JWT signing secret |
-| `GEMINI_API_KEY` | Google Gemini API key (starts with `AIza...`). Optional — if absent, a deterministic fallback evaluator is used. |
-| `GEMINI_MODEL` | Gemini model to use. Default: `gemini-3.5-flash-lite`. Fallbacks include `gemini-flash-latest`, `gemini-3.5-flash`, `gemini-3.7-flash`. |
+| `SECRET_KEY` | JWT signing secret (production: at least 32 random characters) |
+| `GEMINI_API_KEY` | Google Gemini API key (starts with `AIza...`). Needed for real evaluations. |
+| `GEMINI_MODEL` | Gemini model to use. Default: `gemini-3.5-flash-lite`. If it returns 404, `gemini-3.5-flash` and `gemini-flash-latest` are tried. |
+| `LLM_TIMEOUT_SECONDS` | Timeout per LLM request (default 60). |
+| `CORS_ORIGINS` | Comma-separated allowed origins (default `*`). |
 | `GITHUB_TOKEN` | Optional: higher GitHub API rate limits. Public repos work without it. |
 | `UPLOAD_DIR` | Directory for uploaded files (default: `uploads`) |
 | `MAX_UPLOAD_SIZE` | Max upload bytes (default: 20 MB) |
-| `AI_BACKEND_URL` | Optional legacy LLM endpoint fallback. |
+| `AI_BACKEND_URL` | Optional generic LLM endpoint, used only when no Gemini key is set. |
 | `AI_BACKEND_TOKEN` | Optional Bearer token for the legacy LLM endpoint. |
 
 ## API overview
 
-FastAPI auto-generated docs: [http://localhost:8002/docs](http://localhost:8002/docs)
+FastAPI auto-generated docs: [http://localhost:8002/api/docs](http://localhost:8002/api/docs) (disabled in production with `DISABLE_API_DOCS=true`)
 
 Key endpoints:
 - `POST /api/auth/register` — create account (Student or Organiser only)
 - `POST /api/auth/login` — get JWT token
+- `GET /api/auth/me/permissions` — the current user's effective feature permissions
 - `GET /api/auth/admin/users` — admin user list
-- `PUT /api/auth/users/{id}/role` — admin role update
+- `PUT /api/auth/users/{id}/role` — admin role update (admin/superadmin accounts: superadmin only)
+- `GET` / `PUT /api/auth/admin/settings` — registration switch and role permission matrix (superadmin)
 - `GET /api/hackathons/public` — public upcoming hackathons (unauthenticated)
 - `GET /api/hackathons/public/stats` — public platform stats (unauthenticated)
 - `POST /api/hackathons` — create hackathon (organiser/admin)
@@ -267,7 +277,7 @@ cd backend
 venv\Scripts\pytest tests -v
 ```
 
-The test suite covers auth, hackathons, problem statements, teams, submissions, tech/non-tech evaluation, and the discrete leaderboard.
+The test suite covers auth, hackathons, problem statements, teams, submissions, tech/non-tech evaluation, the discrete leaderboard, and production hardening (`tests/test_hardening.py`: superadmin access, permission toggles, upload safety, rate limiting, LLM outage handling).
 
 ## Running the validation harness
 
@@ -279,12 +289,13 @@ venv\Scripts\activate
 venv\Scripts\python ../validate_flow.py
 ```
 
-It starts the backend and Vite dev server, verifies the frontend loads, then walks through:
+It ignores `backend/.env` and uses the deterministic offline scorer, so it needs no API key. It starts the backend and Vite dev server, verifies the frontend loads, then walks through:
 register → login → create hackathon → upload problem statement → create team → submit tech repo → evaluate tech → create second team → submit non-tech document → evaluate non-tech → view leaderboard.
 
 ## Production notes
 - Use Docker Compose or a managed PostgreSQL instance (e.g., Cloud SQL) for persistence. Set `DATABASE_URL` to a PostgreSQL connection string.
 - The frontend nginx container proxies `/api` and `/uploads` to the backend service, so the SPA uses relative URLs in both development and production.
 - The default storage is local filesystem. For production, replace `app/services/file_storage.py` with S3-compatible storage or mount a Cloud Storage bucket.
-- Set a strong `SECRET_KEY` and configure the LLM endpoint for real evaluations.
-- See `gcp/README.md` for Cloud Run + Firebase Hosting deployment steps.
+- Set `ENVIRONMENT=production`, a strong `SECRET_KEY`, and `GEMINI_API_KEY` for real evaluations.
+- Uploaded files are served with `X-Content-Type-Options: nosniff` and a no-script CSP; SVG uploads are rejected because they can carry scripts.
+- See `gcp/README.md` for the self-hosted VM path (`deploy-vm.sh` / `update-vm.sh`, disk sizing, uptime checks, backups) and for Cloud Run + Firebase Hosting.

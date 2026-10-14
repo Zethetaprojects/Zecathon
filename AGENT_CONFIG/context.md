@@ -15,7 +15,7 @@ Build a web application for running hackathons where:
 - Every hackathon has a live, shareable, public leaderboard.
 - Scores must be **discrete** (not clustered on the same value) and differentiate teams.
 - **RBAC** is enforced across the API and UI:
-  - Roles: `admin`, `organizer`, `judge`, `participant`.
+  - Roles: `superadmin`, `admin`, `organizer`, `judge`, `participant`. Per-role feature toggles are set by a superadmin (`/admin/settings`); see the README RBAC matrix.
   - New registrations default to `participant`.
   - Only `organizer` or `admin` can create hackathons, upload problem statements, delete hackathons/teams, and view per-team evaluation reports.
   - Only `judge`, `organizer`, or `admin` can evaluate submissions.
@@ -24,7 +24,7 @@ Build a web application for running hackathons where:
 - **Dynamic rubrics**: each hackathon can override the default tech/non-tech scoring rubrics. Defaults are used when no custom rubric is provided.
 - **Judge questions**: evaluation reports include 3–5 suggested questions for the judging panel based on the submission.
 - **Login security**: strong password policy, bcrypt rounds 12, and sliding-window rate limiting on auth endpoints.
-- **LLM evaluator** uses Google Gemini (`gemini-3.5-flash-lite` by default) when `GEMINI_API_KEY` is provided, otherwise falls back to a generic `AI_BACKEND_URL`, then a deterministic mock.
+- **LLM evaluator** uses Google Gemini (`gemini-3.5-flash-lite` by default) when `GEMINI_API_KEY` is provided, otherwise a generic `AI_BACKEND_URL`. If the configured LLM fails, the evaluation returns 503 and nothing is stored. The deterministic mock is only used in development with no LLM configured, and its scores are flagged.
 
 ## Input contract for the evaluator APIs
 Payload is implicit via the submission record:
@@ -88,7 +88,8 @@ After applying the multiplier, a deterministic tie-breaker nudges the final scor
 - **Frontend**: React + TypeScript + Vite + Tailwind CSS + React Router + Axios.
 - **Document parsing**: python-docx, PyPDF2, python-pptx, openpyxl.
 - **GitHub access**: `requests` against GitHub API (tree + commits), with optional `GITHUB_TOKEN`.
-- **LLM interface**: Gemini 2.5 Flash via REST; configurable fallback `AI_BACKEND_URL` and deterministic mock.
+- **LLM interface**: Gemini via REST (`gemini-3.5-flash-lite`); optional generic `AI_BACKEND_URL`; development-only deterministic mock.
+- **Live deployment**: single GCP VM (`/opt/zecathon`) via `gcp/deploy-vm.sh` (first install) and `gcp/update-vm.sh` (updates). Secrets in `/etc/zecathon/zecathon.env`.
 
 ## Directory structure
 ```

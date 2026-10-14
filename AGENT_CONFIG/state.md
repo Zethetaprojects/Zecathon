@@ -1,8 +1,26 @@
 # Current State
 
-- **Date**: 2026-08-16
-- **Repo**: full-stack hackathon evaluation platform (ZECATHON) with RBAC, superadmin role, granular role permission toggles, global registration switch, hackathon participation limits, Gemini integration, dynamic rubrics, judge questions, evaluation retry, easter eggs, PWA baseline, mobile-friendly navigation, GCP deployment artifacts, sound mixer, and admin confirmation modal.
-- **AGENT_CONFIG**: maintained.
+- **Date**: 2026-10-15
+- **Repo**: full-stack hackathon evaluation platform (ZECATHON). Phase 30 (production hardening after the VM outage) is implemented locally, **not yet committed or deployed**.
+- **Production VM** (`/opt/zecathon`, GCP): **DOWN since 2026-09-12 11:02 UTC**. See "Incident" below. Recovery = Phase 30 deploy steps.
+- **AGENT_CONFIG**: maintained. Phases are listed newest first.
+
+## Incident — VM down since 2026-09-12 (diagnosed 2026-10-15)
+- `zecathon.service` failed on 2026-09-12; no containers existed. No reboot since 2026-08-16; the unit and `backend/.env` were unchanged (deploy script was NOT re-run); all three volumes (`gcp_zecathon_pg_data`, `_uploads`, `_logs`) intact.
+- Boot disk 9.7 GB at 94% (604 MB free) with zero real usage: OS + backend image + build cache + Node/npm + journal.
+- Cause chain: something restarted the unit (likely a Docker/package restart; `Requires=docker.service` propagates it; exact trigger unconfirmed because journald deleted old logs when the disk was nearly full) → `ExecStop=docker compose down` deleted the containers → `ExecStart=up -d --build` needed >1 GB to rebuild → failed. No uptime alert, so nobody noticed for a month.
+- Secrets were only in the unit file (`Environment=` lines). User saved them to `/root/zecathon-secrets.txt` (0600) on the VM. The earlier `~/zecathon-*.sql.gz` dump is empty (Postgres was not running).
+
+## Phase 30 — production hardening (implemented, uncommitted)
+- **Deployment**: secrets moved to root-only `/etc/zecathon/zecathon.env` (auto-migrated from the old unit; never regenerated if the DB volume exists). New `gcp/lib-vm.sh`, `gcp/update-vm.sh`, `gcp/zecathon.service` (`Wants=` docker, `up -d` without `--build`, `stop` not `down`). Disk-space check + safe cleanup, pre-update `pg_dump` to `/var/backups/zecathon` (7 kept), image prune after a healthy start, pinned compose project name `gcp`, `${VAR:?}` required secrets, container log rotation, fixed `CMD-SHELL` healthchecks, nginx timeouts 180s, `eval` removed from deploy scripts, legacy world-readable `backend/.env` removed on the VM.
+- **Security**: SVG uploads rejected; `/uploads` served with `nosniff` + `script-src 'none'` CSP (+ attachment for svg/html); rate limiter is DB-backed (`rate_limit_events`, shared across gunicorn workers) and keyed on `X-Real-IP` (spoofable `X-Forwarded-For` no longer trusted); production startup refuses a default/short `SECRET_KEY` or SQLite (`ENVIRONMENT=production`); inactive users cannot log in; only superadmin can create admins or reset admin/superadmin passwords; Gemini key sent as a header, not in the URL.
+- **Evaluation integrity**: LLM failures raise `LLMUnavailableError` → HTTP 503, nothing stored (previously a silent random 520–820 mock score). Retry keeps the old evaluation if the new one fails. `Evaluation.llm_source` (`gemini`/`generic`/`mock`/`gate`/`suspected_mock`); mock only without any LLM in development, flagged + `needs_review`; production refuses mock. Startup backfill marks legacy rows matching the old fallback fingerprint as `suspected_mock`. Model fallback only on 404; per-call timeout `LLM_TIMEOUT_SECONDS` (60); gunicorn timeout 180.
+- **Superadmin**: `is_platform_admin()` used everywhere admin-only checks existed (common.py, teams, submissions, evaluate, reports). Superadmin previously got 403 on almost every hackathon endpoint.
+- **Permissions**: stored matrix merged over defaults (`effective_role_permissions`), so new features get defaults on old DBs. New `delete_team` toggle; `manage_settings` removed (settings are superadmin-only by design); `view_admin_panel`, `view_api_docs`, `participate` now enforced; judges can view reports; reports scoped with `can_access_hackathon`. New `GET /api/auth/me/permissions`; frontend `useAuth().can(feature)` + `PermissionRoute` replace hard-coded role checks (`AdminRoute`/`OrganizerRoute` removed). Hackathon limits can be cleared with an explicit null.
+- **Bugs**: team page used `Promise.all`, so one 403 hid a participant's own submissions (now per-team `allSettled`); routes doing blocking I/O converted from `async def` to `def` (threadpool); test DB isolation fixed (savepoint mode + pysqlite BEGIN recipe); `validate_flow.py` now truly offline (`ZECATHON_ENV_FILE`, because empty env vars are dropped on Windows) and kills the vite process tree.
+- **Scripts**: `scripts/create_superadmin.py` (recovery, prompts for the password), `scripts/set_role.py` works on PostgreSQL.
+- **Validation**: `pytest` ✅ 54 passed (25 new in `tests/test_hardening.py`), `npm run build` ✅, `validate_flow.py` ✅, VM secrets-migration logic sandbox-tested, all shell scripts `bash -n` ✅. Not verifiable locally: a real VM run, and the PostgreSQL variant of the backfill SQL (SQLite verified).
+- **Next**: user approves commit + push → on the VM: snapshot + grow disk to 30 GB → `git pull` → `sudo bash gcp/update-vm.sh` → create superadmin if needed → uptime check.
 
 ## Phase 29 — completed
 - **Granular role permissions**: added `GlobalSettings` model with `registration_open` and `role_permissions` JSON; added `FEATURES` list and `_default_role_permissions()` defaults.
@@ -168,13 +186,13 @@
 - No new author metadata is added; commits retain the existing `user.name`/`user.email` from the global git config.
 
 ## Next action
-- Phase 22 is complete and pushed to `main`.
-- No further blockers; ready for user testing or deployment.
+- See Phase 30 "Next" above.
 
 ## Blockers
-- None.
+- Production VM is down until Phase 30 is pushed and `gcp/update-vm.sh` is run (and the disk is grown).
 
 ## Leftovers / future improvements
 - Move uploads to Cloud Storage and update `app/services/file_storage.py` for S3-compatible storage.
+- JWT is kept in `localStorage`; httpOnly cookies would remove XSS token theft entirely (the uploads XSS path is closed in Phase 30).
+- Cloud Run path (`gcp/deploy.sh`, `cloudbuild.yaml`) is not the live deployment; uploads there are ephemeral and CI needs a committed `firebase.json`.
 - Add real-time notifications for score updates (optional).
-- Add a Cloud Build / Cloud Deploy pipeline template if needed.

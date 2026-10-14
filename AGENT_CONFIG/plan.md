@@ -243,12 +243,21 @@
 - Commit and push to `https://github.com/Zethetaprojects/Zecathon.git` branch `main`.
 - Redeploy VM and provide superadmin recovery command.
 
+## Phase 30 — Production hardening after the VM outage
+- Root cause of the 2026-09-12 outage: a restart-triggered `docker compose down` + `up --build` on a 10 GB disk at 94%, with no alerting (see state.md "Incident").
+- 30.1 Deploy safety: `/etc/zecathon/zecathon.env` secrets (migrated, never regenerated over an existing DB), `gcp/lib-vm.sh` + `gcp/update-vm.sh`, unit template with `Wants=`, no rebuild on start, `stop` not `down`; disk check, backups, prune, log caps, healthchecks, pinned compose project name.
+- 30.2 Security: upload XSS (SVG), rate-limit spoofing + per-worker limits, production config checks, admin escalation via password reset.
+- 30.3 Evaluation integrity: never store mock scores on LLM failure (503), `llm_source`, safe retry, sane timeouts, non-blocking routes.
+- 30.4 Superadmin access in all hackathon-scoped routers.
+- 30.5 Permission matrix consistency, backend and frontend.
+- 30.6 Docs and AGENT_CONFIG.
+- Validate: pytest, `npm run build`, `validate_flow.py`, `bash -n` on scripts.
+- Deploy: commit + push (with approval) → VM disk 30 GB → `git pull` → `sudo bash gcp/update-vm.sh` → uptime check.
+
 ## Leftovers / next steps
-- Redeploy the VM at `/opt/zecathon` so the title, tab attention, superadmin role, stats panel, footer/API-docs changes, role permission toggles, registration switch, and hackathon limits take effect on the public IP.
-- Provide superadmin recovery command for the deployed VM if the only superadmin is lost.
-- User adds a valid `GEMINI_API_KEY` (starts with `AIza...`) to `backend/.env` for real LLM evaluations.
-- Optional: migrate SQLite to Cloud SQL and local uploads to Cloud Storage for production scaling.
-- Optional: mobile hamburger menu refinement.
+- Deploy Phase 30 to the VM (see todo 30.8–30.10).
+- Optional: move the JWT to httpOnly cookies; uploads to Cloud Storage.
+- Optional: Cloud Run path hardening (ephemeral uploads, committed `firebase.json`).
 
 ## Commit cadence
 A commit is required at the end of every phase. If a phase is large, split it into intermediate commits (e.g. backend work first, frontend work second). Each commit message must be clear and phase-tagged.
