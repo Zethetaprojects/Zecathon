@@ -1,5 +1,6 @@
 import json
 import hashlib
+import logging
 import random
 from typing import Any, Dict, Optional
 
@@ -8,13 +9,27 @@ import requests
 from app.config import settings
 
 
+logger = logging.getLogger(__name__)
+
+MOCK_REVIEW_FLAG = "Scored by the offline fallback scorer (no LLM configured). Re-run once an LLM is configured."
+
+
+class LLMUnavailableError(RuntimeError):
+    """An LLM is configured but could not produce a usable evaluation.
+
+    Raised instead of silently falling back to the mock, so a real hackathon
+    never stores a made-up score.
+    """
+
+
 class LLMClient:
-    """Thin HTTP client that prefers Gemini 2.5 Flash, falls back to a configurable
-    generic LLM backend, and finally to a deterministic mock for offline testing."""
+    """Thin HTTP client that prefers Gemini, then a configurable generic LLM
+    backend. The deterministic mock is used only when neither is configured
+    (local development and tests). Every result carries a `_source` key."""
 
     def __init__(self, url: str = None, token: str = None):
-        self.url = url or settings.ai_backend_url
-        self.token = token or settings.ai_backend_token
+        self.url = url if url is not None else settings.ai_backend_url
+        self.token = token if token is not None else settings.ai_backend_token
 
     def complete_json(
         self,
@@ -24,60 +39,61 @@ class LLMClient:
     ) -> Dict[str, Any]:
         """Call the LLM and return a parsed JSON object."""
         if settings.gemini_api_key:
-            return self._call_gemini(prompt, temperature, categories)
+            result = self._call_gemini(prompt, temperature)
+            result["_source"] = "gemini"
+            return result
         if self.url:
-            return self._call_generic_backend(prompt, temperature, categories)
+            result = self._call_generic_backend(prompt, temperature)
+            result["_source"] = "generic"
+            return result
+        if settings.is_production:
+            raise LLMUnavailableError("No LLM is configured. Set GEMINI_API_KEY to evaluate submissions.")
         return self._mock_response(prompt, categories=categories)
 
-    def _call_gemini(
-        self, prompt: str, temperature: float, categories: Optional[Dict[str, int]] = None
-    ) -> Dict[str, Any]:
-        # Some model names (e.g. gemini-2.5-flash) are listed but are not available
-        # for generateContent for new users. Try the configured model first, then fall
-        # back to a known-working model alias.
-        models_to_try = [
+    def _gemini_models(self):
+        # Some model names are listed but not available for generateContent on every
+        # account, so a 404 moves on to the next alias. Duplicates are skipped.
+        models = [
             settings.gemini_model,
             "gemini-3.5-flash-lite",
             "gemini-3.5-flash",
-            "gemini-3.7-flash",
             "gemini-flash-latest",
         ]
-        last_error = None
-        for i, model in enumerate(models_to_try):
-            if not model:
-                continue
-            endpoint = (
-                f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-                f"?key={settings.gemini_api_key}"
-            )
-            payload = {
-                "contents": [
-                    {
-                        "role": "user",
-                        "parts": [{"text": prompt}],
-                    }
-                ],
-                "generationConfig": {
-                    "temperature": temperature,
-                    "responseMimeType": "application/json",
-                    "maxOutputTokens": 8192,
-                },
-            }
+        return list(dict.fromkeys(m for m in models if m))
+
+    def _call_gemini(self, prompt: str, temperature: float) -> Dict[str, Any]:
+        payload = {
+            "contents": [{"role": "user", "parts": [{"text": prompt}]}],
+            "generationConfig": {
+                "temperature": temperature,
+                "responseMimeType": "application/json",
+                "maxOutputTokens": 8192,
+            },
+        }
+        # The key goes in a header, not the URL, so it never appears in error messages or logs.
+        headers = {"x-goog-api-key": settings.gemini_api_key, "Content-Type": "application/json"}
+        last_error = "no Gemini model configured"
+        for model in self._gemini_models():
+            endpoint = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
             try:
-                r = requests.post(endpoint, json=payload, timeout=180)
-                if r.status_code == 404 and i < len(models_to_try) - 1:
-                    last_error = f"Model {model} not available for generateContent, trying fallback."
-                    continue
-                r.raise_for_status()
-                data = r.json()
-                text = self._extract_gemini_text(data)
+                r = requests.post(endpoint, headers=headers, json=payload, timeout=settings.llm_timeout_seconds)
+            except requests.RequestException as exc:
+                # Timeouts and network errors are not model-specific; trying more models
+                # would only multiply the wait past the gateway timeout.
+                raise LLMUnavailableError(f"Gemini request failed ({model}): {type(exc).__name__}") from exc
+            if r.status_code == 404:
+                last_error = f"model {model} not available"
+                logger.warning("Gemini model %s not available for generateContent, trying next", model)
+                continue
+            if r.status_code >= 400:
+                raise LLMUnavailableError(f"Gemini returned HTTP {r.status_code} ({model})")
+            try:
+                text = self._extract_gemini_text(r.json())
                 result = self._extract_json({"content": text})
-                return self._ensure_judge_questions(result)
-            except Exception as exc:
-                last_error = f"Gemini call failed ({model}): {exc}"
-                if i < len(models_to_try) - 1:
-                    continue
-        return self._mock_response(prompt, error=last_error, categories=categories)
+            except (ValueError, KeyError, TypeError) as exc:
+                raise LLMUnavailableError(f"Gemini returned an unreadable response ({model}): {exc}") from exc
+            return self._ensure_judge_questions(result)
+        raise LLMUnavailableError(f"No Gemini model accepted the request: {last_error}")
 
     def _extract_gemini_text(self, data: Dict[str, Any]) -> str:
         candidates = data.get("candidates", [])
@@ -87,9 +103,7 @@ class LLMClient:
         parts = content.get("parts", [])
         return "".join(part.get("text", "") for part in parts)
 
-    def _call_generic_backend(
-        self, prompt: str, temperature: float, categories: Optional[Dict[str, int]] = None
-    ) -> Dict[str, Any]:
+    def _call_generic_backend(self, prompt: str, temperature: float) -> Dict[str, Any]:
         headers = {"Content-Type": "application/json"}
         if self.token:
             headers["Authorization"] = f"Bearer {self.token}"
@@ -100,13 +114,12 @@ class LLMClient:
             "response_format": {"type": "json_object"},
         }
         try:
-            r = requests.post(self.url, headers=headers, json=payload, timeout=120)
+            r = requests.post(self.url, headers=headers, json=payload, timeout=settings.llm_timeout_seconds)
             r.raise_for_status()
-            data = r.json()
-            result = self._extract_json(data)
-            return self._ensure_judge_questions(result)
-        except Exception as exc:
-            return self._mock_response(prompt, error=str(exc), categories=categories)
+            result = self._extract_json(r.json())
+        except (requests.RequestException, ValueError, KeyError, TypeError) as exc:
+            raise LLMUnavailableError(f"LLM backend request failed: {type(exc).__name__}: {exc}") from exc
+        return self._ensure_judge_questions(result)
 
     def _extract_json(self, data: Dict[str, Any]) -> Dict[str, Any]:
         # Try common wrapper shapes
@@ -131,17 +144,15 @@ class LLMClient:
     def _mock_response(
         self,
         prompt: str,
-        error: str = None,
         categories: Optional[Dict[str, int]] = None,
     ) -> Dict[str, Any]:
-        """Deterministic fallback when no LLM backend is configured."""
+        """Deterministic fallback when no LLM backend is configured (development only)."""
         seed = int(hashlib.md5(prompt.encode()).hexdigest(), 16)
         rng = random.Random(seed)
         categories = categories or self._default_categories()
         total = sum(categories.values())
         # Vary score with input but keep within plausible SATISFACTORY/EXCELLENT range
         base = rng.randint(520, 820)
-        ratio = base / 1000
         return {
             "total_score": base,
             "category_scores": {
@@ -160,8 +171,7 @@ class LLMClient:
                 "Which part of the problem statement was hardest to address and why?",
                 "If you had one more day, what would you improve or add?",
             ],
-            "_mock": True,
-            "_error": error,
+            "_source": "mock",
             "_rubric_total": total,
         }
 
