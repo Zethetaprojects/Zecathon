@@ -31,8 +31,8 @@ export type Feature =
 export type Permissions = Partial<Record<Feature, boolean>>;
 
 export interface Rubric {
-  tech: Record<string, number>;
-  non_tech: Record<string, number>;
+  tech?: Record<string, number>;
+  non_tech?: Record<string, number>;
 }
 
 export interface Hackathon {
@@ -61,6 +61,8 @@ export interface ProblemStatement {
   description?: string;
   file_path?: string;
   created_at: string;
+  /** Teams that have submitted; edits and deletion are locked once this is above 0. */
+  submission_count?: number;
 }
 
 export interface Team {
