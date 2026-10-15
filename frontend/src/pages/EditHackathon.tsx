@@ -3,6 +3,7 @@ import { useNavigate, useParams, Link } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { Hackathon } from '../types';
 import { formatError } from '../utils/formatError';
+import { useConfirm } from '../hooks/useConfirm';
 import PageLayout from '../components/PageLayout';
 import DateTimeInput from '../components/DateTimeInput';
 import BackButton from '../components/BackButton';
@@ -27,6 +28,7 @@ export default function EditHackathon() {
   const { id } = useParams<{ id: string }>();
   const hackathonId = Number(id);
   const navigate = useNavigate();
+  const confirm = useConfirm();
   const [hackathon, setHackathon] = useState<Hackathon | null>(null);
   const [form, setForm] = useState({
     name: '',
@@ -100,12 +102,55 @@ export default function EditHackathon() {
       return;
     }
 
+    // Summarise what will change and ask before saving, so edits are deliberate.
+    const original = hackathon;
+    const changes: string[] = [];
+    if (original) {
+      if (form.name.trim() !== (original.name || '')) changes.push(`Name → "${form.name.trim()}"`);
+      if (form.description !== (original.description || '')) changes.push('Description updated');
+      if (form.startDate !== toDatetimeLocalValue(original.start_date)) {
+        changes.push(`Start → ${form.startDate ? new Date(form.startDate).toLocaleString() : 'not set'}`);
+      }
+      if (form.durationHours !== (original.duration_hours?.toString() || '')) changes.push(`Duration → ${form.durationHours || 'not set'} hours`);
+      if (form.maxParticipants !== (original.max_participants?.toString() || '')) {
+        changes.push(`Max participants → ${form.maxParticipants || 'no limit'}`);
+      }
+      if (form.maxTeamMembers !== (original.max_team_members?.toString() || '')) {
+        changes.push(`Max team size → ${form.maxTeamMembers || 'no limit'}`);
+      }
+    }
+    if (bannerFile) changes.push('New banner image');
+    if (changes.length === 0) {
+      setError('Nothing has changed.');
+      setSaving(false);
+      return;
+    }
+    const ok = await confirm({
+      title: 'Save these changes?',
+      message: (
+        <>
+          <ul className="list-disc pl-5 space-y-1 mb-3">
+            {changes.map((c) => (
+              <li key={c}>{c}</li>
+            ))}
+          </ul>
+          Participants see the changes immediately. Changing dates or limits during a live event can affect teams that already joined.
+        </>
+      ),
+      confirmLabel: 'Save changes',
+    });
+    if (!ok) {
+      setSaving(false);
+      return;
+    }
+
     try {
-      const payload: any = { name: form.name, description: form.description };
+      const payload: any = { name: form.name.trim(), description: form.description };
       if (form.startDate) payload.start_date = new Date(form.startDate).toISOString();
       if (form.durationHours) payload.duration_hours = durationHours;
-      if (maxParticipants !== undefined) payload.max_participants = maxParticipants;
-      if (maxTeamMembers !== undefined) payload.max_team_members = maxTeamMembers;
+      // An empty limit field clears the limit (explicit null), instead of being ignored.
+      payload.max_participants = maxParticipants ?? null;
+      payload.max_team_members = maxTeamMembers ?? null;
       await hackathonsApi.update(hackathonId, payload);
 
       if (bannerFile) {

@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom';
 import { leaderboardApi } from '../api/leaderboard';
 import { LeaderboardEntry } from '../types';
 import { formatError } from '../utils/formatError';
+import { copyText } from '../utils/clipboard';
 import PageLayout from '../components/PageLayout';
 import BackButton from '../components/BackButton';
 import LoadingScreen from '../components/LoadingScreen';
@@ -33,12 +34,11 @@ export default function Leaderboard() {
 
   const copyShareLink = async () => {
     const url = `${window.location.origin}/public/leaderboard/${hackathonId}`;
-    try {
-      await navigator.clipboard.writeText(url);
+    if (await copyText(url)) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setError('Unable to copy share link.');
+    } else {
+      setError(`Could not copy automatically. Share this link: ${url}`);
     }
   };
 

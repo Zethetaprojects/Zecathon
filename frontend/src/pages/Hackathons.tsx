@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { Hackathon } from '../types';
 import { formatError } from '../utils/formatError';
+import { useConfirm } from '../hooks/useConfirm';
 import { isManagerRole } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
 import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget } from '../utils/hackathon';
@@ -56,6 +57,7 @@ export default function Hackathons() {
   const [error, setError] = useState('');
   const [deleting, setDeleting] = useState<Record<number, boolean>>({});
   const { user, can } = useAuth();
+  const confirm = useConfirm();
   const canCreate = can('create_hackathon');
   const canDelete = isManagerRole(user?.role) && can('delete_hackathon');
 
@@ -68,7 +70,20 @@ export default function Hackathons() {
   }, []);
 
   const handleDelete = async (id: number) => {
-    if (!window.confirm('Delete this hackathon and all its teams, submissions, and reports?')) return;
+    const target = hackathons.find((h) => h.id === id);
+    const ok = await confirm({
+      title: 'Delete this hackathon?',
+      message: (
+        <>
+          <span className="text-white">{target?.name}</span> and all its problem statements, teams, submissions, evaluations, and
+          reports will be permanently deleted. This cannot be undone.
+        </>
+      ),
+      confirmLabel: 'Delete hackathon',
+      tone: 'danger',
+      requireText: target?.name,
+    });
+    if (!ok) return;
     setDeleting((prev) => ({ ...prev, [id]: true }));
     setError('');
     try {
