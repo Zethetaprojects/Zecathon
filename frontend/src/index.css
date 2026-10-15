@@ -116,6 +116,23 @@ body {
   color: #64748b;
 }
 
+/* Native date/time pickers: render the popup and icon for a dark background
+   (otherwise the browser draws a black calendar icon on the dark field). */
+.neon-input {
+  color-scheme: dark;
+}
+
+.neon-input::-webkit-calendar-picker-indicator {
+  cursor: pointer;
+  opacity: 0.9;
+  /* Tint the icon neon cyan to match the theme. */
+  filter: invert(70%) sepia(80%) saturate(2000%) hue-rotate(140deg) brightness(105%);
+}
+
+.neon-input::-webkit-calendar-picker-indicator:hover {
+  opacity: 1;
+}
+
 /* Custom select with inline space-themed arrow */
 .neon-select {
   appearance: none;

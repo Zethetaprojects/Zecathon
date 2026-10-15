@@ -4,6 +4,7 @@ import { hackathonsApi } from '../api/hackathons';
 import { Hackathon } from '../types';
 import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
+import DateTimeInput from '../components/DateTimeInput';
 import BackButton from '../components/BackButton';
 import LoadingScreen from '../components/LoadingScreen';
 
@@ -186,13 +187,11 @@ export default function EditHackathon() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs pixel-caps text-slate-300 mb-2">Start date & time</label>
-                <input
+                <DateTimeInput
                   name="startDate"
-                  type="datetime-local"
                   value={form.startDate}
                   onChange={handleChange}
                   required
-                  className="w-full rounded px-4 py-3 neon-input"
                 />
               </div>
               <div>
