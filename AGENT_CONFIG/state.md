@@ -2,8 +2,16 @@
 
 - **Date**: 2026-10-15
 - **Repo**: full-stack hackathon evaluation platform (ZECATHON). Phase 30 (production hardening after the VM outage) is implemented locally, **not yet committed or deployed**.
-- **Production VM** (`/opt/zecathon`, GCP): **DOWN since 2026-09-12 11:02 UTC**. See "Incident" below. Recovery = Phase 30 deploy steps.
+- **Production VM** (`/opt/zecathon`, GCP): was down 2026-09-12 → 2026-10-15; **recovered on 2026-10-15** (see Phase 31 "VM status" and "Incident").
 - **AGENT_CONFIG**: maintained. Phases are listed newest first.
+
+## Phase 31 — Gemini auth keys and model refresh (2026-10-15, uncommitted)
+- Google AI Studio issues auth keys (`AQ.`) since 2026-05-28; standard `AIza` keys are rejected since Sept 2026. Our client already sends only `x-goog-api-key` on the native v1beta endpoint and never checks the key format, so auth keys work (verified live with the local `AQ.` key).
+- Fallback models refreshed: `gemini-3.5-flash` / `gemini-3.7-flash` were deprecated 2026-10-08; list is now configured model → `gemini-3.5-flash-lite` → `gemini-flash-lite-latest` → `gemini-3.8-flash` → `gemini-flash-latest` (404-only fallback).
+- Errors now include Google's message plus a key hint for 400/401/403, never the key. New `scripts/check_llm.py` prints key type (not the key) and makes one test call.
+- Local `backend/.env` still sets `GEMINI_MODEL=gemini-2.5-flash` (404 for new users; fallback covers it). Suggest changing it to `gemini-3.5-flash-lite`.
+- VM status 2026-10-15: **recovered**. Phase 30 deployed (e501e68); Docker data moved to the 50 GB `sda` disk (`/mnt/data`, bind-mounted at /var/lib/docker and /var/lib/containerd, UUID + nofail in fstab, `RequiresMountsFor` drop-ins so Docker never starts without it). Google Cloud Ops Agent disabled (its Cloud Logging export failed in a loop and wrote ~2 GB of stack traces to syslog); journald capped at 300M. Gemini auth key (`AQ.`) added to `/etc/zecathon/zecathon.env` and verified live. Reboot test passed: containers and mounts return on their own. Data intact (4 users, 0 hackathons); first backup in /var/backups/zecathon.
+- Optional follow-ups: fix ops agent IAM (Logs Writer / Monitoring Metric Writer) before re-enabling it; add a GCP uptime check on /api/health; change the default `superadmin` password to a strong one.
 
 ## Incident — VM down since 2026-09-12 (diagnosed 2026-10-15)
 - `zecathon.service` failed on 2026-09-12; no containers existed. No reboot since 2026-08-16; the unit and `backend/.env` were unchanged (deploy script was NOT re-run); all three volumes (`gcp_zecathon_pg_data`, `_uploads`, `_logs`) intact.
@@ -189,7 +197,7 @@
 - See Phase 30 "Next" above.
 
 ## Blockers
-- Production VM is down until Phase 30 is pushed and `gcp/update-vm.sh` is run (and the disk is grown).
+- None. Phase 31 (Gemini model refresh) is uncommitted pending user approval.
 
 ## Leftovers / future improvements
 - Move uploads to Cloud Storage and update `app/services/file_storage.py` for S3-compatible storage.

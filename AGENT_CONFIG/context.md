@@ -24,7 +24,7 @@ Build a web application for running hackathons where:
 - **Dynamic rubrics**: each hackathon can override the default tech/non-tech scoring rubrics. Defaults are used when no custom rubric is provided.
 - **Judge questions**: evaluation reports include 3–5 suggested questions for the judging panel based on the submission.
 - **Login security**: strong password policy, bcrypt rounds 12, and sliding-window rate limiting on auth endpoints.
-- **LLM evaluator** uses Google Gemini (`gemini-3.5-flash-lite` by default) when `GEMINI_API_KEY` is provided, otherwise a generic `AI_BACKEND_URL`. If the configured LLM fails, the evaluation returns 503 and nothing is stored. The deterministic mock is only used in development with no LLM configured, and its scores are flagged.
+- **LLM evaluator** uses Google Gemini (`gemini-3.5-flash-lite` by default) when `GEMINI_API_KEY` is provided, otherwise a generic `AI_BACKEND_URL`. Keys are sent only in the `x-goog-api-key` header, so current AI Studio auth keys (`AQ.`) work; Google stopped accepting old `AIza` standard keys in Sept 2026. If the configured LLM fails, the evaluation returns 503 and nothing is stored. The deterministic mock is only used in development with no LLM configured, and its scores are flagged.
 
 ## Input contract for the evaluator APIs
 Payload is implicit via the submission record:

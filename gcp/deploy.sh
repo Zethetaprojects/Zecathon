@@ -13,7 +13,7 @@
 # Usage:
 #   export GCP_PROJECT_ID="your-project-id"
 #   export GCP_REGION="us-central1"
-#   export GEMINI_API_KEY="AIza..."          # optional but recommended
+#   export GEMINI_API_KEY="AQ...."           # from aistudio.google.com/apikey; recommended
 #   export GITHUB_TOKEN="ghp_..."             # optional, raises GitHub API limits
 #   ./gcp/deploy.sh
 #

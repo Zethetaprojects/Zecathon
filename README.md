@@ -185,8 +185,8 @@ Create `backend/.env` from `.env.example`:
 | `ENVIRONMENT` | `development` (default) or `production`. Production refuses to start with a weak/default `SECRET_KEY` or SQLite, and refuses offline mock scoring. |
 | `DATABASE_URL` | Database connection. Default: `sqlite:///./hackathon.db`. Docker Compose uses `postgresql+psycopg2://zecathon:zecathon_secret@postgres:5432/zecathon`. |
 | `SECRET_KEY` | JWT signing secret (production: at least 32 random characters) |
-| `GEMINI_API_KEY` | Google Gemini API key (starts with `AIza...`). Needed for real evaluations. |
-| `GEMINI_MODEL` | Gemini model to use. Default: `gemini-3.5-flash-lite`. If it returns 404, `gemini-3.5-flash` and `gemini-flash-latest` are tried. |
+| `GEMINI_API_KEY` | Google Gemini API key from [AI Studio](https://aistudio.google.com/apikey). New keys are auth keys starting with `AQ.`; old `AIza...` standard keys are no longer accepted by Google. Needed for real evaluations. Check it with `python -m scripts.check_llm`. |
+| `GEMINI_MODEL` | Gemini model to use. Default: `gemini-3.5-flash-lite`. If it returns 404, `gemini-flash-lite-latest`, `gemini-3.8-flash` and `gemini-flash-latest` are tried. |
 | `LLM_TIMEOUT_SECONDS` | Timeout per LLM request (default 60). |
 | `CORS_ORIGINS` | Comma-separated allowed origins (default `*`). |
 | `GITHUB_TOKEN` | Optional: higher GitHub API rate limits. Public repos work without it. |

@@ -128,7 +128,7 @@ fi
 # Reuse saved optional keys on re-runs instead of prompting again.
 GEMINI_API_KEY="${GEMINI_API_KEY:-$(env_get GEMINI_API_KEY)}"
 GITHUB_TOKEN="${GITHUB_TOKEN:-$(env_get GITHUB_TOKEN)}"
-prompt GEMINI_API_KEY "Gemini API key (needed for real evaluations; press Enter to skip): "
+prompt GEMINI_API_KEY "Gemini API key from aistudio.google.com/apikey (starts with AQ.; press Enter to skip): "
 prompt GITHUB_TOKEN "GitHub token (optional, press Enter to skip): "
 
 # -----------------------------------------------------------------------------

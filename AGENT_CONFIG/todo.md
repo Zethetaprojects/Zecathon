@@ -239,6 +239,14 @@
 - [x] 30.5 Permission matrix consistency: merged defaults, `/auth/me/permissions`, `can()` + `PermissionRoute`, `delete_team`, judge reports, enforced toggles
 - [x] 30.6 Docs, scripts (`create_superadmin`, `set_role`), AGENT_CONFIG
 - [x] 30.7 Validation: pytest 54 ✅, `npm run build` ✅, `validate_flow.py` ✅
-- [ ] 30.8 Commit and push (awaiting user approval)
-- [ ] 30.9 VM: snapshot disk, grow to 30 GB, `git pull`, `sudo bash gcp/update-vm.sh`, verify `/api/health`
-- [ ] 30.10 VM: create/confirm superadmin; add a GCP uptime check on `/api/health`
+- [x] 30.8 Commit and push
+- [x] 30.9 VM: freed disk (ops-agent log flood, images), moved Docker to the 50 GB data disk, `sudo bash gcp/update-vm.sh`, `/api/health` ok, reboot test passed
+- [x] 30.10 VM: superadmin exists; Gemini auth key added and verified
+- [ ] 30.11 Optional: GCP uptime check on `/api/health`; strong superadmin password; fix ops agent IAM or leave disabled
+
+## Phase 31 — Gemini auth keys and model refresh
+- [x] 31.1 Verify auth (`AQ.`) keys work with `x-goog-api-key` on the native endpoint
+- [x] 31.2 Replace deprecated fallback models; readable key errors without leaking the key
+- [x] 31.3 `scripts/check_llm.py`; docs and deploy prompts mention `AQ.` keys
+- [x] 31.4 Tests: 58 passed
+- [ ] 31.5 Commit and push (awaiting user approval), then `update-vm.sh` on the VM

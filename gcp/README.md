@@ -9,7 +9,7 @@ For a fully automated deployment, use the provided script:
 ```bash
 export GCP_PROJECT_ID="your-project-id"
 export GCP_REGION="us-central1"
-export GEMINI_API_KEY="AIza..."            # optional but recommended
+export GEMINI_API_KEY="AQ...."             # from aistudio.google.com/apikey; recommended
 export GITHUB_TOKEN="ghp_..."               # optional, raises GitHub API limits
 ./gcp/deploy.sh
 ```
@@ -73,11 +73,13 @@ sudo docker exec -it zecathon-backend python -m scripts.create_superadmin <usern
 
 The same command resets the password of an existing account and makes it superadmin, so it is also the recovery path if every superadmin is locked out.
 
-Without a `GEMINI_API_KEY`, production **refuses to score** submissions rather than storing made-up scores. Add one later with:
+Without a `GEMINI_API_KEY`, production **refuses to score** submissions rather than storing made-up scores. Create a key at https://aistudio.google.com/apikey (new keys start with `AQ.`; old `AIza` keys no longer work) and add it without it appearing on screen or in shell history:
 
 ```bash
-sudo sed -i 's/^GEMINI_API_KEY=.*/GEMINI_API_KEY=AIza.../' /etc/zecathon/zecathon.env
+read -rsp "Paste Gemini key: " K; echo
+sudo sed -i "s|^GEMINI_API_KEY=.*|GEMINI_API_KEY=$K|" /etc/zecathon/zecathon.env; unset K
 sudo systemctl restart zecathon
+sudo docker exec zecathon-backend python -m scripts.check_llm   # expect "OK: gemini answered"
 ```
 
 ### Updating to new code
@@ -271,7 +273,7 @@ For an external managed database, use `docker-compose.prod.yml` and set `DATABAS
 - [ ] Create a hackathon, upload problem statements, and test an evaluation.
 - [ ] Verify the public leaderboard share link works without authentication.
 - [ ] Confirm uploaded problem statements and non-tech submissions are reachable via `/uploads/{filename}` (proxied by nginx or served by the backend).
-- [ ] Confirm the Gemini API key is valid (keys start with `AIza...`).
+- [ ] Confirm the Gemini API key works: `python -m scripts.check_llm` should print `OK: gemini answered`. New AI Studio keys start with `AQ.`; old `AIza` keys are rejected.
 
 ---
 
