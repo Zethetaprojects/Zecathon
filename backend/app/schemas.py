@@ -87,6 +87,33 @@ class TokenData(BaseModel):
     username: Optional[str] = None
 
 
+RUBRIC_TOTAL_POINTS = 1000
+
+
+def check_rubric(v: Optional[Dict[str, Any]]) -> Optional[Dict[str, Any]]:
+    """A custom rubric is {"tech": {...}, "non_tech": {...}} (either part optional),
+    each mapping category names to whole points that add up to exactly 1000.
+    The scorer ignores anything else, so reject it instead of saving it silently."""
+    if v is None or v == {}:
+        return None
+    unknown = set(v) - {"tech", "non_tech"}
+    if unknown:
+        raise ValueError(f"Rubric keys must be 'tech' and/or 'non_tech' (got {', '.join(sorted(unknown))})")
+    for kind, categories in v.items():
+        label = "Tech" if kind == "tech" else "Non-tech"
+        if not isinstance(categories, dict) or not categories:
+            raise ValueError(f"{label} rubric must have at least one category")
+        for name, points in categories.items():
+            if not str(name).strip():
+                raise ValueError(f"{label} rubric has a category without a name")
+            if isinstance(points, bool) or not isinstance(points, int) or points < 1:
+                raise ValueError(f"{label} rubric: '{name}' must be a whole number of points (at least 1)")
+        total = sum(categories.values())
+        if total != RUBRIC_TOTAL_POINTS:
+            raise ValueError(f"{label} rubric must total exactly {RUBRIC_TOTAL_POINTS} points (currently {total})")
+    return v
+
+
 # Hackathon schemas
 class HackathonBase(BaseModel):
     name: str
@@ -108,6 +135,11 @@ class HackathonBase(BaseModel):
 
 
 class HackathonCreate(HackathonBase):
+    @field_validator("rubric")
+    @classmethod
+    def validate_rubric(cls, v):
+        return check_rubric(v)
+
     pass
 
 
@@ -123,6 +155,11 @@ class HackathonUpdate(HackathonBase):
     max_team_members: Optional[int] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("rubric")
+    @classmethod
+    def validate_rubric(cls, v):
+        return check_rubric(v)
 
 
 class HackathonOut(HackathonBase):
@@ -153,6 +190,7 @@ class ProblemStatementOut(ProblemStatementCreate):
     hackathon_id: int
     file_path: Optional[str]
     created_at: datetime
+    submission_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
 

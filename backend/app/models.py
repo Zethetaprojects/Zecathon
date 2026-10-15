@@ -173,6 +173,11 @@ class ProblemStatement(Base):
     hackathon = relationship("Hackathon", back_populates="problem_statements")
     submissions = relationship("Submission", back_populates="problem_statement", cascade="all, delete-orphan")
 
+    @property
+    def submission_count(self) -> int:
+        """Once a team has submitted, the statement is locked against edits and deletion."""
+        return len(self.submissions)
+
 
 class Team(Base):
     __tablename__ = "teams"

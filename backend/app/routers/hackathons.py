@@ -170,7 +170,8 @@ def update_hackathon(
         hackathon.duration_hours = payload.duration_hours
     if payload.end_date is not None:
         hackathon.end_date = payload.end_date
-    if payload.rubric is not None:
+    # An explicit null (or {}) resets the rubric to the platform defaults.
+    if "rubric" in payload.model_fields_set:
         hackathon.rubric = payload.rubric
     # Limits can be cleared by sending an explicit null.
     if "max_participants" in payload.model_fields_set:
