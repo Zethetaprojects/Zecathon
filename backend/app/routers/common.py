@@ -5,7 +5,8 @@ from sqlalchemy.orm import Session
 
 from app.auth import get_current_active_user, is_platform_admin
 from app.database import get_db
-from app.models import Hackathon, User, UserRole
+from app.models import Hackathon, Team, User, UserRole
+from app.schemas import TeamOut
 
 logger = logging.getLogger(__name__)
 
@@ -33,6 +34,16 @@ def can_manage_hackathon(user: User, hackathon: Hackathon | None) -> bool:
     if is_platform_admin(user):
         return True
     return user.role == UserRole.organizer and hackathon.created_by == user.id
+
+
+def team_out(team: Team, user: User, hackathon: Hackathon | None = None) -> TeamOut:
+    """Serialize a team, hiding its invite code from everyone except its own
+    members and the hackathon's managers (anyone with the code can join)."""
+    out = TeamOut.model_validate(team)
+    is_member = any(m.user_id == user.id for m in out.members)
+    if not is_member and not can_manage_hackathon(user, hackathon or team.hackathon):
+        out = out.model_copy(update={"join_code": None})
+    return out
 
 
 def is_manager(user: User) -> bool:

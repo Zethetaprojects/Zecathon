@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_active_user, has_permission, require_permission
 from app.database import get_db
 from app.models import Hackathon, Team, TeamMember, User
-from app.routers.common import can_access_hackathon, can_manage_hackathon, is_manager
+from app.routers.common import can_access_hackathon, can_manage_hackathon, is_manager, team_out
 from app.schemas import TeamCreate, TeamJoinByCode, TeamMemberAdd, TeamMemberUpdate, TeamOut
 
 router = APIRouter()
@@ -117,7 +117,7 @@ def create_team(
     db.commit()
     db.refresh(team)
     logger.info("Team created id=%s name=%s hackathon_id=%s by user id=%s", team.id, team.name, payload.hackathon_id, current_user.id)
-    return team
+    return team_out(team, current_user)
 
 
 @router.get("", response_model=List[TeamOut])
@@ -132,7 +132,8 @@ def list_teams(
     if not can_access_hackathon(current_user, hackathon):
         logger.warning("User id=%s role=%s denied team list on hackathon id=%s owned by %s", current_user.id, current_user.role, hackathon_id, hackathon.created_by)
         raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
-    return db.query(Team).filter(Team.hackathon_id == hackathon_id).order_by(Team.created_at.desc()).all()
+    teams = db.query(Team).filter(Team.hackathon_id == hackathon_id).order_by(Team.created_at.desc()).all()
+    return [team_out(t, current_user, hackathon) for t in teams]
 
 
 @router.get("/{team_id}", response_model=TeamOut)
@@ -147,7 +148,7 @@ def get_team(
     if not can_access_hackathon(current_user, team.hackathon):
         logger.warning("User id=%s role=%s denied team detail on hackathon id=%s owned by %s", current_user.id, current_user.role, team.hackathon_id, team.hackathon.created_by)
         raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
-    return team
+    return team_out(team, current_user)
 
 
 @router.post("/join-by-code", response_model=TeamOut)
@@ -176,7 +177,7 @@ def join_team_by_code(
     db.commit()
     db.refresh(team)
     logger.info("User id=%s joined team id=%s by code", current_user.id, team.id)
-    return team
+    return team_out(team, current_user)
 
 
 @router.post("/{team_id}/members", response_model=TeamOut)
@@ -213,7 +214,7 @@ def add_team_member(
     db.commit()
     db.refresh(team)
     logger.info("User id=%s added user id=%s to team id=%s", current_user.id, target_user.id, team_id)
-    return team
+    return team_out(team, current_user)
 
 
 @router.patch("/{team_id}/members/{member_id}", response_model=TeamOut)
@@ -255,7 +256,7 @@ def update_team_member(
     db.commit()
     db.refresh(team)
     logger.info("User id=%s updated member id=%s role to %s in team id=%s", current_user.id, member_id, new_role, team_id)
-    return team
+    return team_out(team, current_user)
 
 
 @router.delete("/{team_id}/members/{member_id}", response_model=TeamOut)
@@ -284,7 +285,7 @@ def remove_team_member(
     db.commit()
     db.refresh(team)
     logger.info("User id=%s removed member id=%s from team id=%s", current_user.id, member_id, team_id)
-    return team
+    return team_out(team, current_user)
 
 
 @router.post("/{team_id}/join", response_model=TeamOut)
@@ -305,7 +306,7 @@ def join_team(
     db.add(TeamMember(team_id=team_id, user_id=current_user.id, role="member"))
     db.commit()
     db.refresh(team)
-    return team
+    return team_out(team, current_user)
 
 
 @router.delete("/{team_id}", status_code=status.HTTP_204_NO_CONTENT)

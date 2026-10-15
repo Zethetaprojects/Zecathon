@@ -347,3 +347,19 @@ def test_gemini_model_list_has_no_deprecated_models():
     models = llm_client.LLMClient()._gemini_models()
     assert "gemini-3.5-flash" not in models
     assert "gemini-3.7-flash" not in models
+
+
+def test_join_code_only_visible_to_members_and_managers(client, db, auth_client, participant_client):
+    hid = auth_client.post("/api/hackathons", json={"name": "Codes"}).json()["id"]
+    team = participant_client.post("/api/teams", json={"hackathon_id": hid, "name": "Secret Team"}).json()
+    assert team["join_code"]  # the creator (a member) sees it
+
+    outsider = _register(client, "outsider", None, db)
+    listed = client.get(f"/api/teams?hackathon_id={hid}", headers=outsider).json()
+    assert listed[0]["join_code"] is None
+    assert client.get(f"/api/teams/{team['id']}", headers=outsider).json()["join_code"] is None
+    detail = client.get(f"/api/hackathons/{hid}", headers=outsider).json()
+    assert detail["teams"][0]["join_code"] is None
+
+    assert auth_client.get(f"/api/teams?hackathon_id={hid}").json()[0]["join_code"] == team["join_code"]
+    assert participant_client.get(f"/api/hackathons/{hid}").json()["teams"][0]["join_code"] == team["join_code"]
