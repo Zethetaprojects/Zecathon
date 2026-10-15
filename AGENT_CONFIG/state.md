@@ -5,6 +5,17 @@
 - **Production VM** (`/opt/zecathon`, GCP): was down 2026-09-12 → 2026-10-15; **recovered on 2026-10-15** (see Phase 31 "VM status" and "Incident").
 - **AGENT_CONFIG**: maintained. Phases are listed newest first.
 
+## Phase 32 — UX fixes from live testing (2026-10-16, uncommitted)
+- Copy buttons: `utils/clipboard.ts` falls back to execCommand because `navigator.clipboard` is unavailable over plain HTTP (the VM is served on a bare IP); `CopyButton` shows Copied!/manual-copy feedback. Leaderboard share link uses it too.
+- Shared themed `useConfirm()` dialog (`hooks/useConfirm.tsx`, provider in App) replaces window.confirm; supports danger tone and type-to-confirm (used for deleting hackathons and teams).
+- Hackathon page redesigned: role-aware primary action (Join or create a team / My team & submissions / Review submissions / Manage teams), key facts, readable problem statement cards (expandable description, brief download, per-team submission status + submit CTA). Organiser controls are locked by default and need an explicit unlock; every change confirms.
+- Problem statements: new `PUT`/`DELETE /api/problem-statements/{id}` (manage_problem_statements + hackathon manager), locked with 409 once any submission exists; `submission_count` exposed.
+- Rubric: backend now rejects custom rubrics that do not total exactly 1000 (previously silently ignored by the scorer); explicit `rubric: null` resets to defaults; table `RubricEditor` with live total replaces raw JSON on create and detail pages.
+- Security: team invite codes were returned to every user (anyone could join any team); now only team members and the hackathon's managers receive `join_code`.
+- Teams page rewritten: participant "My team" panel (members, leader tools, invite code, submissions) or Create/Join cards; detailed cards for organisers/judges; confirms for role change, removal, team deletion, and re-running evaluations.
+- Register: live password checklist, inline field errors, client-side validation on the first click. Submit page: type cards, re-read statement, GitHub link check, final confirmation (one submission per statement). Edit hackathon: confirmation listing exact changes; empty limits now clear them.
+- Validation: pytest 68 passed (new tests/test_problem_statements.py + join-code test), `npm run build` ✅, `validate_flow.py` ✅. UI not visually verified (no browser in the agent environment).
+
 ## Phase 31 — Gemini auth keys and model refresh (2026-10-15, uncommitted)
 - Google AI Studio issues auth keys (`AQ.`) since 2026-05-28; standard `AIza` keys are rejected since Sept 2026. Our client already sends only `x-goog-api-key` on the native v1beta endpoint and never checks the key format, so auth keys work (verified live with the local `AQ.` key).
 - Fallback models refreshed: `gemini-3.5-flash` / `gemini-3.7-flash` were deprecated 2026-10-08; list is now configured model → `gemini-3.5-flash-lite` → `gemini-flash-lite-latest` → `gemini-3.8-flash` → `gemini-flash-latest` (404-only fallback).

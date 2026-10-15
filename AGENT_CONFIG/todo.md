@@ -249,4 +249,14 @@
 - [x] 31.2 Replace deprecated fallback models; readable key errors without leaking the key
 - [x] 31.3 `scripts/check_llm.py`; docs and deploy prompts mention `AQ.` keys
 - [x] 31.4 Tests: 58 passed
-- [ ] 31.5 Commit and push (awaiting user approval), then `update-vm.sh` on the VM
+- [x] 31.5 Commit and push; Gemini key verified on the VM
+
+## Phase 32 — UX fixes from live testing
+- [x] 32.1 Clipboard fallback for HTTP + CopyButton
+- [x] 32.2 Role-aware hackathon actions; redesigned hackathon, teams, submit, register pages
+- [x] 32.3 Problem statement edit/delete (locked after first submission)
+- [x] 32.4 Organiser lock + themed confirmations; type-to-confirm deletes
+- [x] 32.5 Rubric table editor; backend rejects rubrics not totalling 1000
+- [x] 32.6 Hide team invite codes from non-members
+- [x] 32.7 Validation: pytest 68, build, validate_flow
+- [ ] 32.8 Commit and push (awaiting user approval), deploy with update-vm.sh, test in browser
