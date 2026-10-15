@@ -30,6 +30,7 @@ class LLMClient:
     def __init__(self, url: str = None, token: str = None):
         self.url = url if url is not None else settings.ai_backend_url
         self.token = token if token is not None else settings.ai_backend_token
+        self.last_model: Optional[str] = None  # Gemini model that answered the last call
 
     def complete_json(
         self,
@@ -52,14 +53,34 @@ class LLMClient:
 
     def _gemini_models(self):
         # Some model names are listed but not available for generateContent on every
-        # account, so a 404 moves on to the next alias. Duplicates are skipped.
+        # account, so a 404 moves on to the next one. Duplicates are skipped.
+        # Stable models first, then Google's moving aliases (checked 2026-10:
+        # gemini-3.5-flash and gemini-3.7-flash are deprecated).
         models = [
             settings.gemini_model,
             "gemini-3.5-flash-lite",
-            "gemini-3.5-flash",
+            "gemini-flash-lite-latest",
+            "gemini-3.8-flash",
             "gemini-flash-latest",
         ]
         return list(dict.fromkeys(m for m in models if m))
+
+    @staticmethod
+    def _gemini_error(r: requests.Response, model: str) -> str:
+        """Readable reason for a failed call, using Google's own error message."""
+        try:
+            message = str(r.json().get("error", {}).get("message", "")).strip()
+        except ValueError:
+            message = ""
+        reason = f"Gemini returned HTTP {r.status_code} ({model})"
+        if message:
+            reason += f": {message[:300]}"
+        if r.status_code in (400, 401, 403):
+            reason += (
+                " Check GEMINI_API_KEY: create a new key in Google AI Studio "
+                "(new keys start with 'AQ.'; old 'AIza' standard keys are no longer accepted)."
+            )
+        return reason
 
     def _call_gemini(self, prompt: str, temperature: float) -> Dict[str, Any]:
         payload = {
@@ -70,7 +91,9 @@ class LLMClient:
                 "maxOutputTokens": 8192,
             },
         }
-        # The key goes in a header, not the URL, so it never appears in error messages or logs.
+        # The key goes in the x-goog-api-key header, never the URL (so it stays out of logs),
+        # and never as a Bearer token, which Google rejects for API keys. This works for
+        # both new auth keys ("AQ.") and legacy keys; the key format is never checked.
         headers = {"x-goog-api-key": settings.gemini_api_key, "Content-Type": "application/json"}
         last_error = "no Gemini model configured"
         for model in self._gemini_models():
@@ -86,12 +109,13 @@ class LLMClient:
                 logger.warning("Gemini model %s not available for generateContent, trying next", model)
                 continue
             if r.status_code >= 400:
-                raise LLMUnavailableError(f"Gemini returned HTTP {r.status_code} ({model})")
+                raise LLMUnavailableError(self._gemini_error(r, model))
             try:
                 text = self._extract_gemini_text(r.json())
                 result = self._extract_json({"content": text})
             except (ValueError, KeyError, TypeError) as exc:
                 raise LLMUnavailableError(f"Gemini returned an unreadable response ({model}): {exc}") from exc
+            self.last_model = model
             return self._ensure_judge_questions(result)
         raise LLMUnavailableError(f"No Gemini model accepted the request: {last_error}")
 

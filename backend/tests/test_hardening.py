@@ -271,3 +271,79 @@ def test_production_refuses_unsafe_config(secret, db_url):
 def test_production_accepts_safe_config():
     Settings(_env_file=None, environment="production", secret_key="x" * 40,
              database_url="postgresql://u:p@h/d").validate_production()
+
+
+# --- Gemini client: new auth keys ("AQ."), model fallback, error reporting ----
+
+class _FakeResponse:
+    def __init__(self, status, body):
+        self.status_code = status
+        self._body = body
+
+    def json(self):
+        return self._body
+
+
+def _gemini_ok(text='{"total_score": 600, "category_scores": {}, "judge_questions": ["Q?"]}'):
+    return _FakeResponse(200, {"candidates": [{"content": {"parts": [{"text": text}]}}]})
+
+
+def _use_gemini_key(monkeypatch, key="AQ.Ab8RN6-test_key.value"):
+    monkeypatch.setattr(llm_client, "settings", Settings(_env_file=None, gemini_api_key=key))
+    return key
+
+
+def test_gemini_auth_key_sent_in_header_not_url(monkeypatch):
+    key = _use_gemini_key(monkeypatch)
+    calls = []
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        calls.append((url, headers))
+        return _gemini_ok()
+
+    monkeypatch.setattr(llm_client.requests, "post", fake_post)
+    result = llm_client.LLMClient().complete_json("prompt")
+    assert result["_source"] == "gemini"
+    url, headers = calls[0]
+    assert headers["x-goog-api-key"] == key
+    assert "Authorization" not in headers
+    assert "key=" not in url and key not in url
+
+
+def test_gemini_falls_back_only_on_404(monkeypatch):
+    _use_gemini_key(monkeypatch)
+    tried = []
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        tried.append(url.split("/models/")[1].split(":")[0])
+        return _FakeResponse(404, {}) if len(tried) == 1 else _gemini_ok()
+
+    monkeypatch.setattr(llm_client.requests, "post", fake_post)
+    client = llm_client.LLMClient()
+    client.complete_json("prompt")
+    assert tried == ["gemini-3.5-flash-lite", "gemini-flash-lite-latest"]
+    assert client.last_model == "gemini-flash-lite-latest"
+
+
+def test_gemini_bad_key_error_is_readable_and_hides_key(monkeypatch):
+    key = _use_gemini_key(monkeypatch)
+    tried = []
+
+    def fake_post(url, headers=None, json=None, timeout=None):
+        tried.append(url)
+        return _FakeResponse(400, {"error": {"code": 400, "message": "API key not valid. Please pass a valid API key."}})
+
+    monkeypatch.setattr(llm_client.requests, "post", fake_post)
+    with pytest.raises(LLMUnavailableError) as info:
+        llm_client.LLMClient().complete_json("prompt")
+    message = str(info.value)
+    assert "API key not valid" in message
+    assert "AQ." in message  # tells the admin what a current key looks like
+    assert key not in message
+    assert len(tried) == 1  # auth errors are not retried on other models
+
+
+def test_gemini_model_list_has_no_deprecated_models():
+    models = llm_client.LLMClient()._gemini_models()
+    assert "gemini-3.5-flash" not in models
+    assert "gemini-3.7-flash" not in models
