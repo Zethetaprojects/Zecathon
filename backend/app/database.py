@@ -5,9 +5,13 @@ from sqlalchemy.orm import sessionmaker, declarative_base
 
 from app.config import settings
 
+_is_sqlite = settings.database_url.startswith("sqlite")
 engine = create_engine(
     settings.database_url,
-    connect_args={"check_same_thread": False} if settings.database_url.startswith("sqlite") else {},
+    connect_args={"check_same_thread": False} if _is_sqlite else {},
+    # Postgres allows 100 connections by default; with up to 8 gunicorn workers,
+    # 5 + 5 per worker stays under that. pre_ping drops connections Postgres closed.
+    **({} if _is_sqlite else {"pool_size": 5, "max_overflow": 5, "pool_pre_ping": True, "pool_recycle": 1800}),
 )
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 Base = declarative_base()

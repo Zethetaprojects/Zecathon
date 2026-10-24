@@ -6,12 +6,14 @@ handles process management.
 """
 
 import multiprocessing
+import os
 
 bind = "0.0.0.0:8000"
 worker_class = "uvicorn.workers.UvicornWorker"
 
-# workers = (2 × CPU cores) + 1, capped at 4 for a modest VM
-workers = min(multiprocessing.cpu_count() * 2 + 1, 4)
+# workers = (2 × CPU cores) + 1, capped at 8 (each worker also runs blocking routes
+# in a thread pool). Override with GUNICORN_WORKERS, e.g. on a bigger VM for an event.
+workers = int(os.environ.get("GUNICORN_WORKERS") or min(multiprocessing.cpu_count() * 2 + 1, 8))
 
 # Threads are not used with async workers, but keep sensible defaults
 threads = 1

@@ -4,7 +4,7 @@ from typing import List
 
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.auth import get_current_active_user, has_permission, require_permission
 from app.database import get_db
@@ -132,7 +132,13 @@ def list_teams(
     if not can_access_hackathon(current_user, hackathon):
         logger.warning("User id=%s role=%s denied team list on hackathon id=%s owned by %s", current_user.id, current_user.role, hackathon_id, hackathon.created_by)
         raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
-    teams = db.query(Team).filter(Team.hackathon_id == hackathon_id).order_by(Team.created_at.desc()).all()
+    teams = (
+        db.query(Team)
+        .options(selectinload(Team.members).selectinload(TeamMember.user))
+        .filter(Team.hackathon_id == hackathon_id)
+        .order_by(Team.created_at.desc())
+        .all()
+    )
     return [team_out(t, current_user, hackathon) for t in teams]
 
 

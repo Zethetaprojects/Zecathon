@@ -4,11 +4,11 @@ import logging
 from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.auth import get_current_active_user, require_permission
 from app.database import get_db
-from app.models import ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User, UserRole
+from app.models import Hackathon, ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User, UserRole
 from app.routers.common import can_manage_hackathon, is_manager
 from app.schemas import SubmissionDetail, SubmissionOut
 from app.services.file_storage import save_upload
@@ -118,6 +118,32 @@ async def create_submission(
     db.refresh(submission)
     logger.info("Submission created id=%s type=%s team_id=%s ps_id=%s by user id=%s", submission.id, submission.type, team_id, problem_statement_id, current_user.id)
     return submission
+
+
+@router.get("/hackathon/{hackathon_id}", response_model=List[SubmissionDetail])
+def list_hackathon_submissions(
+    hackathon_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Every submission in a hackathon, with its evaluation, in one request.
+
+    For the hackathon's managers and for judges (the organiser teams page and bulk
+    evaluation). Replaces one request per team, which was ~170 calls per page view.
+    """
+    hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+    if not (can_manage_hackathon(current_user, hackathon) or current_user.role == UserRole.judge):
+        raise HTTPException(status_code=403, detail="Only the hackathon organiser, judges, or admins can list all submissions")
+    return (
+        db.query(Submission)
+        .join(Team, Submission.team_id == Team.id)
+        .options(selectinload(Submission.evaluation))
+        .filter(Team.hackathon_id == hackathon_id)
+        .order_by(Submission.created_at.asc())
+        .all()
+    )
 
 
 @router.get("/{submission_id}", response_model=SubmissionDetail)

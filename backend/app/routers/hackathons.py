@@ -4,11 +4,11 @@ from typing import List
 import logging
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.auth import get_current_active_user, require_permission
 from app.database import get_db
-from app.models import Hackathon, ProblemStatement, Team, User, UserRole
+from app.models import Hackathon, ProblemStatement, Team, TeamMember, User, UserRole
 from app.routers.common import can_access_hackathon, can_manage_hackathon, team_out
 from app.schemas import (
     HackathonCreate,
@@ -144,7 +144,17 @@ def get_hackathon(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
+    # Load teams, members, their users and statement submissions in a few batched
+    # queries; lazy loading issued ~4 queries per team (≈700 for 170 teams).
+    hackathon = (
+        db.query(Hackathon)
+        .options(
+            selectinload(Hackathon.teams).selectinload(Team.members).selectinload(TeamMember.user),
+            selectinload(Hackathon.problem_statements).selectinload(ProblemStatement.submissions),
+        )
+        .filter(Hackathon.id == hackathon_id)
+        .first()
+    )
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
     if not can_access_hackathon(current_user, hackathon):

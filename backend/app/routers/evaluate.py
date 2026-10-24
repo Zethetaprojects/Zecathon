@@ -8,6 +8,7 @@ from app.models import Evaluation, ProblemStatement, Submission, SubmissionType,
 from app.routers.common import can_manage_hackathon
 from app.schemas import EvaluationOut
 from app.services.document_extractor import extract_text
+from app.services.github_client import GitHubUnavailableError
 from app.services.scoring.llm_client import LLMUnavailableError
 from app.services.scoring.non_tech_evaluator import evaluate_non_tech
 from app.services.scoring.tech_evaluator import evaluate_tech
@@ -45,6 +46,13 @@ def _run_evaluation(db: Session, submission: Submission) -> Evaluation:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"The AI evaluator is unavailable right now, so nothing was scored. Please try again later. ({exc})",
+        )
+    except GitHubUnavailableError as exc:
+        db.rollback()
+        logger.error("GitHub unavailable for submission id=%s: %s", submission_id, exc)
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail=f"GitHub could not be reached, so nothing was scored. Please try again later. ({exc})",
         )
     except Exception as exc:
         db.rollback()

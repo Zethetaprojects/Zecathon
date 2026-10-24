@@ -60,6 +60,10 @@ def evaluate_non_tech(db: Session, submission: Submission, problem_statement: st
     if llm_source == "mock":
         review_flags = [*review_flags, MOCK_REVIEW_FLAG]
         needs_review = True
+    if submission.github_url and not (repo_summary and repo_summary.get("valid")):
+        reason = (repo_summary or {}).get("error", "unknown error")
+        review_flags = [*review_flags, f"Supporting GitHub repository could not be read ({reason}); scored on the document only."]
+        needs_review = True
 
     evaluation = Evaluation(
         submission_id=submission.id,
