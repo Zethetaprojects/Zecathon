@@ -35,13 +35,20 @@ from app.schemas import (
 
 router = APIRouter()
 
+# Rate limits. Many legitimate users can share one IP (a campus Wi-Fi NAT, or
+# Cloudflare if real-IP restoration is missing), so per-IP limits are generous
+# and the strict limit is per account: 10 login attempts per username per IP in 5 minutes.
+REGISTER_PER_IP = RateLimiter("register", _client_ip, max_requests=30, window_seconds=600)
+LOGIN_PER_IP = RateLimiter("login", _client_ip, max_requests=100, window_seconds=300)
+LOGIN_PER_ACCOUNT = RateLimiter("login-account", _client_ip, max_requests=10, window_seconds=300)
+
 
 @router.post("/register", response_model=UserOut, status_code=status.HTTP_201_CREATED)
 def register(
     payload: UserCreate,
     request: Request,
     db: Session = Depends(get_db),
-    _: bool = Depends(RateLimiter("register", _client_ip, max_requests=5, window_seconds=600)),
+    _: bool = Depends(REGISTER_PER_IP),
 ):
     if not registration_open(db):
         raise HTTPException(status_code=403, detail="New registrations are currently closed")
@@ -64,8 +71,9 @@ def login(
     request: Request,
     form_data: OAuth2PasswordRequestForm = Depends(),
     db: Session = Depends(get_db),
-    _: bool = Depends(RateLimiter("login", _client_ip, max_requests=10, window_seconds=300)),
+    _: bool = Depends(LOGIN_PER_IP),
 ):
+    LOGIN_PER_ACCOUNT.hit(db, f"{_client_ip(request)}|{form_data.username.strip().lower()}")
     user = db.query(User).filter(User.username == form_data.username).first()
     if not user or not verify_password(form_data.password, user.hashed_password):
         raise HTTPException(status_code=400, detail="Incorrect username or password")

@@ -363,3 +363,25 @@ def test_join_code_only_visible_to_members_and_managers(client, db, auth_client,
 
     assert auth_client.get(f"/api/teams?hackathon_id={hid}").json()[0]["join_code"] == team["join_code"]
     assert participant_client.get(f"/api/hackathons/{hid}").json()["teams"][0]["join_code"] == team["join_code"]
+
+
+def test_many_users_behind_one_ip_can_log_in(client):
+    # A campus Wi-Fi puts many students behind one IP; each must still be able to log in.
+    for i in range(15):
+        r = client.post("/api/auth/login", data={"username": f"student{i}", "password": "wrong"})
+        assert r.status_code == 400, (i, r.status_code)
+
+
+def test_one_account_is_still_limited(client):
+    for _ in range(10):
+        client.post("/api/auth/login", data={"username": "victim", "password": "guess"})
+    r = client.post("/api/auth/login", data={"username": "victim", "password": "guess"})
+    assert r.status_code == 429
+
+
+def test_many_registrations_from_one_ip(client):
+    for i in range(8):
+        r = client.post("/api/auth/register", json={
+            "username": f"campus{i}", "email": f"campus{i}@example.com", "password": "Secret123!",
+        })
+        assert r.status_code == 201, (i, r.text)

@@ -159,7 +159,10 @@ class RateLimiter:
         self.window_seconds = window_seconds
 
     def __call__(self, request: Request, db: Session = Depends(get_db)):
-        key = self.key_func(request)
+        return self.hit(db, self.key_func(request))
+
+    def hit(self, db: Session, key: str) -> bool:
+        """Record one attempt for `key`; raise 429 if the window is already full."""
         cutoff = datetime.utcnow() - timedelta(seconds=self.window_seconds)
         query = db.query(RateLimitEvent).filter(
             RateLimitEvent.key == key,
