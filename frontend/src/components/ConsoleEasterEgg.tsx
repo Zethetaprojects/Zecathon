@@ -43,7 +43,7 @@ export default function ConsoleEasterEgg() {
     `;
     console.log('%c' + ASCII_ART, style);
     console.log(
-      '%cHey, console explorer! 🥚%c There are hidden easter eggs scattered across ZECATHON. Look for clickable secrets, then open the Egg Hunt panel in the navbar.',
+      '%cHey, console explorer! 🥚%c There are hidden easter eggs scattered across ZECKATHON. Look for clickable secrets, then open the Egg Hunt panel in the navbar.',
       'color: #ff2a6d; font-weight: bold; font-size: 14px;',
       'color: #b026ff; font-size: 12px;'
     );

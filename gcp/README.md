@@ -1,6 +1,6 @@
-# ZECATHON GCP Deployment Guide
+# ZECKATHON GCP Deployment Guide
 
-This guide covers production deployment of the ZECATHON platform on Google Cloud Platform.
+This guide covers production deployment of the ZECKATHON platform on Google Cloud Platform.
 
 ## Quick deploy — one script
 

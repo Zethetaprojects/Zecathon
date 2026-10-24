@@ -14,7 +14,7 @@ export default function SupportPage() {
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
           <h1 className="font-pixel text-lg text-white text-shadow-neon mb-2">SUPPORT</h1>
-          <p className="text-slate-400 text-sm">Need help running or competing in a ZECATHON? Reach out below.</p>
+          <p className="text-slate-400 text-sm">Need help running or competing in a ZECKATHON? Reach out below.</p>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">

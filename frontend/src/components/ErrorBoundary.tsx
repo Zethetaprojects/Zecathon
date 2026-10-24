@@ -32,7 +32,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             <div className="glass-panel max-w-lg w-full p-8 text-center">
               <h2 className="font-pixel text-lg text-neon-pink mb-4">SYSTEM FAILURE</h2>
               <p className="text-slate-300 mb-4 text-sm">
-                Something crashed in the ZECATHON interface. The error has been logged to the console.
+                Something crashed in the ZECKATHON interface. The error has been logged to the console.
               </p>
               {this.state.error && (
                 <pre className="text-left text-xs text-slate-400 bg-black/30 rounded p-3 mb-6 overflow-auto max-h-40">

@@ -213,7 +213,7 @@ export default function EditHackathon() {
                 onChange={handleChange}
                 required
                 className="w-full rounded px-4 py-3 neon-input"
-                placeholder="e.g. ZECATHON 2026"
+                placeholder="e.g. ZECKATHON 2026"
               />
             </div>
 

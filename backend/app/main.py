@@ -21,9 +21,9 @@ async def lifespan(app: FastAPI):
     _ensure_user_role_enum()
     os.makedirs(settings.upload_dir, exist_ok=True)
     logger = logging.getLogger("app.main")
-    logger.info("ZECATHON backend startup complete (environment=%s)", settings.environment)
+    logger.info("ZECKATHON backend startup complete (environment=%s)", settings.environment)
     yield
-    logger.info("ZECATHON backend shutdown")
+    logger.info("ZECKATHON backend shutdown")
 
 
 app = FastAPI(

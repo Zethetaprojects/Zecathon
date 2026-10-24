@@ -35,7 +35,7 @@ export default function Login() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="font-pixel text-xl text-white text-shadow-neon mb-2">LOGIN</h1>
-          <p className="text-slate-400 text-sm">Enter the ZECATHON arena</p>
+          <p className="text-slate-400 text-sm">Enter the ZECKATHON arena</p>
         </div>
 
         <form onSubmit={handleSubmit} className="glass-panel p-8 space-y-5">

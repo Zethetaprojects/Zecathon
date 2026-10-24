@@ -1,6 +1,6 @@
 # Installed to /etc/systemd/system/zecathon.service by gcp/lib-vm.sh.
 [Unit]
-Description=ZECATHON application stack (PostgreSQL + backend)
+Description=ZECKATHON application stack (PostgreSQL + backend)
 # Wants (not Requires): a Docker restart or upgrade must not stop this unit.
 # The containers use `restart: unless-stopped`, so Docker brings them back itself.
 Wants=docker.service

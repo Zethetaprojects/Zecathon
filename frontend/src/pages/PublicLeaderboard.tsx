@@ -34,7 +34,7 @@ export default function PublicLeaderboard() {
       <div className="max-w-5xl mx-auto">
         <div className="mb-6">
           <Link to="/" className="text-neon-cyan hover:text-white text-sm transition">
-            ← Back to ZECATHON
+            ← Back to ZECKATHON
           </Link>
         </div>
 

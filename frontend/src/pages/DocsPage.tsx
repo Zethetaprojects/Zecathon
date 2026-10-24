@@ -15,7 +15,7 @@ export default function DocsPage() {
       <div className="max-w-3xl mx-auto">
         <div className="mb-8">
           <h1 className="font-pixel text-lg text-white text-shadow-neon mb-2">HOW IT WORKS</h1>
-          <p className="text-slate-400 text-sm">A simple guide to running and competing in a ZECATHON hackathon.</p>
+          <p className="text-slate-400 text-sm">A simple guide to running and competing in a ZECKATHON hackathon.</p>
         </div>
 
         <Section title="For Organisers">

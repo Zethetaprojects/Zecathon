@@ -18,7 +18,7 @@ export interface EggHint {
 // All click-based — no typing in forms or secret-code inputs required.
 export const EGG_HINTS: EggHint[] = [
   { id: 'star-click', name: 'Star Catcher', hint: 'Click a star in the space background', points: 50 },
-  { id: 'logo-fan', name: 'Logo Fanatic', hint: 'Click the ZECATHON logo in the navbar 5 times fast', points: 100 },
+  { id: 'logo-fan', name: 'Logo Fanatic', hint: 'Click the ZECKATHON logo in the navbar 5 times fast', points: 100 },
   { id: 'controller', name: 'Controller Hunter', hint: 'Find the hidden controller floating near the corner', points: 100 },
   { id: 'hero-logo', name: 'Logo Watcher', hint: 'Click the big logo on the landing page', points: 25 },
   { id: 'stat-click', name: 'Stat Nerd', hint: 'Click the numbers in the landing stats', points: 25 },
@@ -30,7 +30,7 @@ export const EGG_HINTS: EggHint[] = [
   { id: 'command-deck', name: 'Captain on Deck', hint: 'Triple-click the dashboard title', points: 75 },
   { id: 'mascot-click', name: 'Mascot Friend', hint: 'Click the floating Z-bot mascot', points: 100 },
   { id: 'sound-toggle', name: 'Sound Seeker', hint: 'Toggle the space music from the navbar', points: 25 },
-  { id: 'hero-title', name: 'Title Tinker', hint: 'Click the giant ZECATHON title on the landing page', points: 25 },
+  { id: 'hero-title', name: 'Title Tinker', hint: 'Click the giant ZECKATHON title on the landing page', points: 25 },
   { id: 'status-badge', name: 'Status Checker', hint: 'Click a hackathon status badge', points: 25 },
   { id: 'countdown-click', name: 'Time Traveller', hint: 'Click a live countdown timer', points: 25 },
   { id: 'empty-state', name: 'Optimist', hint: 'Click an empty-state message like "No arenas yet"', points: 25 },

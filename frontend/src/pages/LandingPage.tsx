@@ -267,7 +267,7 @@ export default function LandingPage() {
             <div className="mb-8 flex justify-center">
               <img
                 src="/ZeTheta%20Logo.png"
-                alt="ZECATHON logo"
+                alt="ZECKATHON logo"
                 className="w-32 h-32 sm:w-40 sm:h-40 animate-float drop-shadow-[0_0_20px_rgba(255,255,255,0.15)] cursor-pointer"
                 data-egg-trigger="hero-logo"
                 data-egg-message="The logo sees you. +25 XP"
@@ -276,12 +276,12 @@ export default function LandingPage() {
             </div>
 
             <h1
-              className="font-pixel text-3xl sm:text-5xl md:text-6xl text-white mb-6 text-shadow-neon leading-tight cursor-default select-none"
+              className="font-pixel text-2xl sm:text-5xl md:text-6xl text-white mb-6 text-shadow-neon leading-tight cursor-default select-none"
               data-egg-trigger="hero-title"
               data-egg-message="Title clicked! +25 XP"
               data-egg-color="purple"
             >
-              ZECATHON
+              ZECKATHON
             </h1>
             <p className="text-lg sm:text-xl text-neon-cyan mb-2 pixel-caps">
               Code With Purpose & Innovate, Collaborate, Dominate
@@ -415,7 +415,7 @@ export default function LandingPage() {
                 Everything you need to run a hackathon
               </h2>
               <p className="max-w-2xl mx-auto text-sm text-slate-400">
-                From problem statement upload to final leaderboard, ZECATHON handles the heavy lifting so organisers can focus on the experience.
+                From problem statement upload to final leaderboard, ZECKATHON handles the heavy lifting so organisers can focus on the experience.
               </p>
             </div>
 

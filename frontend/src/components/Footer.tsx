@@ -52,7 +52,7 @@ export default function Footer() {
               />
               <div className="leading-none">
                 <span className="font-pixel text-sm tracking-widest text-white group-hover:text-neon-cyan transition">
-                  ZECATHON
+                  ZECKATHON
                 </span>
                 <span className="block text-[10px] text-slate-400 tracking-wide mt-1">
                   by Zetheta Algorithms
@@ -142,7 +142,7 @@ export default function Footer() {
             onClick={handleCopyrightClick}
             className="text-xs text-slate-500 cursor-pointer hover:text-slate-300 transition select-none"
           >
-            © {new Date().getFullYear()} ZECATHON by Zetheta Algorithms. All rights reserved.
+            © {new Date().getFullYear()} ZECKATHON by Zetheta Algorithms. All rights reserved.
           </p>
           <div className="flex items-center gap-6">
             <Link to="/" className="micro-shift text-xs text-slate-500 hover:text-slate-300 transition">

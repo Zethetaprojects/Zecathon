@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ZECATHON — update an existing VM deployment to the latest code.
+# ZECKATHON — update an existing VM deployment to the latest code.
 #
 # Safe to run any time: it keeps the existing database password and JWT secret,
 # backs up the database first, and never deletes Docker volumes.
@@ -17,7 +17,7 @@ source "${SCRIPT_DIR}/lib-vm.sh"
 require_root
 cd "$APP_DIR"
 
-log_info "ZECATHON update starting at commit $(git log -1 --format='%h %s')"
+log_info "ZECKATHON update starting at commit $(git log -1 --format='%h %s')"
 
 ensure_env_file
 ensure_disk_space
@@ -29,7 +29,7 @@ patch_nginx_timeouts
 build_and_start
 
 echo
-log_ok "ZECATHON updated to $(git log -1 --format='%h')."
+log_ok "ZECKATHON updated to $(git log -1 --format='%h')."
 echo "  Status:        sudo systemctl status zecathon"
 echo "  Backend logs:  sudo docker logs -f zecathon-backend"
 echo "  Backups:       ${BACKUP_DIR}"

@@ -21,7 +21,7 @@ os.environ.setdefault("AI_BACKEND_URL", "")  # use deterministic fallback evalua
 
 TECH_REPO = "https://github.com/octocat/Spoon-Knife"
 API_BASE = "http://127.0.0.1:8002/api"
-DEMO_HACKATHON_NAME = "ZECATHON Demo Hack"
+DEMO_HACKATHON_NAME = "ZECKATHON Demo Hack"
 
 
 def cleanup_demo_hackathons(db_path: str):
@@ -110,7 +110,7 @@ def main():
         r = requests.post(
             f"{API_BASE}/hackathons",
             json={
-                "name": "ZECATHON Demo Hack",
+                "name": "ZECKATHON Demo Hack",
                 "description": "Demo hackathon seeded for the dashboard report.",
                 "start_date": start.isoformat(),
                 "duration_hours": 24,
@@ -191,7 +191,7 @@ def main():
         board = r.json()
 
         print("\n=== Demo hackathon seeded ===")
-        print(f"Hackathon: ZECATHON Demo Hack (id={hackathon_id})")
+        print(f"Hackathon: ZECKATHON Demo Hack (id={hackathon_id})")
         print(f"Tech team score:    {tech_score} / 1000")
         print(f"Non-tech team score: {non_tech_data['total_score']} / 1000")
         print(f"Leaderboard entries: {len(board)}")

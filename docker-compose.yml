@@ -1,4 +1,4 @@
-# Docker Compose for local ZECATHON development with PostgreSQL.
+# Docker Compose for local ZECKATHON development with PostgreSQL.
 # The `version` attribute is intentionally omitted; modern Docker Compose ignores it.
 
 services:

@@ -200,7 +200,7 @@ export default function Navbar() {
             />
             <div className="flex flex-col leading-none">
               <span className="font-pixel text-xs sm:text-sm tracking-widest text-white group-hover:text-neon-cyan transition">
-                ZECATHON
+                ZECKATHON
               </span>
               <span className="text-[10px] text-slate-400 tracking-wide hidden sm:inline">
                 by Zetheta

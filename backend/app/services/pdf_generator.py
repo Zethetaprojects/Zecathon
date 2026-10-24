@@ -79,7 +79,7 @@ def _generate_with_fpdf(report: Dict[str, Any]) -> bytes:
     pdf.set_font("Helvetica", "B", 18)
     pdf.set_text_color(255, 255, 255)
     pdf.set_xy(15, 16)
-    pdf.cell(0, 8, "ZECATHON", new_x="RIGHT", new_y="TOP")
+    pdf.cell(0, 8, "ZECKATHON", new_x="RIGHT", new_y="TOP")
     pdf.set_font("Helvetica", "", 9)
     pdf.set_xy(15, 26)
     pdf.cell(0, 5, "by Zetheta Algorithms", new_x="RIGHT", new_y="TOP")

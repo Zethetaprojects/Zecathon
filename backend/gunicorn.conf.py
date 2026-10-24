@@ -1,4 +1,4 @@
-"""Gunicorn production configuration for ZECATHON backend.
+"""Gunicorn production configuration for ZECKATHON backend.
 
 Used by the VM deployment (docker-compose.vm.yml / deploy-vm.sh).
 Uvicorn async workers give FastAPI the concurrency it needs while gunicorn

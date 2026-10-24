@@ -1,4 +1,4 @@
-# ZECATHON — Cloud Build CI/CD pipeline
+# ZECKATHON — Cloud Build CI/CD pipeline
 #
 # Triggers on pushes to main.
 # Builds the backend image, pushes it to Artifact Registry, and deploys

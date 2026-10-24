@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ZECATHON — Self-hosted VM deployment for GCP (no gcloud CLI required).
+# ZECKATHON — Self-hosted VM deployment for GCP (no gcloud CLI required).
 #
 # Designed to be run inside a GCP Compute Engine VM via the browser SSH terminal.
 # Uses:
@@ -83,7 +83,7 @@ write_self_signed_cert() {
 # -----------------------------------------------------------------------------
 # Preflight
 # -----------------------------------------------------------------------------
-log_info "ZECATHON VM deployment starting..."
+log_info "ZECKATHON VM deployment starting..."
 require_root
 
 if [[ -d "$APP_DIR" ]]; then
@@ -248,7 +248,7 @@ build_and_start
 # 8. Final summary
 # -----------------------------------------------------------------------------
 echo
-log_ok "ZECATHON deployment complete!"
+log_ok "ZECKATHON deployment complete!"
 echo
 if [[ "$USE_IP" == true ]]; then
   echo "  HTTP URL:        http://${DOMAIN}"

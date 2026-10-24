@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ZECATHON — One-click GCP deployment script
+# ZECKATHON — One-click GCP deployment script
 #
 # What it does:
 #   1. Enables required GCP APIs.
@@ -146,7 +146,7 @@ if ! gcloud artifacts repositories describe "$REPO_NAME" --location="$REGION" >/
   gcloud artifacts repositories create "$REPO_NAME" \
     --repository-format=docker \
     --location="$REGION" \
-    --description="ZECATHON container images"
+    --description="ZECKATHON container images"
   log_ok "Created Artifact Registry repository."
 else
   log_ok "Artifact Registry repository already exists."
@@ -327,7 +327,7 @@ cd ..
 # Summary
 # -----------------------------------------------------------------------------
 echo
-log_ok "ZECATHON deployment complete!"
+log_ok "ZECKATHON deployment complete!"
 echo
 printf "  %-24s : %s\n" "GCP Project" "$PROJECT_ID"
 printf "  %-24s : %s\n" "Region" "$REGION"

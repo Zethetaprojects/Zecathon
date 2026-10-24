@@ -1,4 +1,4 @@
-# ZECATHON production deployment for a single GCP VM.
+# ZECKATHON production deployment for a single GCP VM.
 # PostgreSQL runs in Docker; backend runs in Docker with gunicorn + uvicorn workers.
 # The host nginx server serves the built frontend and proxies /api and /uploads here.
 #

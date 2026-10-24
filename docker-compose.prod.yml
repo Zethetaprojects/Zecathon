@@ -1,4 +1,4 @@
-# Production Docker Compose for ZECATHON.
+# Production Docker Compose for ZECKATHON.
 # This file does NOT include a Postgres service; point DATABASE_URL to a managed
 # Postgres instance (e.g., Cloud SQL) via environment variables.
 #

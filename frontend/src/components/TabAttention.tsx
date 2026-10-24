@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react';
 
-const DEFAULT_TITLE = 'Zecathon - A Zetheta Hackathon Platform';
+const DEFAULT_TITLE = 'Zeckathon - A Zetheta Hackathon Platform';
 
 const MESSAGES = [
   { icon: '👋', text: 'Come back, the arena misses you!' },

@@ -73,7 +73,7 @@ export default function Register() {
       <div className="w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="font-pixel text-xl text-white text-shadow-neon mb-2">CREATE ACCOUNT</h1>
-          <p className="text-slate-400 text-sm">Join ZECATHON and start building</p>
+          <p className="text-slate-400 text-sm">Join ZECKATHON and start building</p>
         </div>
 
         <form onSubmit={handleSubmit} noValidate className="glass-panel p-8 space-y-5">
