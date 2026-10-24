@@ -35,6 +35,11 @@ def _compute_end_date(
     return end_date
 
 
+def _check_deadline(start_date: datetime | None, deadline: datetime | None) -> None:
+    if start_date and deadline and deadline <= start_date:
+        raise HTTPException(status_code=400, detail="The submission deadline must be after the hackathon start time")
+
+
 def _hackathon_counts(db: Session, hackathon: Hackathon) -> dict:
     return {
         "problem_statement_count": db.query(func.count(ProblemStatement.id))
@@ -68,6 +73,7 @@ def create_hackathon(
     current_user: User = Depends(require_permission("create_hackathon")),
 ):
     end_date = _compute_end_date(payload.start_date, payload.duration_hours, payload.end_date)
+    _check_deadline(payload.start_date, payload.submission_deadline)
     hackathon = Hackathon(
         name=payload.name,
         description=payload.description,
@@ -77,6 +83,7 @@ def create_hackathon(
         rubric=payload.rubric,
         max_participants=payload.max_participants,
         max_team_members=payload.max_team_members,
+        submission_deadline=payload.submission_deadline,
         created_by=current_user.id,
     )
     db.add(hackathon)
@@ -108,6 +115,7 @@ def list_public_hackathons(db: Session = Depends(get_db)):
                 end_date=h.end_date,
                 duration_hours=h.duration_hours,
                 banner_path=h.banner_path,
+                submission_deadline=h.submission_deadline,
                 **counts,
             )
         )
@@ -178,6 +186,11 @@ def update_hackathon(
         hackathon.max_participants = payload.max_participants
     if "max_team_members" in payload.model_fields_set:
         hackathon.max_team_members = payload.max_team_members
+
+    # An explicit null removes the deadline.
+    if "submission_deadline" in payload.model_fields_set:
+        hackathon.submission_deadline = payload.submission_deadline
+    _check_deadline(hackathon.start_date, hackathon.submission_deadline)
 
     # Recompute end_date whenever scheduling inputs change.
     hackathon.end_date = _compute_end_date(hackathon.start_date, hackathon.duration_hours, hackathon.end_date)

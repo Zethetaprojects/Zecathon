@@ -152,6 +152,8 @@ class Hackathon(Base):
     banner_path = Column(String, nullable=True)  # uploaded banner image path/URL
     max_participants = Column(Integer, nullable=True)  # overall participant limit
     max_team_members = Column(Integer, nullable=True, default=6)  # max members per team
+    # After this moment (UTC) participants can no longer submit. NULL = no deadline.
+    submission_deadline = Column(DateTime, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 

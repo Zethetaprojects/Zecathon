@@ -1,8 +1,29 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
-from pydantic import BaseModel, ConfigDict, EmailStr, field_validator
+from pydantic import BaseModel as _PydanticBaseModel, ConfigDict, EmailStr, field_serializer, field_validator
 
 from app.models import SubmissionType, SubmissionStatus, UserRole
+
+
+def to_naive_utc(value: Optional[datetime]) -> Optional[datetime]:
+    """Store every timestamp as naive UTC (the database columns have no time zone)."""
+    if value is not None and value.tzinfo is not None:
+        return value.astimezone(timezone.utc).replace(tzinfo=None)
+    return value
+
+
+class BaseModel(_PydanticBaseModel):
+    """Shared base for API schemas.
+
+    Timestamps are stored as naive UTC. Serialize them with an explicit "Z" so
+    browsers do not mistake them for local time (which shifted every displayed
+    time by the viewer's UTC offset, e.g. 5h30 in India)."""
+
+    @field_serializer("*", mode="wrap", when_used="json")
+    def _serialize_utc(self, value, handler):
+        if isinstance(value, datetime) and value.tzinfo is None:
+            return value.replace(tzinfo=timezone.utc).isoformat().replace("+00:00", "Z")
+        return handler(value)
 
 
 def check_password_strength(v: str) -> str:
@@ -125,6 +146,7 @@ class HackathonBase(BaseModel):
     rubric: Optional[Dict[str, Any]] = None
     max_participants: Optional[int] = None
     max_team_members: Optional[int] = None
+    submission_deadline: Optional[datetime] = None
 
     @field_validator("max_participants", "max_team_members")
     @classmethod
@@ -132,6 +154,11 @@ class HackathonBase(BaseModel):
         if v is not None and v < 1:
             raise ValueError("Limit must be at least 1")
         return v
+
+    @field_validator("start_date", "end_date", "submission_deadline")
+    @classmethod
+    def normalize_utc(cls, v: Optional[datetime]) -> Optional[datetime]:
+        return to_naive_utc(v)
 
 
 class HackathonCreate(HackathonBase):
@@ -153,6 +180,7 @@ class HackathonUpdate(HackathonBase):
     rubric: Optional[Dict[str, Any]] = None
     max_participants: Optional[int] = None
     max_team_members: Optional[int] = None
+    submission_deadline: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -360,6 +388,7 @@ class HackathonPublicOut(BaseModel):
     end_date: Optional[datetime] = None
     duration_hours: Optional[int] = None
     banner_path: Optional[str] = None
+    submission_deadline: Optional[datetime] = None
     problem_statement_count: int = 0
     team_count: int = 0
 

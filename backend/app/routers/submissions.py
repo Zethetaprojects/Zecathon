@@ -1,6 +1,8 @@
 from typing import List
 
 import logging
+from datetime import datetime
+
 from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File, Form
 from sqlalchemy.orm import Session
 
@@ -56,6 +58,15 @@ async def create_submission(
     # Managers may submit on behalf of any team in a hackathon they manage;
     # everyone else must be a member of the team.
     team = _ensure_team_access(team_id, current_user, db)
+
+    # After the deadline only the hackathon's managers may still submit (on a
+    # team's behalf, e.g. after a technical problem); participants are refused.
+    deadline = team.hackathon.submission_deadline
+    if deadline and datetime.utcnow() > deadline and not can_manage_hackathon(current_user, team.hackathon):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Submissions closed at {deadline.strftime('%Y-%m-%d %H:%M')} UTC. Contact the organisers if you had a problem submitting.",
+        )
 
     ps = db.query(ProblemStatement).filter(ProblemStatement.id == problem_statement_id).first()
     if not ps:

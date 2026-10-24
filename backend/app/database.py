@@ -20,6 +20,7 @@ MIGRATION_SPECS = {
         ("banner_path", "VARCHAR"),
         ("max_participants", "INTEGER"),
         ("max_team_members", "INTEGER"),
+        ("submission_deadline", "TIMESTAMP"),
     ],
     "teams": [
         ("join_code", "VARCHAR"),
