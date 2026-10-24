@@ -26,6 +26,7 @@ build_frontend
 remove_legacy_backend_env
 install_unit
 patch_nginx_timeouts
+install_cloudflare_realip
 build_and_start
 
 echo

@@ -164,6 +164,16 @@ remove_legacy_backend_env() {
   fi
 }
 
+# Behind Cloudflare, restore each visitor's real IP (needed for per-IP rate limits).
+install_cloudflare_realip() {
+  local target="/etc/nginx/conf.d/cloudflare-realip.conf"
+  if ! cmp -s "${APP_DIR}/gcp/cloudflare-realip.conf" "$target"; then
+    install -m 644 "${APP_DIR}/gcp/cloudflare-realip.conf" "$target"
+    nginx -t && systemctl reload nginx
+    log_ok "nginx now uses the real visitor IP for Cloudflare-proxied requests."
+  fi
+}
+
 # Bump timeouts in an existing nginx site in place, keeping certbot/SSL edits.
 patch_nginx_timeouts() {
   local site="/etc/nginx/sites-available/zecathon"

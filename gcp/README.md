@@ -82,7 +82,20 @@ sudo systemctl restart zecathon
 sudo docker exec zecathon-backend python -m scripts.check_llm   # expect "OK: gemini answered"
 ```
 
-### Updating to new code
+### Using a domain (instead of the bare IP)
+
+1. **Make the VM's IP permanent.** GCP Console → **VPC network → IP addresses** → find the VM's external IP → **Promote to static IP address**. An ephemeral IP can change when the VM is stopped, which would break the domain.
+2. **Point the domain at it.** At your DNS provider, add an **A record**: name `@` (or a subdomain such as `hackathon`), value = the VM's static IP. Check propagation with `getent ahostsv4 your.domain` on the VM.
+3. **Re-run the deploy script with the domain and an email for Let's Encrypt** (secrets and data are kept):
+
+```bash
+cd /opt/zecathon && git pull --ff-only origin main
+sudo DOMAIN=your.domain EMAIL=you@example.com bash gcp/deploy-vm.sh
+```
+
+The script checks that the DNS already points at this VM before asking Let's Encrypt (failed attempts are rate-limited), installs a trusted certificate that renews automatically, redirects http:// to https://, and limits browser API access (CORS) to the domain.
+
+
 
 ```bash
 cd /opt/zecathon && sudo git pull --ff-only origin main && sudo bash gcp/update-vm.sh

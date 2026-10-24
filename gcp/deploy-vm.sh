@@ -100,7 +100,7 @@ if [[ -z "$DOMAIN" ]]; then
 fi
 
 if [[ -z "$DOMAIN" ]]; then
-  prompt DOMAIN "External IP could not be detected. Enter domain or IP (e.g. zecathon.example.com or 34.123.45.67): "
+  prompt DOMAIN "External IP could not be detected. Enter domain or IP (e.g. zeckathon.example.com or 34.123.45.67): "
 fi
 
 if [[ -z "$DOMAIN" ]]; then
@@ -199,6 +199,10 @@ cd "$APP_DIR"
 ensure_env_file
 env_set GEMINI_API_KEY "$GEMINI_API_KEY"
 env_set GITHUB_TOKEN "$GITHUB_TOKEN"
+if [[ "$USE_IP" != true ]]; then
+  # Only the site's own domain may call the API from a browser.
+  env_set CORS_ORIGINS "https://${DOMAIN},http://${DOMAIN}"
+fi
 if [[ -z "$GEMINI_API_KEY" ]]; then
   log_warn "No GEMINI_API_KEY: evaluations will be refused until one is added to ${ENV_FILE}."
 fi
@@ -220,16 +224,36 @@ cp gcp/nginx-zecathon.conf /etc/nginx/sites-available/zecathon
 sed -i "s/{{DOMAIN}}/${DOMAIN}/g" /etc/nginx/sites-available/zecathon
 ln -sf /etc/nginx/sites-available/zecathon /etc/nginx/sites-enabled/zecathon
 nginx -t && systemctl reload nginx || { log_error "nginx configuration failed"; exit 1; }
+install_cloudflare_realip
 log_ok "nginx configured."
 
 # -----------------------------------------------------------------------------
 # 6. SSL certificate
 # -----------------------------------------------------------------------------
 if [[ "$USE_IP" != true && -n "$EMAIL" ]]; then
-  log_info "Obtaining Let's Encrypt SSL certificate for ${DOMAIN}..."
-  if ! certbot --nginx --non-interactive --agree-tos --email "$EMAIL" -d "$DOMAIN"; then
-    log_warn "certbot failed; falling back to a self-signed certificate."
+  # Let's Encrypt can only verify the domain once its DNS points at this VM. Check
+  # first: repeated failed attempts hit Let's Encrypt rate limits for an hour or more.
+  VM_IP=$(detect_external_ip)
+  DNS_IP=$(getent ahostsv4 "$DOMAIN" | awk 'NR==1 {print $1}')
+  if curl -fsSI -m 10 "https://${DOMAIN}" 2>/dev/null | grep -qi '^server: *cloudflare'; then
+    # Cloudflare already serves the trusted certificate to browsers; a Let's Encrypt
+    # HTTP check would also fail because the DNS points at Cloudflare, not this VM.
+    log_warn "${DOMAIN} is proxied by Cloudflare: skipping Let's Encrypt on the VM."
+    log_warn "In Cloudflare set SSL/TLS mode to 'Full' (the VM keeps a self-signed certificate for the Cloudflare-to-VM hop)."
     EMAIL=""
+  elif [[ -z "$DNS_IP" ]]; then
+    log_error "${DOMAIN} does not resolve yet. Add a DNS A record pointing to ${VM_IP:-the VM external IP}, wait for it to propagate, then re-run this script."
+    EMAIL=""
+  elif [[ -n "$VM_IP" && "$DNS_IP" != "$VM_IP" ]]; then
+    log_error "${DOMAIN} points to ${DNS_IP}, but this VM is ${VM_IP}. Fix the DNS A record, wait for it to propagate, then re-run this script."
+    EMAIL=""
+  else
+    log_info "Obtaining Let's Encrypt SSL certificate for ${DOMAIN}..."
+    # --redirect sends all http:// traffic to https://. certbot renews automatically via its systemd timer.
+    if ! certbot --nginx --non-interactive --agree-tos --redirect --email "$EMAIL" -d "$DOMAIN"; then
+      log_warn "certbot failed; falling back to a self-signed certificate."
+      EMAIL=""
+    fi
   fi
 fi
 if [[ -z "$EMAIL" ]]; then
