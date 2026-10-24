@@ -4,19 +4,11 @@ import { hackathonsApi } from '../api/hackathons';
 import { Hackathon } from '../types';
 import { formatError } from '../utils/formatError';
 import { useConfirm } from '../hooks/useConfirm';
+import { addHoursToLocalValue, formatDateTime, toDatetimeLocalValue } from '../utils/hackathon';
 import PageLayout from '../components/PageLayout';
 import DateTimeInput from '../components/DateTimeInput';
 import BackButton from '../components/BackButton';
 import LoadingScreen from '../components/LoadingScreen';
-
-function toDatetimeLocalValue(iso?: string): string {
-  if (!iso) return '';
-  const d = new Date(iso);
-  if (isNaN(d.getTime())) return '';
-  const tzOffset = d.getTimezoneOffset() * 60000;
-  const local = new Date(d.getTime() - tzOffset);
-  return local.toISOString().slice(0, 16);
-}
 
 function resolveBannerUrl(path?: string | null) {
   if (!path) return null;
@@ -37,7 +29,10 @@ export default function EditHackathon() {
     durationHours: '',
     maxParticipants: '',
     maxTeamMembers: '',
+    deadline: '',
   });
+  // Editing never auto-fills the deadline; the field only changes when the organiser edits it.
+  const [, setDeadlineTouched] = useState(true);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,6 +52,7 @@ export default function EditHackathon() {
           durationHours: h.duration_hours?.toString() || '',
           maxParticipants: h.max_participants?.toString() || '',
           maxTeamMembers: h.max_team_members?.toString() || '',
+          deadline: toDatetimeLocalValue(h.submission_deadline),
         });
         setPreviewUrl(resolveBannerUrl(h.banner_path));
       })
@@ -65,7 +61,7 @@ export default function EditHackathon() {
   }, [hackathonId]);
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
 
   const handleBannerChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -118,8 +114,16 @@ export default function EditHackathon() {
       if (form.maxTeamMembers !== (original.max_team_members?.toString() || '')) {
         changes.push(`Max team size → ${form.maxTeamMembers || 'no limit'}`);
       }
+      if (form.deadline !== toDatetimeLocalValue(original.submission_deadline)) {
+        changes.push(`Submission deadline → ${form.deadline ? formatDateTime(new Date(form.deadline).toISOString()) : 'no deadline'}`);
+      }
     }
     if (bannerFile) changes.push('New banner image');
+    if (form.deadline && form.startDate && new Date(form.deadline) <= new Date(form.startDate)) {
+      setError('The submission deadline must be after the start time.');
+      setSaving(false);
+      return;
+    }
     if (changes.length === 0) {
       setError('Nothing has changed.');
       setSaving(false);
@@ -151,6 +155,7 @@ export default function EditHackathon() {
       // An empty limit field clears the limit (explicit null), instead of being ignored.
       payload.max_participants = maxParticipants ?? null;
       payload.max_team_members = maxTeamMembers ?? null;
+      payload.submission_deadline = form.deadline ? new Date(form.deadline).toISOString() : null;
       await hackathonsApi.update(hackathonId, payload);
 
       if (bannerFile) {
@@ -281,6 +286,47 @@ export default function EditHackathon() {
               </div>
             </div>
 
+            <div>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <label className="block text-xs pixel-caps text-slate-300">Submission deadline</label>
+                {form.deadline && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeadlineTouched(true);
+                      setForm((f) => ({ ...f, deadline: '' }));
+                    }}
+                    className="text-[11px] text-slate-400 hover:text-neon-pink"
+                  >
+                    No deadline
+                  </button>
+                )}
+              </div>
+              <DateTimeInput
+                name="deadline"
+                value={form.deadline}
+                onChange={(e) => {
+                  setDeadlineTouched(true);
+                  handleChange(e);
+                }}
+              />
+              <p className="text-[10px] text-slate-500 mt-2">
+                {form.deadline
+                  ? 'Participants cannot submit after this time (your local time zone). Organisers can still submit late on a team\'s behalf.'
+                  : 'No deadline: teams can submit at any time.'}
+              </p>
+            </div>
+            {!form.deadline && form.startDate && form.durationHours && (
+              <button
+                type="button"
+                onClick={() =>
+                  setForm((f) => ({ ...f, deadline: addHoursToLocalValue(f.startDate, parseInt(f.durationHours, 10)) }))
+                }
+                className="-mt-2 text-[11px] text-neon-cyan hover:text-white"
+              >
+                Set the deadline to the hackathon end time
+              </button>
+            )}
             <div>
               <label className="block text-xs pixel-caps text-slate-300 mb-2">Banner image</label>
               <div className="relative h-40 rounded border border-white/10 bg-gradient-to-br from-space-900 to-slate-900 mb-3 overflow-hidden">

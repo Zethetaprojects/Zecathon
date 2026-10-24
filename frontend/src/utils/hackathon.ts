@@ -39,3 +39,40 @@ export function getCountdownTarget(startDate?: string, endDate?: string): { targ
   if (status === 'open') return { target: endDate, label: 'Ends in' };
   return { target: undefined, label: '' };
 }
+
+/** True once the given ISO time has passed. */
+export function isPast(iso?: string | null): boolean {
+  return Boolean(iso) && new Date(iso as string).getTime() <= Date.now();
+}
+
+/** e.g. "Fri, 20 Nov 2026, 11:30" in the viewer's own time zone. */
+export function formatDateTime(iso?: string | null): string {
+  if (!iso) return 'Not set';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return 'Not set';
+  return d.toLocaleString(undefined, {
+    weekday: 'short',
+    day: 'numeric',
+    month: 'short',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
+/** ISO timestamp → value for an <input type="datetime-local"> in the viewer's time zone. */
+export function toDatetimeLocalValue(iso?: string | null): string {
+  if (!iso) return '';
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return '';
+  const local = new Date(d.getTime() - d.getTimezoneOffset() * 60000);
+  return local.toISOString().slice(0, 16);
+}
+
+/** Add hours to a datetime-local value, returning a datetime-local value ('' if inputs are incomplete). */
+export function addHoursToLocalValue(localValue: string, hours: number): string {
+  if (!localValue || !Number.isFinite(hours) || hours <= 0) return '';
+  const d = new Date(localValue);
+  if (isNaN(d.getTime())) return '';
+  return toDatetimeLocalValue(new Date(d.getTime() + hours * 3600000).toISOString());
+}

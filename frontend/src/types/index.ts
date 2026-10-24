@@ -45,6 +45,8 @@ export interface Hackathon {
   banner_path?: string;
   max_participants?: number;
   max_team_members?: number;
+  /** ISO time (UTC) after which participants can no longer submit; null = no deadline. */
+  submission_deadline?: string | null;
   created_by: number;
   created_at: string;
   problem_statements?: ProblemStatement[];

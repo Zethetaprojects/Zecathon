@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { formatError } from '../utils/formatError';
@@ -7,6 +7,7 @@ import DateTimeInput from '../components/DateTimeInput';
 import BackButton from '../components/BackButton';
 import RubricEditor from '../components/RubricEditor';
 import { DEFAULT_NON_TECH_RUBRIC, DEFAULT_TECH_RUBRIC, RubricRow, rowsToRubric } from '../utils/rubric';
+import { addHoursToLocalValue } from '../utils/hackathon';
 
 export default function CreateHackathon() {
   const [form, setForm] = useState({
@@ -16,7 +17,10 @@ export default function CreateHackathon() {
     durationHours: '',
     maxParticipants: '',
     maxTeamMembers: '',
+    deadline: '',
   });
+  // The deadline follows the hackathon end time until the organiser sets it themselves.
+  const [deadlineTouched, setDeadlineTouched] = useState(false);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [techCustom, setTechCustom] = useState(false);
   const [nonTechCustom, setNonTechCustom] = useState(false);
@@ -28,8 +32,13 @@ export default function CreateHackathon() {
   const navigate = useNavigate();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    setForm({ ...form, [e.target.name]: e.target.value });
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }));
   };
+
+  useEffect(() => {
+    if (deadlineTouched) return;
+    setForm((f) => ({ ...f, deadline: addHoursToLocalValue(f.startDate, parseInt(f.durationHours, 10)) }));
+  }, [form.startDate, form.durationHours, deadlineTouched]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,12 +78,19 @@ export default function CreateHackathon() {
       return;
     }
 
+    if (form.deadline && form.startDate && new Date(form.deadline) <= new Date(form.startDate)) {
+      setError('The submission deadline must be after the start time.');
+      setBusy(false);
+      return;
+    }
+
     try {
       const payload: any = { name: form.name, description: form.description };
       if (form.startDate) payload.start_date = new Date(form.startDate).toISOString();
       if (form.durationHours) payload.duration_hours = durationHours;
       if (maxParticipants !== undefined) payload.max_participants = maxParticipants;
       if (maxTeamMembers !== undefined) payload.max_team_members = maxTeamMembers;
+      if (form.deadline) payload.submission_deadline = new Date(form.deadline).toISOString();
       if (tech || nonTech) {
         payload.rubric = {};
         if (tech) payload.rubric.tech = tech;
@@ -162,6 +178,37 @@ export default function CreateHackathon() {
                   placeholder="e.g. 24"
                 />
               </div>
+            </div>
+
+            <div>
+              <div className="flex items-center justify-between gap-3 mb-2">
+                <label className="block text-xs pixel-caps text-slate-300">Submission deadline</label>
+                {form.deadline && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setDeadlineTouched(true);
+                      setForm((f) => ({ ...f, deadline: '' }));
+                    }}
+                    className="text-[11px] text-slate-400 hover:text-neon-pink"
+                  >
+                    No deadline
+                  </button>
+                )}
+              </div>
+              <DateTimeInput
+                name="deadline"
+                value={form.deadline}
+                onChange={(e) => {
+                  setDeadlineTouched(true);
+                  handleChange(e);
+                }}
+              />
+              <p className="text-[10px] text-slate-500 mt-2">
+                {form.deadline
+                  ? 'Participants cannot submit after this time (your local time zone). Organisers can still submit late on a team\'s behalf.'
+                  : 'No deadline: teams can submit at any time.'}
+              </p>
             </div>
 
             <div>

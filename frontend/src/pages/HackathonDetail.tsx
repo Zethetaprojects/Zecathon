@@ -7,7 +7,7 @@ import { formatError } from '../utils/formatError';
 import { isManagerRole } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
 import { useConfirm } from '../hooks/useConfirm';
-import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget } from '../utils/hackathon';
+import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget, formatDateTime, isPast } from '../utils/hackathon';
 import {
   DEFAULT_NON_TECH_RUBRIC,
   DEFAULT_TECH_RUBRIC,
@@ -20,6 +20,7 @@ import PageLayout from '../components/PageLayout';
 import BackButton from '../components/BackButton';
 import LoadingScreen from '../components/LoadingScreen';
 import RubricEditor from '../components/RubricEditor';
+import ExpandableText from '../components/ExpandableText';
 
 const statusStyles = {
   upcoming: 'bg-neon-purple/10 text-neon-purple border-neon-purple/20',
@@ -88,12 +89,12 @@ function ProblemStatementCard({
   index: number;
   editable: boolean;
   submission?: Submission;
+  /** Link to submit for the viewer's team; '' when submissions are closed; undefined when not in a team. */
   submitHref?: string;
   onSaved: () => void;
   onDeleted: () => void;
 }) {
   const confirm = useConfirm();
-  const [expanded, setExpanded] = useState(false);
   const [editing, setEditing] = useState(false);
   const [title, setTitle] = useState(ps.title);
   const [description, setDescription] = useState(ps.description ?? '');
@@ -105,7 +106,6 @@ function ProblemStatementCard({
   const locked = (ps.submission_count ?? 0) > 0;
   const lockReason = `Locked: ${ps.submission_count} team${ps.submission_count === 1 ? ' has' : 's have'} already submitted to this statement.`;
   const description_ = ps.description ?? '';
-  const long = description_.length > 320 || description_.split('\n').length > 6;
 
   const startEdit = () => {
     setTitle(ps.title);
@@ -226,18 +226,12 @@ function ProblemStatementCard({
 
           {description_ ? (
             <div className="mt-3">
-              <p className={`text-sm text-slate-300 leading-relaxed whitespace-pre-line ${long && !expanded ? 'line-clamp-5' : ''}`}>
-                {description_}
-              </p>
-              {long && (
-                <button
-                  type="button"
-                  onClick={() => setExpanded((v) => !v)}
-                  className="mt-1 text-xs text-neon-cyan hover:text-white transition"
-                >
-                  {expanded ? 'Show less' : 'Read full statement'}
-                </button>
-              )}
+              <ExpandableText
+                text={description_}
+                lines={5}
+                className="text-sm text-slate-300 leading-relaxed"
+                moreLabel="Read full statement"
+              />
             </div>
           ) : (
             <p className="mt-3 text-sm text-slate-500 italic">No description provided{ps.file_path ? '; see the attached brief.' : '.'}</p>
@@ -258,6 +252,9 @@ function ProblemStatementCard({
                 </svg>
                 Open brief · {fileTypeLabel(ps.file_path)}
               </a>
+            )}
+            {submitHref === '' && !submission && (
+              <span className="px-3 py-1.5 rounded-lg text-xs text-neon-pink border border-neon-pink/30">Submissions closed</span>
             )}
             {submitHref && !submission && (
               <Link to={submitHref} className="px-3 py-1.5 rounded-lg neon-btn neon-btn-primary text-xs">
@@ -513,6 +510,8 @@ export default function HackathonDetail() {
   const bannerUrl = resolveBannerUrl(hackathon.banner_path);
   const statements = hackathon.problem_statements ?? [];
   const teamsHref = `/hackathons/${hackathonId}/teams`;
+  const deadline = hackathon.submission_deadline;
+  const submissionsClosed = isPast(deadline);
 
   // One clear next step per role instead of a generic "manage" button.
   const primaryAction = isManager
@@ -573,6 +572,15 @@ export default function HackathonDetail() {
           <div>
             <p className="text-sm text-white font-semibold">{primaryAction.hint}</p>
             <p className="text-xs text-slate-400">{formatHackathonDateRange(hackathon.start_date, hackathon.end_date)}</p>
+            {deadline && (
+              <p className={`text-xs mt-1 ${submissionsClosed ? 'text-neon-pink' : 'text-neon-yellow'}`}>
+                {submissionsClosed ? (
+                  <>Submissions closed {formatDateTime(deadline)}</>
+                ) : (
+                  <Countdown targetDate={deadline} label="Submissions close in" />
+                )}
+              </p>
+            )}
           </div>
           <div className="flex flex-wrap gap-3">
             <Link to={teamsHref} className="px-5 py-2.5 rounded neon-btn neon-btn-primary text-xs">
@@ -596,7 +604,7 @@ export default function HackathonDetail() {
         )}
 
         {/* Key facts */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-8">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 mb-8">
           {[
             { k: 'Status', v: status.label },
             { k: 'Duration', v: hackathon.duration_hours ? `${hackathon.duration_hours} hours` : 'Not set' },
@@ -604,6 +612,10 @@ export default function HackathonDetail() {
             {
               k: 'Team size',
               v: hackathon.max_team_members ? `Up to ${hackathon.max_team_members}` : 'No limit',
+            },
+            {
+              k: submissionsClosed ? 'Submissions closed' : 'Submission deadline',
+              v: deadline ? formatDateTime(deadline) : 'No deadline',
             },
           ].map((item) => (
             <div key={item.k} className="p-4 rounded-xl bg-black/20 border border-white/10">
@@ -698,7 +710,13 @@ export default function HackathonDetail() {
                   index={i}
                   editable={unlocked && canManageStatements}
                   submission={mySubmissions.find((s) => s.problem_statement_id === ps.id)}
-                  submitHref={myTeam && can('submit_project') ? `/hackathons/${hackathonId}/submit/${myTeam.id}/${ps.id}` : undefined}
+                  submitHref={
+                    myTeam && can('submit_project')
+                      ? submissionsClosed
+                        ? ''
+                        : `/hackathons/${hackathonId}/submit/${myTeam.id}/${ps.id}`
+                      : undefined
+                  }
                   onSaved={() => {
                     fetchHackathon();
                     flash('Problem statement updated.');

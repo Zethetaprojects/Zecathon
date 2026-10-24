@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { teamsApi, submissionsApi } from '../api/teams';
 import { Hackathon, Team, TeamMember, ProblemStatement, Submission, Evaluation, isFallbackScore } from '../types';
 import { formatError } from '../utils/formatError';
 import { isManagerRole } from '../utils/role';
+import { formatDateTime, isPast } from '../utils/hackathon';
 import { useAuth } from '../hooks/useAuth';
 import { useConfirm } from '../hooks/useConfirm';
 import PageLayout from '../components/PageLayout';
@@ -12,6 +13,7 @@ import EvaluationReport from '../components/EvaluationReport';
 import BackButton from '../components/BackButton';
 import LoadingScreen from '../components/LoadingScreen';
 import CopyButton from '../components/CopyButton';
+import Countdown from '../components/Countdown';
 
 const AVATAR_COLORS = ['bg-neon-pink/20 text-neon-pink', 'bg-neon-cyan/20 text-neon-cyan', 'bg-neon-purple/20 text-neon-purple', 'bg-neon-yellow/15 text-neon-yellow'];
 
@@ -47,6 +49,24 @@ function StatusPill({ submission }: { submission?: Submission }) {
   );
 }
 
+interface BulkResult {
+  label: string;
+  ok: boolean;
+  detail: string;
+}
+
+interface BulkState {
+  running: boolean;
+  total: number;
+  done: number;
+  current?: string;
+  results: BulkResult[];
+  /** Why the run ended early, if it did. */
+  stoppedReason?: string;
+}
+
+const sleep = (ms: number) => new Promise((resolve) => window.setTimeout(resolve, ms));
+
 export default function HackathonTeams() {
   const { id } = useParams<{ id: string }>();
   const hackathonId = Number(id);
@@ -81,6 +101,8 @@ export default function HackathonTeams() {
   const [addMemberUser, setAddMemberUser] = useState<Record<number, string>>({});
   const [addMemberBusy, setAddMemberBusy] = useState<Record<number, boolean>>({});
   const [memberBusy, setMemberBusy] = useState<Record<number, boolean>>({});
+  const [bulk, setBulk] = useState<BulkState | null>(null);
+  const stopRequested = useRef(false);
 
   const fetchHackathon = () =>
     hackathonsApi
@@ -97,11 +119,20 @@ export default function HackathonTeams() {
 
   const fetchSubmissions = (currentTeams: Team[]) => {
     if (currentTeams.length === 0) return;
-    // Participants may only read their own team's submissions; load teams one by one
-    // so a 403 on someone else's team never hides their own.
-    const visible = isParticipantView
-      ? currentTeams.filter((t) => t.members?.some((m) => m.user_id === user?.id))
-      : currentTeams;
+    if (!isParticipantView) {
+      // Organisers and judges: one request for the whole hackathon (was one per team).
+      submissionsApi
+        .listByHackathon(hackathonId)
+        .then((res) => {
+          const map: Record<number, Submission[]> = {};
+          for (const sub of res.data) (map[sub.team_id] ??= []).push(sub);
+          setSubmissionsByTeam(map);
+        })
+        .catch((err) => setError(formatError(err, 'Failed to load submissions')));
+      return;
+    }
+    // Participants may only read their own team's submissions.
+    const visible = currentTeams.filter((t) => t.members?.some((m) => m.user_id === user?.id));
     Promise.allSettled(visible.map((t) => submissionsApi.listByTeam(t.id))).then((results) => {
       const map: Record<number, Submission[]> = {};
       let firstError: any = null;
@@ -123,6 +154,16 @@ export default function HackathonTeams() {
     fetchSubmissions(teams);
   }, [teams]);
 
+  useEffect(() => {
+    if (!bulk?.running) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', warn);
+    return () => window.removeEventListener('beforeunload', warn);
+  }, [bulk?.running]);
+
   const flash = (message: string) => {
     setNotice(message);
     window.setTimeout(() => setNotice(''), 4000);
@@ -132,6 +173,7 @@ export default function HackathonTeams() {
   const isLeaderOf = (team: Team) => team.members?.some((m) => m.user_id === user?.id && m.role === 'leader') ?? false;
   const canManageMembersOf = (team: Team) => can('manage_team_members') && (isManager || isLeaderOf(team));
   const problemStatements = hackathon?.problem_statements ?? [];
+  const submissionsClosed = isPast(hackathon?.submission_deadline);
 
   // ---- actions --------------------------------------------------------------
 
@@ -284,6 +326,68 @@ export default function HackathonTeams() {
     }
   };
 
+  // Submissions without an evaluation, in team order then problem statement order.
+  const pendingQueue = useMemo(() => {
+    const order = new Map((hackathon?.problem_statements ?? []).map((ps, i) => [ps.id, i]));
+    const titles = new Map((hackathon?.problem_statements ?? []).map((ps) => [ps.id, ps.title]));
+    return teams.flatMap((team) =>
+      (submissionsByTeam[team.id] ?? [])
+        .filter((sub) => !sub.evaluation)
+        .sort((a, b) => (order.get(a.problem_statement_id) ?? 0) - (order.get(b.problem_statement_id) ?? 0))
+        .map((sub) => ({ sub, label: `${team.name} — ${titles.get(sub.problem_statement_id) ?? 'Problem statement'}` })),
+    );
+  }, [teams, submissionsByTeam, hackathon?.problem_statements]);
+
+  /** Evaluate every pending submission one at a time (serially), with progress and a stop button. */
+  const runBulkEvaluation = async () => {
+    const queue = pendingQueue;
+    if (queue.length === 0) return;
+    const ok = await confirm({
+      title: `Evaluate ${queue.length} pending submission${queue.length === 1 ? '' : 's'}?`,
+      message: (
+        <>
+          Submissions are evaluated one at a time, which can take up to a minute each (roughly {queue.length} minute
+          {queue.length === 1 ? '' : 's'} in total). Keep this page open until it finishes. You can stop after the current
+          submission at any time. Already-evaluated submissions are not touched.
+        </>
+      ),
+      confirmLabel: 'Start evaluating',
+    });
+    if (!ok) return;
+
+    stopRequested.current = false;
+    setError('');
+    setBulk({ running: true, total: queue.length, done: 0, results: [] });
+    let stoppedReason: string | undefined;
+
+    for (const { sub, label } of queue) {
+      if (stopRequested.current) {
+        stoppedReason = 'Stopped by you.';
+        break;
+      }
+      setBulk((b) => (b ? { ...b, current: label } : b));
+      let result: BulkResult;
+      try {
+        const { data } =
+          sub.type === 'tech' ? await submissionsApi.evaluateTech(sub.id) : await submissionsApi.evaluateNonTech(sub.id);
+        result = { label, ok: true, detail: `${data.total_score} pts · ${data.verdict}` };
+      } catch (err: any) {
+        result = { label, ok: false, detail: formatError(err, 'Evaluation failed') };
+        if (err?.response?.status === 503) {
+          // The AI evaluator is down; every remaining submission would fail the same way.
+          stoppedReason = 'The AI evaluator is unavailable, so the run was paused. Try again later; finished scores are kept.';
+        }
+      }
+      setBulk((b) => (b ? { ...b, done: b.done + 1, results: [...b.results, result] } : b));
+      fetchSubmissions(teams);
+      if (stoppedReason) break;
+      await sleep(1000); // a short gap between requests keeps us clear of AI rate limits
+    }
+
+    setBulk((b) => (b ? { ...b, running: false, current: undefined, stoppedReason } : b));
+    fetchSubmissions(teams);
+  };
+
   // ---- shared pieces ----------------------------------------------------------
 
   const memberList = (team: Team) => {
@@ -412,7 +516,7 @@ export default function HackathonTeams() {
                   <button
                     type="button"
                     onClick={() => evaluate(sub, Boolean(ev))}
-                    disabled={evaluating[sub.id]}
+                    disabled={evaluating[sub.id] || bulk?.running}
                     className={`px-3 py-1.5 rounded-lg text-xs transition disabled:opacity-60 ${
                       ev ? 'border border-white/15 text-slate-300 hover:text-neon-pink hover:border-neon-pink/50' : 'neon-btn neon-btn-primary'
                     }`}
@@ -420,9 +524,15 @@ export default function HackathonTeams() {
                     {evaluating[sub.id] ? 'Evaluating… up to a minute' : ev ? 'Re-run' : 'Evaluate'}
                   </button>
                 )}
-                {!sub && canSubmit && (
-                  <Link to={`/hackathons/${hackathonId}/submit/${team.id}/${ps.id}`} className="px-3 py-1.5 rounded-lg neon-btn neon-btn-cyan text-xs">
-                    {onBehalf ? 'Submit on behalf' : 'Submit project'}
+                {!sub && canSubmit && submissionsClosed && !isManager && (
+                  <span className="px-3 py-1.5 rounded-lg text-xs text-neon-pink border border-neon-pink/30">Submissions closed</span>
+                )}
+                {!sub && canSubmit && (!submissionsClosed || isManager) && (
+                  <Link
+                    to={`/hackathons/${hackathonId}/submit/${team.id}/${ps.id}`}
+                    className={`px-3 py-1.5 rounded-lg text-xs ${submissionsClosed ? 'border border-neon-yellow/50 text-neon-yellow hover:bg-neon-yellow/10' : 'neon-btn neon-btn-cyan'}`}
+                  >
+                    {submissionsClosed ? 'Submit late (organiser)' : onBehalf ? 'Submit on behalf' : 'Submit project'}
                   </Link>
                 )}
               </div>
@@ -457,6 +567,7 @@ export default function HackathonTeams() {
 
   const otherTeams = teams.filter((t) => t.id !== myTeam?.id);
   const teamLimit = hackathon.max_team_members;
+  const deadline = hackathon.submission_deadline;
 
   return (
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
@@ -476,6 +587,15 @@ export default function HackathonTeams() {
               {problemStatements.length === 1 ? '' : 's'}
               {teamLimit ? ` · up to ${teamLimit} per team` : ''}
             </p>
+            {deadline && (
+              <p className={`text-xs mt-1 ${submissionsClosed ? 'text-neon-pink' : 'text-neon-yellow'}`}>
+                {submissionsClosed ? (
+                  <>Submissions closed {formatDateTime(deadline)}</>
+                ) : (
+                  <Countdown targetDate={deadline} label="Submissions close in" />
+                )}
+              </p>
+            )}
           </div>
           {can('view_leaderboard') && (
             <Link to={`/hackathons/${hackathonId}/leaderboard`} className="px-5 py-2.5 rounded neon-btn neon-btn-cyan text-xs">
@@ -493,7 +613,7 @@ export default function HackathonTeams() {
 
         {report && (
           <div
-            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80"
             onClick={(e) => {
               if (e.target === e.currentTarget) setReport(null);
             }}
@@ -616,6 +736,86 @@ export default function HackathonTeams() {
               </section>
             )}
           </>
+        )}
+
+        {/* ---------------- Bulk evaluation ---------------- */}
+        {!isParticipantView && canEvaluate && (pendingQueue.length > 0 || bulk) && (
+          <section className="glass-panel p-5 sm:p-6 mb-6 border border-neon-purple/30" aria-live="polite">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h2 className="font-pixel text-xs text-white mb-1">BULK EVALUATION</h2>
+                <p className="text-xs text-slate-400">
+                  {bulk?.running
+                    ? `Evaluating ${Math.min(bulk.done + 1, bulk.total)} of ${bulk.total}. Keep this page open.`
+                    : pendingQueue.length > 0
+                      ? `${pendingQueue.length} submission${pendingQueue.length === 1 ? ' is' : 's are'} waiting for evaluation. They run one at a time.`
+                      : 'All submissions have been evaluated.'}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                {bulk?.running ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      stopRequested.current = true;
+                      setBulk((b) => (b ? { ...b, current: `${b.current ?? ''} (stopping after this one)` } : b));
+                    }}
+                    className="px-4 py-2 rounded text-xs border border-neon-pink/50 text-neon-pink hover:bg-neon-pink/10 transition"
+                  >
+                    Stop after current
+                  </button>
+                ) : (
+                  <>
+                    {pendingQueue.length > 0 && (
+                      <button type="button" onClick={runBulkEvaluation} className="px-4 py-2 rounded neon-btn neon-btn-primary text-xs">
+                        Evaluate all pending ({pendingQueue.length})
+                      </button>
+                    )}
+                    {bulk && (
+                      <button
+                        type="button"
+                        onClick={() => setBulk(null)}
+                        className="px-3 py-2 rounded text-xs border border-white/10 text-slate-400 hover:text-white transition"
+                      >
+                        Dismiss
+                      </button>
+                    )}
+                  </>
+                )}
+              </div>
+            </div>
+
+            {bulk && (
+              <div className="mt-4">
+                <div className="h-2 rounded-full bg-white/10 overflow-hidden">
+                  <div
+                    className="h-full bg-gradient-to-r from-neon-pink to-neon-purple transition-all duration-500"
+                    style={{ width: `${bulk.total ? (bulk.done / bulk.total) * 100 : 0}%` }}
+                  />
+                </div>
+                <div className="flex flex-wrap justify-between gap-2 mt-2 text-[11px] text-slate-400">
+                  <span>{bulk.current ? `Now: ${bulk.current}` : bulk.running ? 'Starting…' : 'Finished'}</span>
+                  <span>
+                    {bulk.results.filter((r) => r.ok).length} scored · {bulk.results.filter((r) => !r.ok).length} failed ·{' '}
+                    {bulk.done}/{bulk.total}
+                  </span>
+                </div>
+                {bulk.stoppedReason && <p className="mt-3 text-xs text-neon-yellow">{bulk.stoppedReason}</p>}
+                {bulk.results.length > 0 && (
+                  <ul className="mt-3 max-h-48 overflow-y-auto space-y-1 text-xs">
+                    {bulk.results.map((r, i) => (
+                      <li key={i} className={`flex gap-2 ${r.ok ? 'text-slate-300' : 'text-neon-pink'}`}>
+                        <span aria-hidden="true">{r.ok ? '✓' : '✗'}</span>
+                        <span className="min-w-0">
+                          <span className="text-white">{r.label}</span> — {r.detail}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </section>
         )}
 
         {/* ---------------- Organiser / judge view ---------------- */}

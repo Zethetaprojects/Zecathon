@@ -23,6 +23,8 @@ export const submissionsApi = {
     }),
   get: (id: number) => api.get<Submission>(`/submissions/${id}`),
   listByTeam: (teamId: number) => api.get<Submission[]>(`/submissions?team_id=${teamId}`),
+  /** All submissions (with evaluations) in a hackathon; organisers and judges only. */
+  listByHackathon: (hackathonId: number) => api.get<Submission[]>(`/submissions/hackathon/${hackathonId}`),
   evaluateTech: (id: number) => api.post<Evaluation>(`/evaluate/tech/${id}`),
   evaluateNonTech: (id: number) => api.post<Evaluation>(`/evaluate/non-tech/${id}`),
   retryTech: (id: number) => api.post<Evaluation>(`/evaluate/tech/${id}/retry`),

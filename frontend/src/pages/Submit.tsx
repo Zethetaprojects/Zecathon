@@ -6,6 +6,9 @@ import { Hackathon, Team, ProblemStatement } from '../types';
 import { formatError } from '../utils/formatError';
 import { useAuth } from '../hooks/useAuth';
 import { useConfirm } from '../hooks/useConfirm';
+import { isManagerRole } from '../utils/role';
+import { formatDateTime, isPast } from '../utils/hackathon';
+import Countdown from '../components/Countdown';
 import PageLayout from '../components/PageLayout';
 import BackButton from '../components/BackButton';
 import LoadingScreen from '../components/LoadingScreen';
@@ -114,6 +117,27 @@ export default function Submit() {
     );
   }
 
+  const deadline = hackathon.submission_deadline;
+  const closed = isPast(deadline);
+  const isManager = isManagerRole(user?.role);
+
+  if (closed && !isManager) {
+    return (
+      <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto glass-panel p-8 text-center">
+          <h2 className="font-pixel text-lg text-neon-pink mb-2">SUBMISSIONS CLOSED</h2>
+          <p className="text-slate-300 mb-4">
+            The deadline for {hackathon.name} was {formatDateTime(deadline)}. If you had a technical problem, contact the
+            organisers; they can submit on your team's behalf.
+          </p>
+          <Link to={`/hackathons/${hackathonId}/teams`} className="text-neon-cyan hover:text-white text-sm">
+            ← Back to my team
+          </Link>
+        </div>
+      </PageLayout>
+    );
+  }
+
   if (!canSubmit) {
     return (
       <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
@@ -151,6 +175,17 @@ export default function Submit() {
               </div>
             ))}
           </div>
+          {deadline && !closed && (
+            <p className="mb-6 text-xs text-neon-yellow">
+              <Countdown targetDate={deadline} label="Submissions close in" /> ({formatDateTime(deadline)})
+            </p>
+          )}
+          {closed && isManager && (
+            <div className="mb-6 px-4 py-3 rounded bg-neon-yellow/10 border border-neon-yellow/40 text-neon-yellow text-sm">
+              The submission deadline passed on {formatDateTime(deadline)}. As an organiser you can still submit on this team's
+              behalf, for example after a technical problem.
+            </div>
+          )}
           {ps.description && (
             <details className="mb-6 rounded-lg bg-black/20 border border-white/10 p-4 text-sm text-slate-300">
               <summary className="cursor-pointer text-xs text-neon-cyan">Re-read the problem statement</summary>
