@@ -259,4 +259,12 @@
 - [x] 32.5 Rubric table editor; backend rejects rubrics not totalling 1000
 - [x] 32.6 Hide team invite codes from non-members
 - [x] 32.7 Validation: pytest 68, build, validate_flow
-- [ ] 32.8 Commit and push (awaiting user approval), deploy with update-vm.sh, test in browser
+- [x] 32.8 Commit and push
+
+## Phase 33 — Deadline and bulk evaluation
+- [x] 33.1 UTC timestamps with "Z" (fixes local-time display shift)
+- [x] 33.2 Submission deadline (model, migration, enforcement, organiser late submit, UI)
+- [x] 33.3 Serial bulk evaluation with progress/stop/503 auto-pause
+- [x] 33.4 ExpandableText for problem statements
+- [x] 33.5 Validation: pytest 74, build, validate_flow
+- [ ] 33.6 Commit and push (awaiting user approval), deploy, browser test

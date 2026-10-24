@@ -1,9 +1,32 @@
 # Current State
 
+> **2026-10-24: platform renamed ZECATHON → ZECKATHON (user-visible branding only).** Internal identifiers deliberately keep `zecathon` (DB name/user, Docker volumes/containers, `/opt/zecathon`, `/etc/zecathon`, `zecathon.service`, GitHub repo `Zethetaprojects/Zecathon`, `ZECATHON_ENV_FILE`): renaming them would detach the live deployment from its data.
+
 - **Date**: 2026-10-15
 - **Repo**: full-stack hackathon evaluation platform (ZECATHON). Phase 30 (production hardening after the VM outage) is implemented locally, **not yet committed or deployed**.
 - **Production VM** (`/opt/zecathon`, GCP): was down 2026-09-12 → 2026-10-15; **recovered on 2026-10-15** (see Phase 31 "VM status" and "Incident").
 - **AGENT_CONFIG**: maintained. Phases are listed newest first.
+
+## Phase 35 — Scale for a 500-student event (2026-10-24, uncommitted)
+- Benchmark (local SQLite, 170 teams × 3, `scratchpad/bench_scale.py`): hackathon detail 687 → 8 queries (244 → 53 ms), team list 682 → 6 queries (233 → 36 ms), organiser team page 170 requests/680 queries → 1 request/4 queries via new `GET /api/submissions/hackathon/{id}` (managers/judges, includes evaluations; also fixes scores never showing on the organiser team page because the per-team list returns SubmissionOut without evaluations).
+- selectinload for teams/members/users and statement submissions; Postgres pool 5+5 per worker with pre_ping; gunicorn workers cap 8 (`GUNICORN_WORKERS` override).
+- GitHub client rewrite: repo metadata first (default branch, canonical owner after transfer), token header, 15 s timeout with one retry; rate limits/401/5xx/network raise `GitHubUnavailableError` → evaluate returns 503 (bulk run pauses) instead of scoring NOT ASSESSABLE 0; missing/private repo → clear REPOSITORY_NOT_FOUND reason; document submissions with an unreadable supporting repo get a review flag. Without GITHUB_TOKEN GitHub allows 60 requests/hour (≈3–5 repos).
+- Tests 82 passed; build ✅; validate_flow ✅ (real GitHub).
+- Event ops checklist given to user: deploy, GITHUB_TOKEN from ZethetaIntern, Gemini billing/quota, VM e2-standard-4 for the event (static IP first), Cloudflare SSL Full, early registration, hide leaderboard until results, backups before/after deadline, bulk evaluation ≈1 min per submission.
+
+## Phase 34 — Performance, rename, domain support (2026-10-24, uncommitted)
+- Slowness diagnosis: server answers in 70–140 ms; the lag was client-side. Removed backdrop-filter blur from glass panels/footer/overlays (re-blurred over the animated canvas every frame), rewrote SpaceBackground (mounted once in App, CSS gradient + pixel stars at 30 fps, paused when hidden, static for reduced motion), replaced the JS-following 512px cursor with a native 32px `cursor.png` (hotspot at the arrow tip).
+- Service worker v2: no longer caches /api responses (private data on shared PCs), network-first navigations (deploys show immediately), cache-first only for fingerprinted assets/images.
+- Rebrand to ZECKATHON / Zeckathon in all user-visible text (51 replacements); identifiers unchanged (see note at top).
+- Domain live: https://www.zeckathon.com / https://zeckathon.com via Cloudflare proxy (Cloudflare edge certificate); direct IP access now times out (firewall appears restricted to Cloudflare). New `gcp/cloudflare-realip.conf` (installed by update-vm.sh) restores visitor IPs from CF-Connecting-IP; without it all students shared Cloudflare IPs for rate limiting. Rate limits retuned for campus NAT: register 30/10 min per IP, login 100/5 min per IP plus 10/5 min per IP+username. deploy-vm.sh skips Let's Encrypt when the domain is Cloudflare-proxied. Pending: user to confirm Cloudflare SSL mode = Full.
+- deploy-vm.sh: verifies DNS points at the VM before certbot, adds --redirect, sets CORS_ORIGINS to the domain. gcp/README documents static IP + A record + rerun.
+
+## Phase 33 — Submission deadline, bulk evaluation, UTC timestamps (2026-10-16, uncommitted)
+- Timezone bug: timestamps are stored as naive UTC but were serialized without a zone, so browsers read them as local time (every displayed time off by the viewer's UTC offset, 5h30 in India). `schemas.BaseModel` now serializes naive datetimes with a trailing "Z"; hackathon inputs with offsets are normalised to naive UTC (`to_naive_utc`).
+- Submission deadline: `Hackathon.submission_deadline` (migration adds the column). Participants get 403 after it; the hackathon's managers can still submit late on a team's behalf. Must be after the start time; explicit null removes it. Create page pre-fills it with the end time; edit page includes it in the change summary. Countdown / "Submissions closed" shown on hackathon, teams and submit pages.
+- Bulk evaluation (organisers and judges, teams page): "Evaluate all pending (N)" runs the existing evaluate endpoints strictly one at a time in the browser, with progress, stop-after-current, per-submission results, a 1 s gap between calls, a leave-page warning, and an automatic stop on HTTP 503 (AI unavailable). Already-evaluated submissions are never touched.
+- "Read full statement" toggle now measures real overflow (`components/ExpandableText.tsx`) instead of guessing from character count.
+- Validation: pytest 74 passed (new tests/test_deadline.py), build ✅, validate_flow ✅. UI not visually verified.
 
 ## Phase 32 — UX fixes from live testing (2026-10-16, uncommitted)
 - Copy buttons: `utils/clipboard.ts` falls back to execCommand because `navigator.clipboard` is unavailable over plain HTTP (the VM is served on a bare IP); `CopyButton` shows Copied!/manual-copy feedback. Leaderboard share link uses it too.

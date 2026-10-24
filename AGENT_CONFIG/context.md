@@ -1,5 +1,7 @@
 # Hackathon Evaluation Platform — Requirements & Context
 
+> **2026-10-24: platform renamed ZECATHON → ZECKATHON (user-visible branding only).** Internal identifiers deliberately keep `zecathon` (DB name/user, Docker volumes/containers, `/opt/zecathon`, `/etc/zecathon`, `zecathon.service`, GitHub repo `Zethetaprojects/Zecathon`, `ZECATHON_ENV_FILE`): renaming them would detach the live deployment from its data.
+
 ## User's Goal
 Build a web application for running hackathons where:
 - Users can log in and create hackathons.
