@@ -179,7 +179,7 @@ export default function SuperadminSettings() {
                 <table className="w-full text-left border-collapse">
                   <thead>
                     <tr className="border-b border-white/10 text-xs pixel-caps text-slate-400">
-                      <th className="py-3 px-4 sticky left-0 bg-space-900/95 backdrop-blur">Feature</th>
+                      <th className="py-3 px-4 sticky left-0 bg-space-900">Feature</th>
                       {ROLES.map((role) => (
                         <th key={role} className="py-3 px-4 text-center min-w-[110px]">
                           {roleLabel(role)}
@@ -203,7 +203,7 @@ export default function SuperadminSettings() {
                             key={feature.key}
                             className="border-b border-white/10 hover:bg-white/5 transition"
                           >
-                            <td className="py-3 px-4 text-sm text-slate-300 sticky left-0 bg-space-900/95 backdrop-blur">
+                            <td className="py-3 px-4 text-sm text-slate-300 sticky left-0 bg-space-900">
                               {feature.label}
                             </td>
                             {ROLES.map((role) => (

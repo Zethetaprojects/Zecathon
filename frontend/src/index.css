@@ -89,10 +89,12 @@ body {
   letter-spacing: 0.12em;
 }
 
-/* Glass card panel */
+/* Glass card panel.
+   No backdrop-filter: blurring the animated starfield behind every panel forced the
+   browser to re-blur each panel on every frame, which made the whole site sluggish.
+   A more opaque background gives the same look at no cost. */
 .glass-panel {
-  background: var(--space-panel);
-  backdrop-filter: blur(12px);
+  background: rgba(17, 22, 61, 0.88);
   border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 0.75rem;
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
@@ -203,7 +205,6 @@ body {
   .no-print,
   nav,
   footer,
-  .custom-cursor,
   .egg-mascot,
   .easter-egg {
     display: none !important;
@@ -336,10 +337,19 @@ body {
   right: 46px;
 }
 
-/* Custom cursor */
-body.custom-cursor-active,
-body.custom-cursor-active * {
-  cursor: none !important;
+/* Custom cursor: drawn natively by the browser (never lags behind the mouse).
+   The hotspot is the arrow tip. Clickable things keep the familiar hand pointer. */
+body {
+  cursor: url('/cursor.png') 11 7, auto;
+}
+
+a,
+button,
+summary,
+select,
+label[for],
+[role='button'] {
+  cursor: pointer;
 }
 
 /* Micro-interactions */

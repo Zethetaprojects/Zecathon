@@ -62,7 +62,7 @@ export function ConfirmProvider({ children }: { children: React.ReactNode }) {
       {options &&
         createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center px-4" role="dialog" aria-modal="true">
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => close(false)} />
+            <div className="absolute inset-0 bg-black/80" onClick={() => close(false)} />
             <div
               className={`relative glass-panel p-6 rounded-xl max-w-md w-full shadow-2xl border ${
                 tone === 'danger' ? 'border-neon-pink/40' : 'border-neon-yellow/30'

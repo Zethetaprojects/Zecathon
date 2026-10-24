@@ -4,6 +4,7 @@ import { ConfirmProvider } from './hooks/useConfirm';
 import { MusicProvider } from './components/MusicProvider';
 import { EasterEggProvider } from './hooks/useEasterEggs';
 import ErrorBoundary from './components/ErrorBoundary';
+import SpaceBackground from './components/SpaceBackground';
 import EasterEggOverlay from './components/EasterEggOverlay';
 import ConsoleEasterEgg from './components/ConsoleEasterEgg';
 import TabAttention from './components/TabAttention';
@@ -36,6 +37,8 @@ function App() {
     <ErrorBoundary>
       <MusicProvider>
         <EasterEggProvider>
+          {/* Mounted once for the whole app so page changes don't rebuild it. */}
+          <SpaceBackground />
           <AuthProvider>
             <ConfirmProvider>
               <EasterEggOverlay />

@@ -366,7 +366,7 @@ export default function AdminDashboard() {
         )}
         {confirm && (
           <div className="fixed inset-0 z-50 flex items-center justify-center px-4">
-            <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" onClick={() => setConfirm(null)} />
+            <div className="absolute inset-0 bg-black/80" onClick={() => setConfirm(null)} />
             <div className="relative glass-panel p-6 rounded-xl max-w-md w-full border border-white/10 shadow-2xl">
               <h3 className="font-pixel text-sm text-white mb-3">{confirm.title}</h3>
               <p className="text-sm text-slate-300 mb-6 leading-relaxed">{confirm.message}</p>

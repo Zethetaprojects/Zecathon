@@ -93,7 +93,7 @@ export default function EasterEggHunt() {
         createPortal(
           <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 sm:p-6 pointer-events-none">
             <div
-              className="absolute inset-0 z-0 bg-black/80 backdrop-blur-sm pointer-events-auto"
+              className="absolute inset-0 z-0 bg-black/85 pointer-events-auto"
               onClick={() => setOpen(false)}
             />
             <div
