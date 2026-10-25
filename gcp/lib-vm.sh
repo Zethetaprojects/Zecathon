@@ -164,6 +164,26 @@ remove_legacy_backend_env() {
   fi
 }
 
+# Add the no-cache/long-cache rules to an existing nginx site (keeps certbot/SSL edits).
+# Inserted once, right before the "# Backend API" block; rolled back if nginx rejects it.
+patch_nginx_caching() {
+  local site="/etc/nginx/sites-available/zecathon"
+  [[ -f "$site" ]] || return 0
+  grep -q "location = /sw.js" "$site" && return 0
+  cp "$site" "${site}.bak"
+  awk -v snippet="${APP_DIR}/gcp/nginx-cache.conf" '
+    /# Backend API/ && !done { while ((getline line < snippet) > 0) print line; print ""; done = 1 }
+    { print }
+  ' "${site}.bak" > "$site"
+  if nginx -t 2>/dev/null; then
+    systemctl reload nginx
+    log_ok "nginx: page shell and service worker are no longer cached; build assets cached for a year."
+  else
+    mv "${site}.bak" "$site"
+    log_warn "Could not add nginx caching rules (config test failed); left the site unchanged."
+  fi
+}
+
 # Behind Cloudflare, restore each visitor's real IP (needed for per-IP rate limits).
 install_cloudflare_realip() {
   local target="/etc/nginx/conf.d/cloudflare-realip.conf"
