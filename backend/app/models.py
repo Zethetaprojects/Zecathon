@@ -154,6 +154,10 @@ class Hackathon(Base):
     max_team_members = Column(Integer, nullable=True, default=6)  # max members per team
     # After this moment (UTC) participants can no longer submit. NULL = no deadline.
     submission_deadline = Column(DateTime, nullable=True)
+    # Organiser-written rules shown on the hackathon and submit pages.
+    submission_guidelines = Column(Text, nullable=True)
+    # When true a team may submit to only one problem statement (its chosen track).
+    one_statement_per_team = Column(Boolean, nullable=True, default=False)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 
@@ -170,6 +174,9 @@ class ProblemStatement(Base):
     title = Column(String, nullable=False)
     description = Column(Text)
     file_path = Column(String, nullable=True)
+    # Optional scoring rubric for this statement only ({"tech": {...}, "non_tech": {...}});
+    # falls back to the hackathon rubric, then the platform default.
+    rubric = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 
     hackathon = relationship("Hackathon", back_populates="problem_statements")

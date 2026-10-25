@@ -1,3 +1,4 @@
+import json
 import logging
 
 from fastapi import Depends, HTTPException, status
@@ -6,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_active_user, is_platform_admin
 from app.database import get_db
 from app.models import Hackathon, Team, User, UserRole
-from app.schemas import TeamOut
+from app.schemas import TeamOut, check_rubric
 
 logger = logging.getLogger(__name__)
 
@@ -44,6 +45,18 @@ def team_out(team: Team, user: User, hackathon: Hackathon | None = None) -> Team
     if not is_member and not can_manage_hackathon(user, hackathon or team.hackathon):
         out = out.model_copy(update={"join_code": None})
     return out
+
+
+def parse_rubric_form(value: str | None) -> dict | None:
+    """Parse a JSON rubric sent as a multipart form field; 400 if it is invalid."""
+    if value is None or not value.strip() or value.strip() == "null":
+        return None
+    try:
+        return check_rubric(json.loads(value))
+    except json.JSONDecodeError:
+        raise HTTPException(status_code=400, detail="Rubric must be valid JSON")
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc))
 
 
 def is_manager(user: User) -> bool:

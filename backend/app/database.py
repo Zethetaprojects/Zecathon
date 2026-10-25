@@ -25,6 +25,11 @@ MIGRATION_SPECS = {
         ("max_participants", "INTEGER"),
         ("max_team_members", "INTEGER"),
         ("submission_deadline", "TIMESTAMP"),
+        ("submission_guidelines", "TEXT"),
+        ("one_statement_per_team", "BOOLEAN"),
+    ],
+    "problem_statements": [
+        ("rubric", "JSON"),
     ],
     "teams": [
         ("join_code", "VARCHAR"),

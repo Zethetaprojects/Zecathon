@@ -20,6 +20,7 @@ from app.schemas import (
     ProblemStatementOut,
 )
 from app.services.file_storage import save_upload
+from app.routers.common import parse_rubric_form
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -84,6 +85,8 @@ def create_hackathon(
         max_participants=payload.max_participants,
         max_team_members=payload.max_team_members,
         submission_deadline=payload.submission_deadline,
+        submission_guidelines=payload.submission_guidelines,
+        one_statement_per_team=bool(payload.one_statement_per_team),
         created_by=current_user.id,
     )
     db.add(hackathon)
@@ -197,6 +200,11 @@ def update_hackathon(
     if "max_team_members" in payload.model_fields_set:
         hackathon.max_team_members = payload.max_team_members
 
+    if "submission_guidelines" in payload.model_fields_set:
+        hackathon.submission_guidelines = payload.submission_guidelines
+    if payload.one_statement_per_team is not None:
+        hackathon.one_statement_per_team = payload.one_statement_per_team
+
     # An explicit null removes the deadline.
     if "submission_deadline" in payload.model_fields_set:
         hackathon.submission_deadline = payload.submission_deadline
@@ -239,6 +247,7 @@ async def create_problem_statement(
     title: str = Form(...),
     description: str = Form(None),
     file: UploadFile = File(None),
+    rubric: str = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("manage_problem_statements")),
 ):
@@ -249,6 +258,7 @@ async def create_problem_statement(
         logger.warning("User id=%s role=%s denied problem statement creation on hackathon id=%s", current_user.id, current_user.role, hackathon_id)
         raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can add problem statements")
 
+    statement_rubric = parse_rubric_form(rubric)
     file_path = None
     if file:
         file_path = await save_upload(file)
@@ -258,6 +268,7 @@ async def create_problem_statement(
         title=title,
         description=description,
         file_path=file_path,
+        rubric=statement_rubric,
     )
     db.add(ps)
     db.commit()

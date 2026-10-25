@@ -82,6 +82,22 @@ async def create_submission(
     if existing:
         raise HTTPException(status_code=400, detail="Submission already exists for this team and problem statement")
 
+    if team.hackathon.one_statement_per_team:
+        other = (
+            db.query(Submission)
+            .filter(Submission.team_id == team_id, Submission.problem_statement_id != problem_statement_id)
+            .first()
+        )
+        if other:
+            chosen = db.query(ProblemStatement).filter(ProblemStatement.id == other.problem_statement_id).first()
+            raise HTTPException(
+                status_code=400,
+                detail=(
+                    "This hackathon allows one problem statement per team, and your team already submitted for "
+                    f"\"{chosen.title if chosen else 'another statement'}\"."
+                ),
+            )
+
     if sub_type == SubmissionType.tech:
         if not submission_url:
             raise HTTPException(status_code=400, detail="Tech submissions require a GitHub URL")

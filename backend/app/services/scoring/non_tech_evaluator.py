@@ -30,7 +30,7 @@ def evaluate_non_tech(db: Session, submission: Submission, problem_statement: st
 
     team = db.query(Team).filter(Team.id == submission.team_id).first()
     hackathon = db.query(Hackathon).filter(Hackathon.id == team.hackathon_id).first() if team else None
-    rubric = get_rubric(hackathon, SubmissionType.non_tech)
+    rubric = get_rubric(hackathon, SubmissionType.non_tech, submission.problem_statement)
 
     document_text = extract_text(submission.submission_url) if submission.submission_url else ""
     ppt_text = extract_text(submission.ppt_url) if submission.ppt_url else ""

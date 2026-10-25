@@ -147,6 +147,8 @@ class HackathonBase(BaseModel):
     max_participants: Optional[int] = None
     max_team_members: Optional[int] = None
     submission_deadline: Optional[datetime] = None
+    submission_guidelines: Optional[str] = None
+    one_statement_per_team: Optional[bool] = None
 
     @field_validator("max_participants", "max_team_members")
     @classmethod
@@ -159,6 +161,16 @@ class HackathonBase(BaseModel):
     @classmethod
     def normalize_utc(cls, v: Optional[datetime]) -> Optional[datetime]:
         return to_naive_utc(v)
+
+    @field_validator("submission_guidelines")
+    @classmethod
+    def validate_guidelines(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        v = v.strip()
+        if len(v) > 10000:
+            raise ValueError("Submission guidelines can be at most 10,000 characters")
+        return v or None
 
 
 class HackathonCreate(HackathonBase):
@@ -181,6 +193,8 @@ class HackathonUpdate(HackathonBase):
     max_participants: Optional[int] = None
     max_team_members: Optional[int] = None
     submission_deadline: Optional[datetime] = None
+    submission_guidelines: Optional[str] = None
+    one_statement_per_team: Optional[bool] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -219,6 +233,7 @@ class ProblemStatementOut(ProblemStatementCreate):
     file_path: Optional[str]
     created_at: datetime
     submission_count: int = 0
+    rubric: Optional[Dict[str, Any]] = None
 
     model_config = ConfigDict(from_attributes=True)
 

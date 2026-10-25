@@ -1,6 +1,6 @@
 from typing import Optional
 
-from app.models import Hackathon, SubmissionType
+from app.models import Hackathon, ProblemStatement, SubmissionType
 
 
 VERDICT_BANDS = [
@@ -53,22 +53,39 @@ def band_bounds(score: int):
     return 0, 1000, "NEEDS WORK"
 
 
-def get_rubric(hackathon: Optional[Hackathon], submission_type: SubmissionType) -> dict:
-    """Return the per-hackathon rubric if it is valid, otherwise the default rubric."""
-    defaults = TECH_CATEGORIES if submission_type == SubmissionType.tech else NON_TECH_CATEGORIES
-    if not hackathon or not hackathon.rubric:
-        return defaults
-    stored = hackathon.rubric
-    if isinstance(stored, dict):
-        # Support either a flat map of category->max or nested {tech:{...}, non_tech:{...}}
-        key = "tech" if submission_type == SubmissionType.tech else "non_tech"
-        if key in stored and isinstance(stored[key], dict):
-            candidate = stored[key]
-        elif submission_type.value in stored and isinstance(stored[submission_type.value], dict):
-            candidate = stored[submission_type.value]
-        else:
-            candidate = stored
-        # Ensure all required categories are present and total ~1000
-        if all(isinstance(v, int) and v > 0 for v in candidate.values()) and sum(candidate.values()) == 1000:
-            return candidate
-    return defaults
+def _rubric_for_type(stored, submission_type: SubmissionType) -> Optional[dict]:
+    """Pick the rubric for one submission type out of a stored rubric, if it is valid."""
+    if not isinstance(stored, dict) or not stored:
+        return None
+    # Support either a flat map of category->max or nested {tech:{...}, non_tech:{...}}
+    key = "tech" if submission_type == SubmissionType.tech else "non_tech"
+    if key in stored:
+        candidate = stored[key]
+    elif submission_type.value in stored:
+        candidate = stored[submission_type.value]
+    elif "tech" in stored or "non_tech" in stored:
+        return None  # nested rubric that only covers the other submission type
+    else:
+        candidate = stored
+    if (
+        isinstance(candidate, dict)
+        and candidate
+        and all(isinstance(v, int) and v > 0 for v in candidate.values())
+        and sum(candidate.values()) == 1000
+    ):
+        return candidate
+    return None
+
+
+def get_rubric(
+    hackathon: Optional[Hackathon],
+    submission_type: SubmissionType,
+    problem_statement: Optional[ProblemStatement] = None,
+) -> dict:
+    """The rubric to score with: the problem statement's own rubric, else the
+    hackathon's, else the platform default."""
+    for owner in (problem_statement, hackathon):
+        chosen = _rubric_for_type(getattr(owner, "rubric", None), submission_type)
+        if chosen:
+            return chosen
+    return TECH_CATEGORIES if submission_type == SubmissionType.tech else NON_TECH_CATEGORIES

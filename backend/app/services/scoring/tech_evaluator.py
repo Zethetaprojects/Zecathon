@@ -29,7 +29,7 @@ def evaluate_tech(db: Session, submission: Submission, problem_statement: str) -
 
     team = db.query(Team).filter(Team.id == submission.team_id).first()
     hackathon = db.query(Hackathon).filter(Hackathon.id == team.hackathon_id).first() if team else None
-    rubric = get_rubric(hackathon, SubmissionType.tech)
+    rubric = get_rubric(hackathon, SubmissionType.tech, submission.problem_statement)
 
     repo_summary = summarize_repo(submission.submission_url)
     admissible, reason = tech_admissibility(repo_summary)

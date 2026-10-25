@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_active_user, require_permission
 from app.database import get_db
 from app.models import ProblemStatement, User
-from app.routers.common import can_access_hackathon, can_manage_hackathon
+from app.routers.common import can_access_hackathon, can_manage_hackathon, parse_rubric_form
 from app.schemas import ProblemStatementOut
 from app.services.file_storage import save_upload
 
@@ -53,6 +53,7 @@ async def update_problem_statement(
     description: str = Form(""),
     file: UploadFile = File(None),
     remove_file: bool = Form(False),
+    rubric: str = Form(None),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("manage_problem_statements")),
 ):
@@ -62,6 +63,9 @@ async def update_problem_statement(
         raise HTTPException(status_code=400, detail="Title is required")
     ps.title = title.strip()
     ps.description = description.strip() or None
+    if rubric is not None:
+        # An empty value ("" or "null") clears the statement rubric.
+        ps.rubric = parse_rubric_form(rubric)
     if file and file.filename:
         ps.file_path = await save_upload(file)
     elif remove_file:
