@@ -18,6 +18,8 @@ export default function CreateHackathon() {
     maxParticipants: '',
     maxTeamMembers: '',
     deadline: '',
+    guidelines: '',
+    oneTrack: false,
   });
   // The deadline follows the hackathon end time until the organiser sets it themselves.
   const [deadlineTouched, setDeadlineTouched] = useState(false);
@@ -91,6 +93,8 @@ export default function CreateHackathon() {
       if (maxParticipants !== undefined) payload.max_participants = maxParticipants;
       if (maxTeamMembers !== undefined) payload.max_team_members = maxTeamMembers;
       if (form.deadline) payload.submission_deadline = new Date(form.deadline).toISOString();
+      if (form.guidelines.trim()) payload.submission_guidelines = form.guidelines.trim();
+      payload.one_statement_per_team = form.oneTrack;
       if (tech || nonTech) {
         payload.rubric = {};
         if (tech) payload.rubric.tech = tech;
@@ -179,6 +183,38 @@ export default function CreateHackathon() {
                 />
               </div>
             </div>
+
+            <div>
+              <label className="block text-xs pixel-caps text-slate-300 mb-2">Submission guidelines (shown to teams)</label>
+              <textarea
+                name="guidelines"
+                value={form.guidelines}
+                onChange={handleChange}
+                rows={6}
+                maxLength={10000}
+                className="w-full rounded px-4 py-3 neon-input text-sm"
+                placeholder={'e.g.\n• Upload your report PDF (max 8 pages) as the project document.\n• Paste your GitHub repository link in "Supporting GitHub URL".\n• Put your demo video link on page 1 of the report.'}
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                Shown on the hackathon and submit pages below the automatic key rules (deadline, file types, one submission per
+                statement). Teams must tick that they have read them before submitting.
+              </p>
+            </div>
+
+            <label className="flex items-start gap-3 p-3 rounded-lg border border-white/10 bg-black/20 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.oneTrack}
+                onChange={(e) => setForm((f) => ({ ...f, oneTrack: e.target.checked }))}
+                className="mt-1 accent-[#05d9e8]"
+              />
+              <span className="text-sm text-slate-200">
+                One problem statement per team
+                <span className="block text-[11px] text-slate-400 mt-0.5">
+                  A team's first submission fixes its track; it cannot submit to the other statements.
+                </span>
+              </span>
+            </label>
 
             <div>
               <div className="flex items-center justify-between gap-3 mb-2">

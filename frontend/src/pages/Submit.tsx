@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { submissionsApi } from '../api/teams';
-import { Hackathon, Team, ProblemStatement } from '../types';
+import { Hackathon, Team, ProblemStatement, Submission } from '../types';
 import { formatError } from '../utils/formatError';
 import { useAuth } from '../hooks/useAuth';
 import { useConfirm } from '../hooks/useConfirm';
@@ -11,6 +11,7 @@ import { formatDateTime, isPast } from '../utils/hackathon';
 import Countdown from '../components/Countdown';
 import PageLayout from '../components/PageLayout';
 import BackButton from '../components/BackButton';
+import SubmissionGuidelines from '../components/SubmissionGuidelines';
 import LoadingScreen from '../components/LoadingScreen';
 
 export default function Submit() {
@@ -34,6 +35,16 @@ export default function Submit() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [teamSubmissions, setTeamSubmissions] = useState<Submission[]>([]);
+  // Teams must confirm they have read the guidelines before submitting.
+  const [acknowledged, setAcknowledged] = useState(false);
+
+  useEffect(() => {
+    submissionsApi
+      .listByTeam(Number(teamId))
+      .then((res) => setTeamSubmissions(res.data))
+      .catch(() => setTeamSubmissions([]));
+  }, [teamId]);
 
   useEffect(() => {
     hackathonsApi
@@ -53,6 +64,10 @@ export default function Submit() {
     e.preventDefault();
     setError('');
     if (!team || !ps) return;
+    if (!acknowledged) {
+      setError('Please confirm that you have read the submission guidelines.');
+      return;
+    }
     if (type === 'tech' && !/^https?:\/\/(www\.)?github\.com\/[^/\s]+\/[^/\s]+/i.test(url.trim())) {
       setError('Enter the full GitHub repository link, e.g. https://github.com/your-team/your-project. The repository must be public.');
       return;
@@ -121,6 +136,32 @@ export default function Submit() {
   const closed = isPast(deadline);
   const isManager = isManagerRole(user?.role);
 
+  const alreadySubmitted = teamSubmissions.some((s) => s.problem_statement_id === ps.id);
+  const otherTrack = hackathon.one_statement_per_team
+    ? teamSubmissions.find((s) => s.problem_statement_id !== ps.id)
+    : undefined;
+  const otherTrackTitle = otherTrack
+    ? hackathon.problem_statements?.find((p) => p.id === otherTrack.problem_statement_id)?.title
+    : undefined;
+
+  if (alreadySubmitted || otherTrack) {
+    return (
+      <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto glass-panel p-8 text-center">
+          <h2 className="font-pixel text-lg text-neon-yellow mb-2">{alreadySubmitted ? 'ALREADY SUBMITTED' : 'TRACK ALREADY CHOSEN'}</h2>
+          <p className="text-slate-300 mb-4">
+            {alreadySubmitted
+              ? `${team.name} has already submitted for this problem statement. Submissions cannot be changed.`
+              : `This hackathon allows one problem statement per team, and ${team.name} already submitted for "${otherTrackTitle ?? 'another statement'}".`}
+          </p>
+          <Link to={`/hackathons/${hackathonId}/teams`} className="text-neon-cyan hover:text-white text-sm">
+            ← Back to the team page
+          </Link>
+        </div>
+      </PageLayout>
+    );
+  }
+
   if (closed && !isManager) {
     return (
       <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
@@ -186,6 +227,9 @@ export default function Submit() {
               behalf, for example after a technical problem.
             </div>
           )}
+          <div className="mb-6">
+            <SubmissionGuidelines hackathon={hackathon} compact />
+          </div>
           {ps.description && (
             <details className="mb-6 rounded-lg bg-black/20 border border-white/10 p-4 text-sm text-slate-300">
               <summary className="cursor-pointer text-xs text-neon-cyan">Re-read the problem statement</summary>
@@ -281,10 +325,22 @@ export default function Submit() {
               />
             </div>
 
+            <label className="flex items-start gap-3 p-3 rounded-lg border border-neon-yellow/30 bg-neon-yellow/[0.04] cursor-pointer">
+              <input
+                type="checkbox"
+                checked={acknowledged}
+                onChange={(e) => setAcknowledged(e.target.checked)}
+                className="mt-1 accent-[#f7ff58]"
+              />
+              <span className="text-sm text-slate-200">
+                I have read the submission guidelines, and this is my team's final submission for this problem statement.
+              </span>
+            </label>
+
             <div className="pt-2 flex gap-4">
               <button
                 type="submit"
-                disabled={busy}
+                disabled={busy || !acknowledged}
                 className="flex-1 rounded neon-btn neon-btn-primary py-3 text-sm disabled:opacity-50"
               >
                 {busy ? 'Submitting...' : 'Submit project'}

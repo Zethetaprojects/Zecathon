@@ -14,6 +14,7 @@ import BackButton from '../components/BackButton';
 import LoadingScreen from '../components/LoadingScreen';
 import CopyButton from '../components/CopyButton';
 import Countdown from '../components/Countdown';
+import SubmissionGuidelines from '../components/SubmissionGuidelines';
 
 const AVATAR_COLORS = ['bg-neon-pink/20 text-neon-pink', 'bg-neon-cyan/20 text-neon-cyan', 'bg-neon-purple/20 text-neon-purple', 'bg-neon-yellow/15 text-neon-yellow'];
 
@@ -174,6 +175,9 @@ export default function HackathonTeams() {
   const canManageMembersOf = (team: Team) => can('manage_team_members') && (isManager || isLeaderOf(team));
   const problemStatements = hackathon?.problem_statements ?? [];
   const submissionsClosed = isPast(hackathon?.submission_deadline);
+  // With "one statement per team", a team's first submission fixes its track.
+  const trackOf = (team: Team) =>
+    hackathon?.one_statement_per_team ? submissionsByTeam[team.id]?.[0]?.problem_statement_id : undefined;
 
   // ---- actions --------------------------------------------------------------
 
@@ -524,10 +528,13 @@ export default function HackathonTeams() {
                     {evaluating[sub.id] ? 'Evaluating… up to a minute' : ev ? 'Re-run' : 'Evaluate'}
                   </button>
                 )}
-                {!sub && canSubmit && submissionsClosed && !isManager && (
+                {!sub && canSubmit && trackOf(team) !== undefined && trackOf(team) !== ps.id && (
+                  <span className="px-3 py-1.5 rounded-lg text-xs text-slate-400 border border-white/15">Team chose another statement</span>
+                )}
+                {!sub && canSubmit && trackOf(team) === undefined && submissionsClosed && !isManager && (
                   <span className="px-3 py-1.5 rounded-lg text-xs text-neon-pink border border-neon-pink/30">Submissions closed</span>
                 )}
-                {!sub && canSubmit && (!submissionsClosed || isManager) && (
+                {!sub && canSubmit && trackOf(team) === undefined && (!submissionsClosed || isManager) && (
                   <Link
                     to={`/hackathons/${hackathonId}/submit/${team.id}/${ps.id}`}
                     className={`px-3 py-1.5 rounded-lg text-xs ${submissionsClosed ? 'border border-neon-yellow/50 text-neon-yellow hover:bg-neon-yellow/10' : 'neon-btn neon-btn-cyan'}`}
@@ -636,6 +643,10 @@ export default function HackathonTeams() {
         {/* ---------------- Participant view ---------------- */}
         {isParticipantView && (
           <>
+            <details className="mb-6 group" open={!submissionsClosed}>
+              <summary className="cursor-pointer text-sm text-neon-yellow mb-3">Submission guidelines (read before submitting)</summary>
+              <SubmissionGuidelines hackathon={hackathon} compact />
+            </details>
             {myTeam ? (
               <section className="glass-panel p-6 sm:p-8 mb-6 border border-neon-cyan/20">
                 <div className="flex flex-wrap items-start justify-between gap-4 mb-6">

@@ -8,6 +8,8 @@ interface RubricEditorProps {
   rows: RubricRow[];
   onRowsChange: (rows: RubricRow[]) => void;
   defaults: Record<string, number>;
+  /** What the non-custom rubric is, e.g. "Platform default" or "Hackathon rubric". */
+  defaultLabel?: string;
   disabled?: boolean;
 }
 
@@ -19,6 +21,7 @@ export default function RubricEditor({
   rows,
   onRowsChange,
   defaults,
+  defaultLabel = 'Platform default',
   disabled = false,
 }: RubricEditorProps) {
   const total = rowsTotal(rows);
@@ -56,7 +59,7 @@ export default function RubricEditor({
               <span className="font-mono text-slate-300">{points}</span>
             </li>
           ))}
-          <li className="pt-2 text-[11px] text-slate-500">Platform default · {RUBRIC_TOTAL} points</li>
+          <li className="pt-2 text-[11px] text-slate-500">{defaultLabel} · {RUBRIC_TOTAL} points</li>
         </ul>
       ) : (
         <>

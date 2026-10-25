@@ -47,6 +47,10 @@ export interface Hackathon {
   max_team_members?: number;
   /** ISO time (UTC) after which participants can no longer submit; null = no deadline. */
   submission_deadline?: string | null;
+  /** Organiser-written rules shown on the hackathon and submit pages. */
+  submission_guidelines?: string | null;
+  /** When true each team may submit to only one problem statement. */
+  one_statement_per_team?: boolean | null;
   created_by: number;
   created_at: string;
   problem_statements?: ProblemStatement[];
@@ -65,6 +69,8 @@ export interface ProblemStatement {
   created_at: string;
   /** Teams that have submitted; edits and deletion are locked once this is above 0. */
   submission_count?: number;
+  /** Optional rubric for this statement only; falls back to the hackathon rubric. */
+  rubric?: Rubric | null;
 }
 
 export interface Team {

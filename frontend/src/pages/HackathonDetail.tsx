@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { hackathonsApi, problemStatementsApi } from '../api/hackathons';
 import { submissionsApi } from '../api/teams';
-import { Hackathon, ProblemStatement, Submission } from '../types';
+import { Hackathon, ProblemStatement, Rubric, Submission } from '../types';
 import { formatError } from '../utils/formatError';
 import { isManagerRole } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
@@ -21,6 +21,8 @@ import BackButton from '../components/BackButton';
 import LoadingScreen from '../components/LoadingScreen';
 import RubricEditor from '../components/RubricEditor';
 import ExpandableText from '../components/ExpandableText';
+import SubmissionGuidelines from '../components/SubmissionGuidelines';
+import RubricPair, { RubricPairState, rubricPairFrom, rubricPairToRubric } from '../components/RubricPair';
 
 const statusStyles = {
   upcoming: 'bg-neon-purple/10 text-neon-purple border-neon-purple/20',
@@ -82,6 +84,8 @@ function ProblemStatementCard({
   editable,
   submission,
   submitHref,
+  submitBlocked,
+  hackathonRubric,
   onSaved,
   onDeleted,
 }: {
@@ -89,8 +93,11 @@ function ProblemStatementCard({
   index: number;
   editable: boolean;
   submission?: Submission;
-  /** Link to submit for the viewer's team; '' when submissions are closed; undefined when not in a team. */
+  /** Link to submit for the viewer's team; undefined when the viewer is not in a team. */
   submitHref?: string;
+  /** Why the viewer's team cannot submit here (deadline passed, other track chosen). */
+  submitBlocked?: string;
+  hackathonRubric?: Rubric | null;
   onSaved: () => void;
   onDeleted: () => void;
 }) {
@@ -100,6 +107,7 @@ function ProblemStatementCard({
   const [description, setDescription] = useState(ps.description ?? '');
   const [file, setFile] = useState<File | null>(null);
   const [removeFile, setRemoveFile] = useState(false);
+  const [rubricState, setRubricState] = useState<RubricPairState>(() => rubricPairFrom(ps.rubric, hackathonRubric));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
 
@@ -112,6 +120,7 @@ function ProblemStatementCard({
     setDescription(ps.description ?? '');
     setFile(null);
     setRemoveFile(false);
+    setRubricState(rubricPairFrom(ps.rubric, hackathonRubric));
     setError('');
     setEditing(true);
   };
@@ -120,6 +129,11 @@ function ProblemStatementCard({
     e.preventDefault();
     if (!title.trim()) {
       setError('Title is required.');
+      return;
+    }
+    const { rubric, error: rubricError } = rubricPairToRubric(rubricState);
+    if (rubricError) {
+      setError(rubricError);
       return;
     }
     const ok = await confirm({
@@ -136,6 +150,7 @@ function ProblemStatementCard({
       form.append('description', description.trim());
       if (file) form.append('file', file);
       else if (removeFile) form.append('remove_file', 'true');
+      form.append('rubric', rubric ? JSON.stringify(rubric) : '');
       await problemStatementsApi.update(ps.id, form);
       setEditing(false);
       onSaved();
@@ -199,6 +214,13 @@ function ProblemStatementCard({
             <input type="file" onChange={(e) => setFile(e.target.files?.[0] || null)} className={FILE_INPUT_CLASS} />
             <p className="text-[11px] text-slate-500 mt-1">Choosing a file replaces the current attachment.</p>
           </div>
+          <details className="rounded-lg border border-white/10 p-3" open={Boolean(ps.rubric)}>
+            <summary className="cursor-pointer text-xs text-neon-cyan">Scoring for this statement (optional)</summary>
+            <p className="text-[11px] text-slate-400 my-3">
+              Give this statement its own categories, e.g. its "measured by" criteria. Leave unticked to use the hackathon rubric.
+            </p>
+            <RubricPair value={rubricState} onChange={setRubricState} fallback={hackathonRubric} fallbackLabel="Hackathon rubric" />
+          </details>
           <div className="flex gap-3">
             <button type="submit" disabled={busy} className="px-5 py-2 rounded neon-btn neon-btn-primary text-xs disabled:opacity-50">
               {busy ? 'Saving...' : 'Save changes'}
@@ -221,7 +243,7 @@ function ProblemStatementCard({
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-start justify-between gap-3">
             <h3 className="text-base sm:text-lg font-semibold text-white leading-snug">{ps.title}</h3>
-            {submitHref !== undefined && <SubmissionPill submission={submission} />}
+            {(submitHref !== undefined || submitBlocked) && <SubmissionPill submission={submission} />}
           </div>
 
           {description_ ? (
@@ -253,16 +275,19 @@ function ProblemStatementCard({
                 Open brief · {fileTypeLabel(ps.file_path)}
               </a>
             )}
-            {submitHref === '' && !submission && (
-              <span className="px-3 py-1.5 rounded-lg text-xs text-neon-pink border border-neon-pink/30">Submissions closed</span>
+            {submitBlocked && !submission && (
+              <span className="px-3 py-1.5 rounded-lg text-xs text-slate-400 border border-white/15">{submitBlocked}</span>
             )}
-            {submitHref && !submission && (
+            {submitHref && !submitBlocked && !submission && (
               <Link to={submitHref} className="px-3 py-1.5 rounded-lg neon-btn neon-btn-primary text-xs">
                 Submit for this statement
               </Link>
             )}
             {editable && (
               <>
+                {ps.rubric && (
+                  <span className="px-2 py-1 rounded text-[11px] text-neon-purple border border-neon-purple/30">Own rubric</span>
+                )}
                 {locked && (
                   <span className="inline-flex items-center gap-1 px-2 py-1 rounded text-[11px] text-slate-400 border border-white/10" title={lockReason}>
                     <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
@@ -321,6 +346,7 @@ export default function HackathonDetail() {
   const [psTitle, setPsTitle] = useState('');
   const [psDescription, setPsDescription] = useState('');
   const [psFile, setPsFile] = useState<File | null>(null);
+  const [psRubric, setPsRubric] = useState<RubricPairState>(() => rubricPairFrom(null, null));
   const [psBusy, setPsBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -395,6 +421,11 @@ export default function HackathonDetail() {
   const handleAddStatement = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!psTitle.trim()) return;
+    const { rubric: statementRubric, error: rubricProblem } = rubricPairToRubric(psRubric);
+    if (rubricProblem) {
+      setError(rubricProblem);
+      return;
+    }
     const ok = await confirm({
       title: 'Publish this problem statement?',
       message: (
@@ -412,11 +443,13 @@ export default function HackathonDetail() {
       form.append('title', psTitle.trim());
       if (psDescription.trim()) form.append('description', psDescription.trim());
       if (psFile) form.append('file', psFile);
+      if (statementRubric) form.append('rubric', JSON.stringify(statementRubric));
       await problemStatementsApi.upload(hackathonId, form);
       setPsTitle('');
       setPsDescription('');
       setPsFile(null);
       if (fileRef.current) fileRef.current.value = '';
+      setPsRubric(rubricPairFrom(null, hackathon?.rubric));
       await fetchHackathon();
       flash('Problem statement published.');
     } catch (err: any) {
@@ -512,6 +545,8 @@ export default function HackathonDetail() {
   const teamsHref = `/hackathons/${hackathonId}/teams`;
   const deadline = hackathon.submission_deadline;
   const submissionsClosed = isPast(deadline);
+  // With "one statement per team", the team's first submission fixes its track.
+  const chosenTrack = hackathon.one_statement_per_team ? mySubmissions[0]?.problem_statement_id : undefined;
 
   // One clear next step per role instead of a generic "manage" button.
   const primaryAction = isManager
@@ -625,6 +660,10 @@ export default function HackathonDetail() {
           ))}
         </div>
 
+        <div className="mb-8">
+          <SubmissionGuidelines hackathon={hackathon} />
+        </div>
+
         {/* Organiser lock bar */}
         {hasOrganiserTools && (
           <div
@@ -683,7 +722,9 @@ export default function HackathonDetail() {
                 {statements.length === 0
                   ? 'Nothing published yet.'
                   : myTeam
-                    ? 'Pick a statement and submit your project for it.'
+                    ? hackathon.one_statement_per_team
+                      ? 'Pick ONE statement for your team and submit for it. Your first submission fixes your track.'
+                      : 'Pick a statement and submit your project for it.'
                     : `${statements.length} challenge${statements.length === 1 ? '' : 's'} to choose from.`}
               </p>
             </div>
@@ -711,12 +752,18 @@ export default function HackathonDetail() {
                   editable={unlocked && canManageStatements}
                   submission={mySubmissions.find((s) => s.problem_statement_id === ps.id)}
                   submitHref={
-                    myTeam && can('submit_project')
-                      ? submissionsClosed
-                        ? ''
-                        : `/hackathons/${hackathonId}/submit/${myTeam.id}/${ps.id}`
-                      : undefined
+                    myTeam && can('submit_project') ? `/hackathons/${hackathonId}/submit/${myTeam.id}/${ps.id}` : undefined
                   }
+                  submitBlocked={
+                    !myTeam
+                      ? undefined
+                      : submissionsClosed
+                        ? 'Submissions closed'
+                        : chosenTrack !== undefined && chosenTrack !== ps.id
+                          ? 'Your team chose another statement'
+                          : undefined
+                  }
+                  hackathonRubric={hackathon.rubric}
                   onSaved={() => {
                     fetchHackathon();
                     flash('Problem statement updated.');
@@ -758,6 +805,13 @@ export default function HackathonDetail() {
                   <label className="block text-xs pixel-caps text-slate-300 mb-2">Brief / attachment (optional)</label>
                   <input ref={fileRef} type="file" onChange={(e) => setPsFile(e.target.files?.[0] || null)} className={FILE_INPUT_CLASS} />
                 </div>
+                <details className="rounded-lg border border-white/10 p-3">
+                  <summary className="cursor-pointer text-xs text-neon-cyan">Scoring for this statement (optional)</summary>
+                  <p className="text-[11px] text-slate-400 my-3">
+                    Give this statement its own categories, e.g. its "measured by" criteria. Leave unticked to use the hackathon rubric.
+                  </p>
+                  <RubricPair value={psRubric} onChange={setPsRubric} fallback={hackathon.rubric} fallbackLabel="Hackathon rubric" />
+                </details>
                 <button type="submit" disabled={psBusy || !psTitle.trim()} className="px-5 py-2 rounded neon-btn neon-btn-primary text-xs disabled:opacity-50">
                   {psBusy ? 'Publishing...' : 'Publish statement'}
                 </button>

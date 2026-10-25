@@ -7,14 +7,8 @@ import { copyText } from '../utils/clipboard';
 import PageLayout from '../components/PageLayout';
 import BackButton from '../components/BackButton';
 import LoadingScreen from '../components/LoadingScreen';
+import LeaderboardTable from '../components/LeaderboardTable';
 
-const verdictColor: Record<string, string> = {
-  OUTSTANDING: 'text-neon-yellow',
-  EXCELLENT: 'text-neon-cyan',
-  SATISFACTORY: 'text-neon-purple',
-  'NEEDS WORK': 'text-neon-pink',
-  'NOT ASSESSABLE': 'text-slate-500',
-};
 
 export default function Leaderboard() {
   const { id } = useParams<{ id: string }>();
@@ -89,43 +83,7 @@ export default function Leaderboard() {
               </Link>
             </div>
           ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-white/10 text-xs pixel-caps text-slate-400">
-                    <th className="py-3 pr-4">Rank</th>
-                    <th className="py-3 pr-4">Team</th>
-                    <th className="py-3 pr-4">Problem statement</th>
-                    <th className="py-3 pr-4">Type</th>
-                    <th className="py-3 pr-4">Score</th>
-                    <th className="py-3">Verdict</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {entries.map((entry, idx) => (
-                    <tr key={entry.submission_id} className="border-b border-white/10 hover:bg-white/5 transition">
-                      <td className="py-4 pr-4 font-pixel text-neon-cyan text-xs">#{idx + 1}</td>
-                      <td className="py-4 pr-4 text-white font-semibold">{entry.team_name}</td>
-                      <td className="py-4 pr-4 text-slate-300 text-sm">{entry.problem_statement_title}</td>
-                      <td className="py-4 pr-4 text-slate-400 text-sm capitalize">
-                        {entry.type.replace('_', '-')}
-                      </td>
-                      <td className="py-4 pr-4 font-semibold text-white">
-                        {entry.total_score}
-                        {entry.needs_review && (
-                          <span className="ml-2 text-xs px-2 py-1 rounded bg-neon-yellow/10 text-neon-yellow border border-neon-yellow/30">
-                            Review
-                          </span>
-                        )}
-                      </td>
-                      <td className={`py-4 text-sm font-semibold ${verdictColor[entry.verdict] || 'text-slate-300'}`}>
-                        {entry.verdict}
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <LeaderboardTable entries={entries} />
           )}
         </div>
       </div>

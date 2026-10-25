@@ -30,6 +30,8 @@ export default function EditHackathon() {
     maxParticipants: '',
     maxTeamMembers: '',
     deadline: '',
+    guidelines: '',
+    oneTrack: false,
   });
   // Editing never auto-fills the deadline; the field only changes when the organiser edits it.
   const [, setDeadlineTouched] = useState(true);
@@ -53,6 +55,8 @@ export default function EditHackathon() {
           maxParticipants: h.max_participants?.toString() || '',
           maxTeamMembers: h.max_team_members?.toString() || '',
           deadline: toDatetimeLocalValue(h.submission_deadline),
+          guidelines: h.submission_guidelines || '',
+          oneTrack: Boolean(h.one_statement_per_team),
         });
         setPreviewUrl(resolveBannerUrl(h.banner_path));
       })
@@ -117,6 +121,10 @@ export default function EditHackathon() {
       if (form.deadline !== toDatetimeLocalValue(original.submission_deadline)) {
         changes.push(`Submission deadline → ${form.deadline ? formatDateTime(new Date(form.deadline).toISOString()) : 'no deadline'}`);
       }
+      if (form.guidelines.trim() !== (original.submission_guidelines || '')) changes.push('Submission guidelines updated');
+      if (form.oneTrack !== Boolean(original.one_statement_per_team)) {
+        changes.push(`One problem statement per team → ${form.oneTrack ? 'on' : 'off'}`);
+      }
     }
     if (bannerFile) changes.push('New banner image');
     if (form.deadline && form.startDate && new Date(form.deadline) <= new Date(form.startDate)) {
@@ -156,6 +164,8 @@ export default function EditHackathon() {
       payload.max_participants = maxParticipants ?? null;
       payload.max_team_members = maxTeamMembers ?? null;
       payload.submission_deadline = form.deadline ? new Date(form.deadline).toISOString() : null;
+      payload.submission_guidelines = form.guidelines.trim() || null;
+      payload.one_statement_per_team = form.oneTrack;
       await hackathonsApi.update(hackathonId, payload);
 
       if (bannerFile) {
@@ -285,6 +295,38 @@ export default function EditHackathon() {
                 />
               </div>
             </div>
+
+            <div>
+              <label className="block text-xs pixel-caps text-slate-300 mb-2">Submission guidelines (shown to teams)</label>
+              <textarea
+                name="guidelines"
+                value={form.guidelines}
+                onChange={handleChange}
+                rows={6}
+                maxLength={10000}
+                className="w-full rounded px-4 py-3 neon-input text-sm"
+                placeholder={'e.g.\n• Upload your report PDF (max 8 pages) as the project document.\n• Paste your GitHub repository link in "Supporting GitHub URL".\n• Put your demo video link on page 1 of the report.'}
+              />
+              <p className="text-[10px] text-slate-500 mt-1">
+                Shown on the hackathon and submit pages below the automatic key rules (deadline, file types, one submission per
+                statement). Teams must tick that they have read them before submitting.
+              </p>
+            </div>
+
+            <label className="flex items-start gap-3 p-3 rounded-lg border border-white/10 bg-black/20 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={form.oneTrack}
+                onChange={(e) => setForm((f) => ({ ...f, oneTrack: e.target.checked }))}
+                className="mt-1 accent-[#05d9e8]"
+              />
+              <span className="text-sm text-slate-200">
+                One problem statement per team
+                <span className="block text-[11px] text-slate-400 mt-0.5">
+                  A team's first submission fixes its track; it cannot submit to the other statements.
+                </span>
+              </span>
+            </label>
 
             <div>
               <div className="flex items-center justify-between gap-3 mb-2">
