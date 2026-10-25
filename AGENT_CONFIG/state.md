@@ -7,6 +7,15 @@
 - **Production VM** (`/opt/zecathon`, GCP): was down 2026-09-12 → 2026-10-15; **recovered on 2026-10-15** (see Phase 31 "VM status" and "Incident").
 - **AGENT_CONFIG**: maintained. Phases are listed newest first.
 
+## Phase 36 — Guidelines, tracks, per-statement rubrics (2026-10-25, uncommitted)
+- Hackathon.submission_guidelines (organiser text, ≤10k chars) and Hackathon.one_statement_per_team (bool); ProblemStatement.rubric (JSON, validated like hackathon rubrics). Migrations added via MIGRATION_SPECS.
+- `SubmissionGuidelines` component: automatic key rules from settings (deadline + countdown, one submission per statement that can't be edited, one-track rule, team size, file types/20 MB/selectable-text PDFs, repo access) plus the organiser text. Shown on the hackathon page, the participant teams page (collapsible) and the submit page; submit requires an "I have read the submission guidelines" checkbox.
+- One statement per team: backend 400 on a second track; UI shows "Your team chose another statement" and the submit page blocks it (also blocks re-submitting the same statement).
+- Scoring rubric precedence: statement → hackathon → platform default (`get_rubric(hackathon, type, problem_statement)`); statement create/update accept a `rubric` JSON form field ("" clears). `RubricPair` editor in the add/edit statement forms; "Own rubric" badge for organisers.
+- Leaderboards (authenticated and public) share `LeaderboardTable` with per-track tabs; ranks restart within each track.
+- Validation: pytest 90 passed (tests/test_guidelines_tracks.py), build ✅, validate_flow ✅.
+- "Name change not reflected" (2026-10-25): commits were not pushed yet, and Cloudflare cached the old `sw.js` (max-age 14400) so the old service worker kept serving the old page. New `gcp/nginx-cache.conf` (in the template; `update-vm.sh` inserts it into existing sites via `patch_nginx_caching`, rolling back if `nginx -t` fails): no-cache for index.html, sw.js, manifest.json; 1-year immutable cache for /assets/. After deploying, purge Cloudflare's cache once.
+
 ## Phase 35 — Scale for a 500-student event (2026-10-24, uncommitted)
 - Benchmark (local SQLite, 170 teams × 3, `scratchpad/bench_scale.py`): hackathon detail 687 → 8 queries (244 → 53 ms), team list 682 → 6 queries (233 → 36 ms), organiser team page 170 requests/680 queries → 1 request/4 queries via new `GET /api/submissions/hackathon/{id}` (managers/judges, includes evaluations; also fixes scores never showing on the organiser team page because the per-team list returns SubmissionOut without evaluations).
 - selectinload for teams/members/users and statement submissions; Postgres pool 5+5 per worker with pre_ping; gunicorn workers cap 8 (`GUNICORN_WORKERS` override).
