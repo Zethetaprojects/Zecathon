@@ -58,6 +58,8 @@ export interface Hackathon {
   rubric?: Rubric;
   problem_statement_count?: number;
   team_count?: number;
+  /** Statements exist but are withheld from this viewer until the hackathon starts. */
+  problem_statements_hidden?: boolean;
 }
 
 export interface ProblemStatement {

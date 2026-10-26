@@ -118,6 +118,22 @@ export default function Submit() {
     );
   }
 
+  if (hackathon?.problem_statements_hidden || (hackathon?.start_date && !isPast(hackathon.start_date) && !isManagerRole(user?.role))) {
+    return (
+      <PageLayout className="px-4 py-8">
+        <div className="max-w-3xl mx-auto glass-panel p-8 text-center">
+          <h2 className="font-pixel text-lg text-neon-purple mb-2">NOT STARTED YET</h2>
+          <p className="text-slate-300 mb-4">
+            Problem statements are revealed and submissions open when the hackathon starts on {formatDateTime(hackathon.start_date)}.
+          </p>
+          <Link to={`/hackathons/${hackathonId}`} className="text-neon-cyan hover:text-white text-sm">
+            ← Back to the hackathon
+          </Link>
+        </div>
+      </PageLayout>
+    );
+  }
+
   if (!hackathon || !team || !ps) {
     return (
       <PageLayout className="px-4 py-8">

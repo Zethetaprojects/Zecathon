@@ -477,7 +477,15 @@ export default function HackathonTeams() {
 
   const submissionRows = (team: Team, onBehalf: boolean) => {
     if (problemStatements.length === 0) {
-      return <p className="text-xs text-slate-500">No problem statements yet. Submissions open once the organisers publish them.</p>;
+      return hackathon?.problem_statements_hidden ? (
+        <p className="text-xs text-neon-purple">
+          Problem statements and submissions unlock when the hackathon starts (
+          <Countdown targetDate={hackathon.start_date} label="in" />
+          ).
+        </p>
+      ) : (
+        <p className="text-xs text-slate-500">No problem statements yet. Submissions open once the organisers publish them.</p>
+      );
     }
     return (
       <ul className="space-y-2">

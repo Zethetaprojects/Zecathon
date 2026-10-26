@@ -547,6 +547,8 @@ export default function HackathonDetail() {
   const submissionsClosed = isPast(deadline);
   // With "one statement per team", the team's first submission fixes its track.
   const chosenTrack = hackathon.one_statement_per_team ? mySubmissions[0]?.problem_statement_id : undefined;
+  // Organisers may submit before the start (dry run); everyone else waits.
+  const notStarted = Boolean(hackathon.start_date) && !isPast(hackathon.start_date);
 
   // One clear next step per role instead of a generic "manage" button.
   const primaryAction = isManager
@@ -643,7 +645,7 @@ export default function HackathonDetail() {
           {[
             { k: 'Status', v: status.label },
             { k: 'Duration', v: hackathon.duration_hours ? `${hackathon.duration_hours} hours` : 'Not set' },
-            { k: 'Problem statements', v: String(statements.length) },
+            { k: 'Problem statements', v: String(hackathon.problem_statement_count ?? statements.length) },
             {
               k: 'Team size',
               v: hackathon.max_team_members ? `Up to ${hackathon.max_team_members}` : 'No limit',
@@ -730,7 +732,23 @@ export default function HackathonDetail() {
             </div>
           </div>
 
-          {statements.length === 0 ? (
+          {hackathon.problem_statements_hidden ? (
+            <div className="p-8 rounded-xl border border-dashed border-neon-purple/40 bg-neon-purple/[0.04] text-center">
+              <svg className="w-8 h-8 mx-auto mb-3 text-neon-purple" fill="none" viewBox="0 0 24 24" stroke="currentColor" aria-hidden="true">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+              </svg>
+              <p className="text-white text-sm font-semibold">
+                {hackathon.problem_statement_count ?? 0} problem statement{hackathon.problem_statement_count === 1 ? '' : 's'} unlock
+                when the hackathon starts
+              </p>
+              <p className="text-neon-purple text-sm mt-2 font-mono">
+                <Countdown targetDate={hackathon.start_date} label="Unlocks in" />
+              </p>
+              <p className="text-slate-400 text-xs mt-2">
+                {formatDateTime(hackathon.start_date)}. Form your team now; submissions open at the same time.
+              </p>
+            </div>
+          ) : statements.length === 0 ? (
             <div
               className="p-8 rounded-xl border border-dashed border-white/15 text-center cursor-pointer"
               data-egg-trigger="empty-state"
@@ -757,8 +775,10 @@ export default function HackathonDetail() {
                   submitBlocked={
                     !myTeam
                       ? undefined
-                      : submissionsClosed
-                        ? 'Submissions closed'
+                      : notStarted && !isManager
+                        ? 'Opens when the hackathon starts'
+                        : submissionsClosed
+                          ? 'Submissions closed'
                         : chosenTrack !== undefined && chosenTrack !== ps.id
                           ? 'Your team chose another statement'
                           : undefined

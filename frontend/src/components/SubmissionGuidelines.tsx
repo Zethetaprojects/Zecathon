@@ -12,7 +12,22 @@ export default function SubmissionGuidelines({ hackathon, compact = false }: { h
   const deadline = hackathon.submission_deadline;
   const closed = isPast(deadline);
 
+  const startsLater = Boolean(hackathon.start_date) && !isPast(hackathon.start_date);
+
   const rules: { text: React.ReactNode; strong?: boolean }[] = [
+    ...(startsLater
+      ? [
+          {
+            strong: true,
+            text: (
+              <>
+                Problem statements are revealed and submissions open when the hackathon starts on{' '}
+                <span className="text-white">{formatDateTime(hackathon.start_date)}</span>. Form your team before then.
+              </>
+            ),
+          },
+        ]
+      : []),
     deadline
       ? {
           strong: true,
