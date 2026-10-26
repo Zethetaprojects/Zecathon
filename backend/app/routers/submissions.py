@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.auth import get_current_active_user, require_permission
 from app.database import get_db
 from app.models import Hackathon, ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User, UserRole
-from app.routers.common import can_manage_hackathon, is_manager
+from app.routers.common import can_manage_hackathon, hackathon_not_started, is_manager
 from app.schemas import SubmissionDetail, SubmissionOut
 from app.services.file_storage import save_upload
 
@@ -58,6 +58,14 @@ async def create_submission(
     # Managers may submit on behalf of any team in a hackathon they manage;
     # everyone else must be a member of the team.
     team = _ensure_team_access(team_id, current_user, db)
+
+    # Before the start only the hackathon's managers may submit (e.g. a dry run);
+    # participants have not even seen the problem statements yet.
+    if hackathon_not_started(team.hackathon) and not can_manage_hackathon(current_user, team.hackathon):
+        raise HTTPException(
+            status_code=403,
+            detail=f"Submissions open when the hackathon starts ({team.hackathon.start_date.strftime('%Y-%m-%d %H:%M')} UTC).",
+        )
 
     # After the deadline only the hackathon's managers may still submit (on a
     # team's behalf, e.g. after a technical problem); participants are refused.

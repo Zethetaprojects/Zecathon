@@ -217,6 +217,8 @@ class HackathonOut(HackathonBase):
 class HackathonDetail(HackathonOut):
     problem_statements: List["ProblemStatementOut"] = []
     teams: List["TeamOut"] = []
+    # True when the statements exist but are withheld until the hackathon starts.
+    problem_statements_hidden: bool = False
 
     model_config = ConfigDict(from_attributes=True)
 

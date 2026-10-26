@@ -1,5 +1,6 @@
 import json
 import logging
+from datetime import datetime
 
 from fastapi import Depends, HTTPException, status
 from sqlalchemy.orm import Session
@@ -57,6 +58,19 @@ def parse_rubric_form(value: str | None) -> dict | None:
         raise HTTPException(status_code=400, detail="Rubric must be valid JSON")
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc))
+
+
+def hackathon_not_started(hackathon: Hackathon | None) -> bool:
+    """True before the hackathon's start time (never true when no start time is set)."""
+    return bool(hackathon and hackathon.start_date and datetime.utcnow() < hackathon.start_date)
+
+
+def can_see_problem_statements(user: User, hackathon: Hackathon | None) -> bool:
+    """Problem statements stay hidden from participants until the hackathon starts,
+    so no team gets a head start. Organisers, admins and judges always see them."""
+    if not hackathon_not_started(hackathon):
+        return True
+    return can_manage_hackathon(user, hackathon) or user.role == UserRole.judge
 
 
 def is_manager(user: User) -> bool:

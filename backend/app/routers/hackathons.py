@@ -9,7 +9,7 @@ from sqlalchemy.orm import Session, selectinload
 from app.auth import get_current_active_user, require_permission
 from app.database import get_db
 from app.models import Hackathon, ProblemStatement, Team, TeamMember, User, UserRole
-from app.routers.common import can_access_hackathon, can_manage_hackathon, team_out
+from app.routers.common import can_access_hackathon, can_manage_hackathon, can_see_problem_statements, team_out
 from app.schemas import (
     HackathonCreate,
     HackathonOut,
@@ -164,7 +164,15 @@ def get_hackathon(
         logger.warning("User id=%s role=%s denied access to hackathon id=%s owned by %s", current_user.id, current_user.role, hackathon_id, hackathon.created_by)
         raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
     detail = HackathonDetail.model_validate(hackathon)
-    return detail.model_copy(update={"teams": [team_out(t, current_user, hackathon) for t in hackathon.teams]})
+    update = {
+        "teams": [team_out(t, current_user, hackathon) for t in hackathon.teams],
+        "problem_statement_count": len(hackathon.problem_statements),
+        "team_count": len(hackathon.teams),
+    }
+    if not can_see_problem_statements(current_user, hackathon):
+        # The count stays visible ("4 problem statements unlock at the start").
+        update.update(problem_statements=[], problem_statements_hidden=bool(hackathon.problem_statements))
+    return detail.model_copy(update=update)
 
 
 @router.put("/{hackathon_id}", response_model=HackathonOut)

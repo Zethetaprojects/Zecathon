@@ -6,7 +6,7 @@ from sqlalchemy.orm import Session
 from app.auth import get_current_active_user, require_permission
 from app.database import get_db
 from app.models import ProblemStatement, User
-from app.routers.common import can_access_hackathon, can_manage_hackathon, parse_rubric_form
+from app.routers.common import can_access_hackathon, can_manage_hackathon, can_see_problem_statements, parse_rubric_form
 from app.schemas import ProblemStatementOut
 from app.services.file_storage import save_upload
 
@@ -43,6 +43,8 @@ def get_problem_statement(
         raise HTTPException(status_code=404, detail="Problem statement not found")
     if not can_access_hackathon(current_user, ps.hackathon):
         raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
+    if not can_see_problem_statements(current_user, ps.hackathon):
+        raise HTTPException(status_code=403, detail="Problem statements are revealed when the hackathon starts")
     return ps
 
 
