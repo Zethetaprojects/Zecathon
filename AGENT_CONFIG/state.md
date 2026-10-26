@@ -7,6 +7,12 @@
 - **Production VM** (`/opt/zecathon`, GCP): was down 2026-09-12 → 2026-10-15; **recovered on 2026-10-15** (see Phase 31 "VM status" and "Incident").
 - **AGENT_CONFIG**: maintained. Phases are listed newest first.
 
+## Phase 37 — Start-time gating (2026-10-26)
+- Before `start_date`, participants get the hackathon without problem statements (`problem_statements: []`, `problem_statements_hidden: true`, `problem_statement_count` still set) and `GET /api/problem-statements/{id}` returns 403; organisers of the hackathon, admins and judges always see them. Submissions before the start return 403 for participants; managers may submit (dry run). No start date = no gating.
+- UI: locked "N problem statements unlock when the hackathon starts" panel with countdown; submit page and team page explain; guidelines gain a start-time rule.
+- "One problem statement per team" stays opt-in (default off); it is on both the Host a Hackathon and Edit hackathon pages.
+- Validation: pytest 95 passed (tests/test_start_gate.py), build ✅, validate_flow ✅.
+
 ## Phase 36 — Guidelines, tracks, per-statement rubrics (2026-10-25, uncommitted)
 - Hackathon.submission_guidelines (organiser text, ≤10k chars) and Hackathon.one_statement_per_team (bool); ProblemStatement.rubric (JSON, validated like hackathon rubrics). Migrations added via MIGRATION_SPECS.
 - `SubmissionGuidelines` component: automatic key rules from settings (deadline + countdown, one submission per statement that can't be edited, one-track rule, team size, file types/20 MB/selectable-text PDFs, repo access) plus the organiser text. Shown on the hackathon page, the participant teams page (collapsible) and the submit page; submit requires an "I have read the submission guidelines" checkbox.
