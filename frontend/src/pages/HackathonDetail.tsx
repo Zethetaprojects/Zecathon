@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useLocation, useNavigate } from 'react-router-dom';
 import { hackathonsApi, problemStatementsApi } from '../api/hackathons';
 import { submissionsApi } from '../api/teams';
 import { Hackathon, ProblemStatement, Rubric, Submission } from '../types';
@@ -7,7 +7,7 @@ import { formatError } from '../utils/formatError';
 import { isManagerRole } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
 import { useConfirm } from '../hooks/useConfirm';
-import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget, formatDateTime, isPast } from '../utils/hackathon';
+import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget, formatDateTime, hackathonPath, isPast } from '../utils/hackathon';
 import {
   DEFAULT_NON_TECH_RUBRIC,
   DEFAULT_TECH_RUBRIC,
@@ -22,6 +22,8 @@ import LoadingScreen from '../components/LoadingScreen';
 import RubricEditor from '../components/RubricEditor';
 import ExpandableText from '../components/ExpandableText';
 import SubmissionGuidelines from '../components/SubmissionGuidelines';
+import PartnerBadge from '../components/PartnerBadge';
+import CopyButton from '../components/CopyButton';
 import RubricPair, { RubricPairState, rubricPairFrom, rubricPairToRubric } from '../components/RubricPair';
 
 const statusStyles = {
@@ -324,18 +326,24 @@ function ProblemStatementCard({
 }
 
 export default function HackathonDetail() {
-  const { id } = useParams<{ id: string }>();
-  const hackathonId = Number(id);
-  const { user, can } = useAuth();
+  // Either /hackathons/:id or a partner URL /hackathons/:partner/:number.
+  const { id, partner, number } = useParams<{ id?: string; partner?: string; number?: string }>();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const { user, can, loading: authLoading } = useAuth();
   const confirm = useConfirm();
+
+  const [hackathon, setHackathon] = useState<Hackathon | null>(null);
+  // Public view: not logged in, or logged in without access (e.g. another organiser's
+  // hackathon). Shows what anyone may see, with no organiser tools.
+  const [publicView, setPublicView] = useState(false);
+  const hackathonId = hackathon?.id ?? Number(id);
   // The backend only lets organizers see their own hackathons, so a manager role
   // on this page means the user manages it; the toggles decide which actions.
-  const isManager = isManagerRole(user?.role);
+  const isManager = isManagerRole(user?.role) && !publicView;
   const canEdit = isManager && can('edit_hackathon');
   const canManageStatements = isManager && can('manage_problem_statements');
   const hasOrganiserTools = canEdit || canManageStatements;
-
-  const [hackathon, setHackathon] = useState<Hackathon | null>(null);
   const [mySubmissions, setMySubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -350,6 +358,10 @@ export default function HackathonDetail() {
   const [psBusy, setPsBusy] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
+  const [partnerLogo, setPartnerLogo] = useState<File | null>(null);
+  const [partnerLogoBusy, setPartnerLogoBusy] = useState(false);
+  const partnerLogoRef = useRef<HTMLInputElement>(null);
+
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [bannerBusy, setBannerBusy] = useState(false);
   const bannerRef = useRef<HTMLInputElement>(null);
@@ -362,16 +374,43 @@ export default function HackathonDetail() {
   const [rubricBusy, setRubricBusy] = useState(false);
   const [rubricError, setRubricError] = useState('');
 
-  const fetchHackathon = () =>
-    hackathonsApi
-      .get(hackathonId)
-      .then((res) => setHackathon(res.data))
-      .catch((err) => setError(formatError(err, 'Failed to load hackathon')))
-      .finally(() => setLoading(false));
+  const fetchHackathon = async (): Promise<Hackathon | null> => {
+    try {
+      let realId = Number(id);
+      let publicData: Hackathon | null = null;
+      if (partner) {
+        publicData = (await hackathonsApi.publicGetByPartner(partner, Number(number))).data;
+        realId = publicData.id;
+      }
+      if (user) {
+        try {
+          const { data } = await hackathonsApi.get(realId);
+          setHackathon(data);
+          setPublicView(false);
+          return data;
+        } catch (err: any) {
+          if (err?.response?.status !== 403) throw err;
+        }
+      }
+      publicData = publicData ?? (await hackathonsApi.publicGet(realId)).data;
+      setHackathon(publicData);
+      setPublicView(true);
+      return publicData;
+    } catch (err: any) {
+      setError(formatError(err, 'Failed to load hackathon'));
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    fetchHackathon();
-  }, [hackathonId]);
+    if (authLoading) return;
+    fetchHackathon().then((h) => {
+      // Old /hackathons/{id} links to a partner hackathon move to its partner URL.
+      if (h && !partner && h.partner_slug && h.partner_number) navigate(hackathonPath(h), { replace: true });
+    });
+  }, [id, partner, number, authLoading, user?.id]);
 
   const myTeam = useMemo(
     () => hackathon?.teams?.find((t) => t.members?.some((m) => m.user_id === user?.id)),
@@ -459,6 +498,32 @@ export default function HackathonDetail() {
     }
   };
 
+  const handlePartnerLogoUpload = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!partnerLogo) return;
+    const ok = await confirm({
+      title: 'Replace the partner logo?',
+      message: 'The logo is shown on this page, the hackathon list and the landing page.',
+      confirmLabel: 'Replace logo',
+    });
+    if (!ok) return;
+    setPartnerLogoBusy(true);
+    setError('');
+    try {
+      const form = new FormData();
+      form.append('file', partnerLogo);
+      await hackathonsApi.uploadPartnerLogo(hackathonId, form);
+      setPartnerLogo(null);
+      if (partnerLogoRef.current) partnerLogoRef.current.value = '';
+      await fetchHackathon();
+      flash('Partner logo updated.');
+    } catch (err: any) {
+      setError(formatError(err, 'Failed to upload partner logo'));
+    } finally {
+      setPartnerLogoBusy(false);
+    }
+  };
+
   const handleBannerUpload = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!bannerFile) return;
@@ -532,7 +597,7 @@ export default function HackathonDetail() {
         <div className="max-w-4xl mx-auto glass-panel p-8 text-center">
           <h2 className="font-pixel text-lg text-neon-pink mb-2">MISSION NOT FOUND</h2>
           <p className="text-slate-300 mb-4">{error || 'The hackathon you are looking for does not exist.'}</p>
-          <BackButton to="/hackathons" label="Back to hackathons" />
+          <BackButton to={user ? '/hackathons' : '/'} label={user ? 'Back to hackathons' : 'Back to home'} />
         </div>
       </PageLayout>
     );
@@ -550,20 +615,28 @@ export default function HackathonDetail() {
   // Organisers may submit before the start (dry run); everyone else waits.
   const notStarted = Boolean(hackathon.start_date) && !isPast(hackathon.start_date);
 
+  const next = `?next=${encodeURIComponent(location.pathname)}`;
+  const shareUrl = `${window.location.origin}${hackathonPath(hackathon)}`;
+
   // One clear next step per role instead of a generic "manage" button.
-  const primaryAction = isManager
+  const primaryAction = !user
+    ? { label: 'Register to participate', hint: 'Create a free account to join a team and submit', to: `/register${next}` }
+    : publicView
+      ? { label: 'Browse hackathons', hint: 'You are viewing the public page of this hackathon', to: '/hackathons' }
+      : isManager
     ? { label: 'Manage teams & submissions', hint: `${hackathon.teams?.length ?? 0} teams registered` }
     : user?.role === 'judge'
       ? { label: 'Review & evaluate submissions', hint: 'Score team submissions' }
       : myTeam
         ? { label: 'My team & submissions', hint: `You're in ${myTeam.name}` }
         : { label: 'Join or create a team', hint: "You're not in a team yet" };
+  const primaryHref = (primaryAction as { to?: string }).to ?? teamsHref;
 
   return (
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
       <div className="max-w-5xl mx-auto">
         <div className="mb-4">
-          <BackButton to="/hackathons" label="Back to hackathons" />
+          <BackButton to={user ? '/hackathons' : '/'} label={user ? 'Back to hackathons' : 'Back to home'} />
         </div>
 
         {/* Banner + hero */}
@@ -577,6 +650,7 @@ export default function HackathonDetail() {
             <div className="absolute inset-0 bg-gradient-to-t from-space-900/95 via-space-900/50 to-transparent" />
             <div className="relative p-6 pt-20 sm:pt-28">
               <div className="flex flex-wrap items-center gap-3 mb-3">
+                <PartnerBadge hackathon={hackathon} />
                 <span
                   className={`px-2.5 py-1 rounded text-[10px] border uppercase tracking-wider cursor-pointer ${statusStyles[status.status]}`}
                   data-egg-trigger="status-badge"
@@ -620,10 +694,15 @@ export default function HackathonDetail() {
             )}
           </div>
           <div className="flex flex-wrap gap-3">
-            <Link to={teamsHref} className="px-5 py-2.5 rounded neon-btn neon-btn-primary text-xs">
+            <Link to={primaryHref} className="px-5 py-2.5 rounded neon-btn neon-btn-primary text-xs">
               {primaryAction.label}
             </Link>
-            {can('view_leaderboard') && (
+            {!user && (
+              <Link to={`/login${next}`} className="px-5 py-2.5 rounded neon-btn neon-btn-ghost text-xs">
+                Log in
+              </Link>
+            )}
+            {user && !publicView && can('view_leaderboard') && (
               <Link to={`/hackathons/${hackathonId}/leaderboard`} className="px-5 py-2.5 rounded neon-btn neon-btn-cyan text-xs">
                 Leaderboard
               </Link>
@@ -638,6 +717,23 @@ export default function HackathonDetail() {
           <div className="mb-6 px-4 py-3 rounded bg-neon-cyan/10 border border-neon-cyan/30 text-neon-cyan text-sm" role="status">
             {notice}
           </div>
+        )}
+
+        {hackathon.partner_name && (
+          <section className="mb-6 p-5 sm:p-6 rounded-2xl border border-neon-cyan/30 bg-gradient-to-r from-neon-cyan/[0.08] via-neon-purple/[0.06] to-transparent flex flex-col sm:flex-row sm:items-center justify-between gap-5">
+            <PartnerBadge hackathon={hackathon} size="lg" />
+            <div className="flex flex-col items-start sm:items-end gap-2">
+              {hackathon.partner_website && (
+                <a href={hackathon.partner_website} target="_blank" rel="noreferrer" className="text-xs text-neon-cyan hover:text-white transition">
+                  Visit {hackathon.partner_name} ↗
+                </a>
+              )}
+              <div className="flex items-center gap-2">
+                <code className="text-[11px] text-slate-300 bg-black/30 border border-white/10 rounded px-2 py-1 break-all">{shareUrl}</code>
+                <CopyButton text={shareUrl} label="Copy link" />
+              </div>
+            </div>
+          </section>
         )}
 
         {/* Key facts */}
@@ -839,6 +935,28 @@ export default function HackathonDetail() {
             </form>
           )}
         </section>
+
+        {/* Partner logo */}
+        {unlocked && canEdit && hackathon.partner_name && (
+          <section className="glass-panel p-6 sm:p-8 mb-8">
+            <h2 className="font-pixel text-sm text-white mb-2">PARTNER LOGO</h2>
+            <p className="text-xs text-slate-400 mb-4">
+              Square PNG, JPG, GIF, or WebP works best. Shown next to {hackathon.partner_name} on this page, the list and the landing page.
+            </p>
+            <form onSubmit={handlePartnerLogoUpload} className="flex flex-col sm:flex-row gap-4 items-start">
+              <input
+                ref={partnerLogoRef}
+                type="file"
+                accept="image/png,image/jpeg,image/gif,image/webp"
+                onChange={(e) => setPartnerLogo(e.target.files?.[0] || null)}
+                className={`flex-1 ${FILE_INPUT_CLASS}`}
+              />
+              <button type="submit" disabled={partnerLogoBusy || !partnerLogo} className="px-5 py-2 rounded neon-btn neon-btn-primary text-xs disabled:opacity-50">
+                {partnerLogoBusy ? 'Uploading...' : 'Upload logo'}
+              </button>
+            </form>
+          </section>
+        )}
 
         {/* Banner */}
         {unlocked && canEdit && (

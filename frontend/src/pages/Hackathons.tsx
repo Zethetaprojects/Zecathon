@@ -6,7 +6,8 @@ import { formatError } from '../utils/formatError';
 import { useConfirm } from '../hooks/useConfirm';
 import { isManagerRole } from '../utils/role';
 import { useAuth } from '../hooks/useAuth';
-import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget } from '../utils/hackathon';
+import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget, hackathonPath } from '../utils/hackathon';
+import PartnerBadge from '../components/PartnerBadge';
 import Countdown from '../components/Countdown';
 import PageLayout from '../components/PageLayout';
 import LoadingScreen from '../components/LoadingScreen';
@@ -148,7 +149,7 @@ export default function Hackathons() {
               return (
                 <Link
                   key={h.id}
-                  to={`/hackathons/${h.id}`}
+                  to={hackathonPath(h)}
                   className="group glass-panel block border-l-4 border-neon-cyan/40 hover:border-neon-cyan transition-all duration-300 hover:-translate-y-1 hover:shadow-neon-cyan micro-lift overflow-hidden"
                 >
                   {/* Banner */}
@@ -174,6 +175,11 @@ export default function Hackathons() {
                   </div>
 
                   <div className="p-6">
+                    {h.partner_name && (
+                      <div className="mb-3">
+                        <PartnerBadge hackathon={h} />
+                      </div>
+                    )}
                     <div className="flex items-start justify-between gap-4 mb-3">
                       <h2 className="font-pixel text-xs text-white group-hover:text-neon-cyan transition">
                         {h.name}

@@ -51,6 +51,12 @@ export interface Hackathon {
   submission_guidelines?: string | null;
   /** When true each team may submit to only one problem statement. */
   one_statement_per_team?: boolean | null;
+  /** Optional partner (e.g. a college); partner hackathons live at /hackathons/{partner_slug}/{partner_number}. */
+  partner_name?: string | null;
+  partner_slug?: string | null;
+  partner_number?: number | null;
+  partner_logo_path?: string | null;
+  partner_website?: string | null;
   created_by: number;
   created_at: string;
   problem_statements?: ProblemStatement[];

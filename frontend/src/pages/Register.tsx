@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { authApi } from '../api/auth';
 import { useAuth } from '../hooks/useAuth';
 import { formatError } from '../utils/formatError';
@@ -42,6 +42,9 @@ export default function Register() {
   const formValid = !fieldErrors.username && !fieldErrors.email && !fieldErrors.password;
   const { login } = useAuth();
   const navigate = useNavigate();
+  // After signing in, return to the page that sent the visitor here (same-site paths only).
+  const nextParam = new URLSearchParams(useLocation().search).get('next');
+  const nextPath = nextParam && nextParam.startsWith('/') && !nextParam.startsWith('//') ? nextParam : '/dashboard';
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setForm({ ...form, [e.target.name]: e.target.value });
@@ -60,7 +63,7 @@ export default function Register() {
       localStorage.setItem('token', tokenData.access_token);
       const { data: user } = await authApi.me();
       await login(tokenData.access_token, user);
-      navigate('/dashboard');
+      navigate(nextPath);
     } catch (err: any) {
       setError(formatError(err, 'Registration failed'));
     } finally {
@@ -196,7 +199,7 @@ export default function Register() {
 
           <p className="text-center text-sm text-slate-400">
             Already have an account?{' '}
-            <Link to="/login" className="text-neon-cyan hover:text-white transition micro-shift">
+            <Link to={`/login${nextParam ? `?next=${encodeURIComponent(nextParam)}` : ''}`} className="text-neon-cyan hover:text-white transition micro-shift">
               Log in
             </Link>
           </p>

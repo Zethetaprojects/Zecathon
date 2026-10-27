@@ -76,3 +76,18 @@ export function addHoursToLocalValue(localValue: string, hours: number): string 
   if (isNaN(d.getTime())) return '';
   return toDatetimeLocalValue(new Date(d.getTime() + hours * 3600000).toISOString());
 }
+
+/** Canonical page path: /hackathons/{partner}/{n} for partner hackathons, else /hackathons/{id}. */
+export function hackathonPath(h: { id: number; partner_slug?: string | null; partner_number?: number | null }): string {
+  return h.partner_slug && h.partner_number ? `/hackathons/${h.partner_slug}/${h.partner_number}` : `/hackathons/${h.id}`;
+}
+
+/** 'IIT Patna' -> 'iit-patna' (mirrors the backend). */
+export function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 50)
+    .replace(/-+$/, '');
+}

@@ -4,7 +4,8 @@ import { useAuth } from '../hooks/useAuth';
 import { ScrollReveal } from '../hooks/useInView';
 import { hackathonsApi } from '../api/hackathons';
 import { Hackathon, PublicStats, User } from '../types';
-import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget } from '../utils/hackathon';
+import { getHackathonStatus, formatHackathonDateRange, getCountdownTarget, hackathonPath } from '../utils/hackathon';
+import PartnerBadge from '../components/PartnerBadge';
 import Countdown from '../components/Countdown';
 import PageLayout from '../components/PageLayout';
 import LoadingScreen from '../components/LoadingScreen';
@@ -133,6 +134,11 @@ function HackathonCard({ h, user }: { h: Hackathon; user?: User | null }) {
         </div>
       </div>
       <div className="p-5 flex flex-col flex-1">
+        {h.partner_name && (
+          <div className="mb-2">
+            <PartnerBadge hackathon={h} />
+          </div>
+        )}
         <h3 className="font-pixel text-xs text-white mb-2">{h.name}</h3>
         <p className="text-sm text-slate-400 line-clamp-2 mb-3 flex-1">{h.description || 'No description provided.'}</p>
         <div
@@ -148,15 +154,9 @@ function HackathonCard({ h, user }: { h: Hackathon; user?: User | null }) {
           <span className="text-xs text-slate-500">
             {h.team_count ?? 0} team{(h.team_count ?? 0) === 1 ? '' : 's'}
           </span>
-          {user ? (
-            <Link to={`/hackathons/${h.id}`} className="px-3 py-1.5 rounded text-xs neon-btn neon-btn-cyan">
-              View arena
-            </Link>
-          ) : (
-            <Link to="/login" className="px-3 py-1.5 rounded text-xs neon-btn neon-btn-ghost">
-              Log in to join
-            </Link>
-          )}
+          <Link to={hackathonPath(h)} className="px-3 py-1.5 rounded text-xs neon-btn neon-btn-cyan">
+            {user ? 'View arena' : 'View details'}
+          </Link>
         </div>
       </div>
     </div>
@@ -200,6 +200,11 @@ function FeaturedBanner({ h, user }: { h: Hackathon; user?: User | null }) {
             {status.label}
           </span>
         </div>
+        {h.partner_name && (
+          <div className="mb-3">
+            <PartnerBadge hackathon={h} />
+          </div>
+        )}
         <h3 className="font-pixel text-xl sm:text-2xl text-white text-shadow-neon mb-2">{h.name}</h3>
         <p className="text-sm text-slate-300 max-w-2xl mb-3 line-clamp-2">{h.description || 'No description provided.'}</p>
         <div
@@ -211,10 +216,10 @@ function FeaturedBanner({ h, user }: { h: Hackathon; user?: User | null }) {
           {status.status === 'ended' ? 'Ended' : <Countdown targetDate={target} label={label} />}
         </div>
         <Link
-          to={user ? `/hackathons/${h.id}` : '/login'}
+          to={hackathonPath(h)}
           className="block w-fit px-6 py-2.5 rounded neon-btn neon-btn-primary text-xs micro-lift mt-4"
         >
-          {user ? 'View arena' : 'Log in to join'}
+          {user ? 'View arena' : 'View details & register'}
         </Link>
       </div>
     </div>

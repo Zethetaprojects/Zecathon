@@ -7,7 +7,8 @@ import DateTimeInput from '../components/DateTimeInput';
 import BackButton from '../components/BackButton';
 import RubricEditor from '../components/RubricEditor';
 import { DEFAULT_NON_TECH_RUBRIC, DEFAULT_TECH_RUBRIC, RubricRow, rowsToRubric } from '../utils/rubric';
-import { addHoursToLocalValue } from '../utils/hackathon';
+import { addHoursToLocalValue, hackathonPath } from '../utils/hackathon';
+import PartnerFields, { PartnerFormState, emptyPartner, partnerError } from '../components/PartnerFields';
 
 export default function CreateHackathon() {
   const [form, setForm] = useState({
@@ -23,6 +24,7 @@ export default function CreateHackathon() {
   });
   // The deadline follows the hackathon end time until the organiser sets it themselves.
   const [deadlineTouched, setDeadlineTouched] = useState(false);
+  const [partner, setPartner] = useState<PartnerFormState>(emptyPartner);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [techCustom, setTechCustom] = useState(false);
   const [nonTechCustom, setNonTechCustom] = useState(false);
@@ -86,6 +88,13 @@ export default function CreateHackathon() {
       return;
     }
 
+    const partnerProblem = partnerError(partner);
+    if (partnerProblem) {
+      setError(partnerProblem);
+      setBusy(false);
+      return;
+    }
+
     try {
       const payload: any = { name: form.name, description: form.description };
       if (form.startDate) payload.start_date = new Date(form.startDate).toISOString();
@@ -95,6 +104,11 @@ export default function CreateHackathon() {
       if (form.deadline) payload.submission_deadline = new Date(form.deadline).toISOString();
       if (form.guidelines.trim()) payload.submission_guidelines = form.guidelines.trim();
       payload.one_statement_per_team = form.oneTrack;
+      if (partner.hasPartner) {
+        payload.partner_name = partner.name.trim();
+        payload.partner_slug = partner.slug;
+        if (partner.website.trim()) payload.partner_website = partner.website.trim();
+      }
       if (tech || nonTech) {
         payload.rubric = {};
         if (tech) payload.rubric.tech = tech;
@@ -109,7 +123,13 @@ export default function CreateHackathon() {
         await hackathonsApi.uploadBanner(hackathon.id, bannerForm);
       }
 
-      navigate('/hackathons');
+      if (partner.hasPartner && partner.logo && hackathon.id) {
+        const logoForm = new FormData();
+        logoForm.append('file', partner.logo);
+        await hackathonsApi.uploadPartnerLogo(hackathon.id, logoForm);
+      }
+
+      navigate(hackathonPath(hackathon));
     } catch (err: any) {
       setError(formatError(err, 'Failed to create hackathon'));
     } finally {
@@ -183,6 +203,8 @@ export default function CreateHackathon() {
                 />
               </div>
             </div>
+
+            <PartnerFields value={partner} onChange={setPartner} numberHint="(next number)" />
 
             <div>
               <label className="block text-xs pixel-caps text-slate-300 mb-2">Submission guidelines (shown to teams)</label>

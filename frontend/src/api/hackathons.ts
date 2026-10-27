@@ -7,6 +7,14 @@ export const hackathonsApi = {
   publicStats: () => api.get<PublicStats>('/hackathons/public/stats'),
   create: (data: Partial<Hackathon>) => api.post<Hackathon>('/hackathons', data),
   get: (id: number) => api.get<Hackathon>(`/hackathons/${id}`),
+  /** No login needed: what anyone may see (no teams or scores). */
+  publicGet: (id: number) => api.get<Hackathon>(`/hackathons/public/${id}`),
+  publicGetByPartner: (partnerSlug: string, partnerNumber: number) =>
+    api.get<Hackathon>(`/hackathons/public/partner/${encodeURIComponent(partnerSlug)}/${partnerNumber}`),
+  uploadPartnerLogo: (id: number, data: FormData) =>
+    api.post<Hackathon>(`/hackathons/${id}/partner-logo`, data, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    }),
   update: (id: number, data: Partial<Omit<Hackathon, 'rubric'>> & { rubric?: Partial<Rubric> | null }) =>
     api.put<Hackathon>(`/hackathons/${id}`, data),
   delete: (id: number) => api.delete(`/hackathons/${id}`),

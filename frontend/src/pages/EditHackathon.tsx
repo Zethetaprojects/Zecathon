@@ -4,7 +4,8 @@ import { hackathonsApi } from '../api/hackathons';
 import { Hackathon } from '../types';
 import { formatError } from '../utils/formatError';
 import { useConfirm } from '../hooks/useConfirm';
-import { addHoursToLocalValue, formatDateTime, toDatetimeLocalValue } from '../utils/hackathon';
+import { addHoursToLocalValue, formatDateTime, hackathonPath, toDatetimeLocalValue } from '../utils/hackathon';
+import PartnerFields, { PartnerFormState, emptyPartner, partnerError } from '../components/PartnerFields';
 import PageLayout from '../components/PageLayout';
 import DateTimeInput from '../components/DateTimeInput';
 import BackButton from '../components/BackButton';
@@ -35,6 +36,7 @@ export default function EditHackathon() {
   });
   // Editing never auto-fills the deadline; the field only changes when the organiser edits it.
   const [, setDeadlineTouched] = useState(true);
+  const [partner, setPartner] = useState<PartnerFormState>(emptyPartner);
   const [bannerFile, setBannerFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -57,6 +59,14 @@ export default function EditHackathon() {
           deadline: toDatetimeLocalValue(h.submission_deadline),
           guidelines: h.submission_guidelines || '',
           oneTrack: Boolean(h.one_statement_per_team),
+        });
+        setPartner({
+          hasPartner: Boolean(h.partner_name),
+          name: h.partner_name || '',
+          slug: h.partner_slug || '',
+          slugTouched: Boolean(h.partner_slug),
+          website: h.partner_website || '',
+          logo: null,
         });
         setPreviewUrl(resolveBannerUrl(h.banner_path));
       })
@@ -127,6 +137,22 @@ export default function EditHackathon() {
       }
     }
     if (bannerFile) changes.push('New banner image');
+    if (original) {
+      const before = original.partner_name || '';
+      const after = partner.hasPartner ? partner.name.trim() : '';
+      if (before !== after) changes.push(after ? `Partner → ${after}` : 'Partner removed');
+      if (partner.hasPartner && partner.slug !== (original.partner_slug || '')) {
+        changes.push(`Page address → /hackathons/${partner.slug}/… (old links to the previous partner address stop working)`);
+      }
+      if (partner.hasPartner && partner.website.trim() !== (original.partner_website || '')) changes.push('Partner website updated');
+      if (partner.hasPartner && partner.logo) changes.push('New partner logo');
+    }
+    const partnerProblem = partnerError(partner);
+    if (partnerProblem) {
+      setError(partnerProblem);
+      setSaving(false);
+      return;
+    }
     if (form.deadline && form.startDate && new Date(form.deadline) <= new Date(form.startDate)) {
       setError('The submission deadline must be after the start time.');
       setSaving(false);
@@ -166,7 +192,19 @@ export default function EditHackathon() {
       payload.submission_deadline = form.deadline ? new Date(form.deadline).toISOString() : null;
       payload.submission_guidelines = form.guidelines.trim() || null;
       payload.one_statement_per_team = form.oneTrack;
-      await hackathonsApi.update(hackathonId, payload);
+      if (partner.hasPartner) {
+        payload.partner_name = partner.name.trim();
+        payload.partner_slug = partner.slug;
+        payload.partner_website = partner.website.trim() || null;
+      } else {
+        payload.partner_name = null;
+      }
+      const { data: updated } = await hackathonsApi.update(hackathonId, payload);
+      if (partner.hasPartner && partner.logo) {
+        const logoForm = new FormData();
+        logoForm.append('file', partner.logo);
+        await hackathonsApi.uploadPartnerLogo(hackathonId, logoForm);
+      }
 
       if (bannerFile) {
         const formData = new FormData();
@@ -174,7 +212,7 @@ export default function EditHackathon() {
         await hackathonsApi.uploadBanner(hackathonId, formData);
       }
 
-      navigate(`/hackathons/${hackathonId}`);
+      navigate(hackathonPath(updated));
     } catch (err: any) {
       setError(formatError(err, 'Failed to update hackathon'));
     } finally {
@@ -295,6 +333,15 @@ export default function EditHackathon() {
                 />
               </div>
             </div>
+
+            <PartnerFields
+              value={partner}
+              onChange={setPartner}
+              numberHint={
+                hackathon?.partner_number && partner.slug === hackathon.partner_slug ? String(hackathon.partner_number) : '(next number)'
+              }
+              hasExistingLogo={Boolean(hackathon?.partner_logo_path)}
+            />
 
             <div>
               <label className="block text-xs pixel-caps text-slate-300 mb-2">Submission guidelines (shown to teams)</label>

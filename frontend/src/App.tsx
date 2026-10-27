@@ -49,6 +49,9 @@ function App() {
                 <Route path="/login" element={<Login />} />
                 <Route path="/register" element={<Register />} />
                 <Route path="/public/leaderboard/:id" element={<PublicLeaderboard />} />
+              {/* Hackathon pages are public; actions inside them ask visitors to log in. */}
+              <Route path="/hackathons/:id" element={<HackathonDetail />} />
+              <Route path="/hackathons/:partner/:number" element={<HackathonDetail />} />
                 <Route path="/docs" element={<DocsPage />} />
                 <Route path="/rubrics" element={<RubricsPage />} />
                 <Route path="/support" element={<SupportPage />} />
@@ -74,8 +77,7 @@ function App() {
                     </Route>
                   </Route>
                   <Route path="/hackathons" element={<Hackathons />} />
-                  <Route path="/hackathons/:id" element={<HackathonDetail />} />
-                  <Route path="/hackathons/:id/teams" element={<HackathonTeams />} />
+                    <Route path="/hackathons/:id/teams" element={<HackathonTeams />} />
                   <Route element={<PermissionRoute feature="view_leaderboard" />}>
                     <Route path="/hackathons/:id/leaderboard" element={<Leaderboard />} />
                   </Route>
