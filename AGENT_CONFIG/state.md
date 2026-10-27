@@ -7,6 +7,12 @@
 - **Production VM** (`/opt/zecathon`, GCP): was down 2026-09-12 → 2026-10-15; **recovered on 2026-10-15** (see Phase 31 "VM status" and "Incident").
 - **AGENT_CONFIG**: maintained. Phases are listed newest first.
 
+## Phase 38 — Public hackathon pages and partner URLs (2026-10-27)
+- Public (no-login) hackathon pages: `GET /api/hackathons/public/{id}` and `/api/hackathons/public/partner/{slug}/{number}` return `HackathonPublicDetail` (no teams, rubrics, creator or scores; statements only after the start). Frontend routes `/hackathons/:id` and `/hackathons/:partner/:number` are outside PrivateRoute; visitors get "Register to participate" / "Log in" (with `?next=` back to the page). Logged-in users without access (e.g. another organiser) see the public view without organiser tools.
+- Partners: Hackathon.partner_name/partner_slug/partner_number/partner_logo_path/partner_website; slug auto from name (editable, validated, reserved words blocked); number = next per partner (unique index on (partner_slug, partner_number)); changing the slug assigns a new number (old partner URL stops working); clearing the name removes the partner. `POST /api/hackathons/{id}/partner-logo` (images only). Old `/hackathons/{id}` links redirect to the partner URL.
+- Highlighting: PartnerBadge on the banner, hackathon list and landing cards; partner section with large logo, website and copyable page link; partner fields with live address preview on create/edit.
+- Validation: pytest 102 passed (tests/test_partner_public.py), build ✅, validate_flow ✅.
+
 ## Phase 37 — Start-time gating (2026-10-26)
 - Before `start_date`, participants get the hackathon without problem statements (`problem_statements: []`, `problem_statements_hidden: true`, `problem_statement_count` still set) and `GET /api/problem-statements/{id}` returns 403; organisers of the hackathon, admins and judges always see them. Submissions before the start return 403 for participants; managers may submit (dry run). No start date = no gating.
 - UI: locked "N problem statements unlock when the hackathon starts" panel with countdown; submit page and team page explain; guidelines gain a start-time rule.
