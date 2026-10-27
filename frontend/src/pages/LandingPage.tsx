@@ -226,6 +226,10 @@ function FeaturedBanner({ h, user }: { h: Hackathon; user?: User | null }) {
   );
 }
 
+// Platform stats (hackathons, teams, submissions, evaluations) under the hero.
+// Hidden for now; set to true to show them again.
+const SHOW_PLATFORM_STATS = false;
+
 export default function LandingPage() {
   const { user, can } = useAuth();
   const [upcoming, setUpcoming] = useState<Hackathon[]>([]);
@@ -252,10 +256,12 @@ export default function LandingPage() {
       .catch(() => setUpcoming([]))
       .finally(() => setLoadingUpcoming(false));
 
-    hackathonsApi
-      .publicStats()
-      .then((res) => setStats(res.data))
-      .catch(() => {});
+    if (SHOW_PLATFORM_STATS) {
+      hackathonsApi
+        .publicStats()
+        .then((res) => setStats(res.data))
+        .catch(() => {});
+    }
   }, []);
 
   return (
@@ -296,7 +302,7 @@ export default function LandingPage() {
               collect submissions, and let AI score every project with fair, transparent, hackathon-focused rubrics.
             </p>
 
-            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+            <div className={`flex flex-col sm:flex-row items-center justify-center gap-4 ${SHOW_PLATFORM_STATS ? 'mb-16' : ''}`}>
               {user ? (
                 <>
                   <Link to="/hackathons" className="px-8 py-4 rounded neon-btn neon-btn-primary micro-lift micro-pop text-sm">
@@ -321,12 +327,14 @@ export default function LandingPage() {
             </div>
 
             {/* Stats */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
-              <Stat value={formatNumber(stats.total_hackathons)} label="Hackathons" />
-              <Stat value={formatNumber(stats.total_teams)} label="Teams" />
-              <Stat value={formatNumber(stats.total_submissions)} label="Submissions" />
-              <Stat value={formatNumber(stats.total_evaluations)} label="Evaluations" />
-            </div>
+            {SHOW_PLATFORM_STATS && (
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-4xl mx-auto">
+                <Stat value={formatNumber(stats.total_hackathons)} label="Hackathons" />
+                <Stat value={formatNumber(stats.total_teams)} label="Teams" />
+                <Stat value={formatNumber(stats.total_submissions)} label="Submissions" />
+                <Stat value={formatNumber(stats.total_evaluations)} label="Evaluations" />
+              </div>
+            )}
           </section>
         </ScrollReveal>
 
