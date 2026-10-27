@@ -647,7 +647,7 @@ export default function HackathonDetail() {
             ) : (
               <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_left,rgba(176,38,255,0.25),transparent_60%),radial-gradient(ellipse_at_bottom_right,rgba(5,217,232,0.2),transparent_60%)]" />
             )}
-            <div className="absolute inset-0 bg-gradient-to-t from-space-900/95 via-space-900/50 to-transparent" />
+            <div className="absolute inset-0 banner-scrim" />
             <div className="relative p-6 pt-20 sm:pt-28">
               <div className="flex flex-wrap items-center gap-3 mb-3">
                 <PartnerBadge hackathon={hackathon} />

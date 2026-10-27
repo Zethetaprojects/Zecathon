@@ -189,7 +189,7 @@ function FeaturedBanner({ h, user }: { h: Hackathon; user?: User | null }) {
             </svg>
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-space-900/95 via-space-900/50 to-transparent" />
+        <div className="absolute inset-0 banner-scrim" />
       </div>
       <div className="absolute bottom-0 left-0 right-0 p-6 sm:p-8">
         <div className="flex flex-wrap items-center gap-3 mb-3">
@@ -206,7 +206,7 @@ function FeaturedBanner({ h, user }: { h: Hackathon; user?: User | null }) {
           </div>
         )}
         <h3 className="font-pixel text-xl sm:text-2xl text-white text-shadow-neon mb-2">{h.name}</h3>
-        <p className="text-sm text-slate-300 max-w-2xl mb-3 line-clamp-2">{h.description || 'No description provided.'}</p>
+        <p className="text-sm text-slate-200 max-w-2xl mb-3 line-clamp-2">{h.description || 'No description provided.'}</p>
         <div
           className="text-xs font-mono text-neon-cyan mb-4 cursor-pointer inline-block"
           data-egg-trigger="countdown-click"
