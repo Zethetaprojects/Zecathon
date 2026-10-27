@@ -158,6 +158,13 @@ class Hackathon(Base):
     submission_guidelines = Column(Text, nullable=True)
     # When true a team may submit to only one problem statement (its chosen track).
     one_statement_per_team = Column(Boolean, nullable=True, default=False)
+    # Optional partner (e.g. a college). Partner hackathons are addressed as
+    # /hackathons/{partner_slug}/{partner_number}: the n-th hackathon with that partner.
+    partner_name = Column(String, nullable=True)
+    partner_slug = Column(String, nullable=True, index=True)
+    partner_number = Column(Integer, nullable=True)
+    partner_logo_path = Column(String, nullable=True)
+    partner_website = Column(String, nullable=True)
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 

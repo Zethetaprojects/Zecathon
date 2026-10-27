@@ -9,13 +9,22 @@ from sqlalchemy.orm import Session, selectinload
 from app.auth import get_current_active_user, require_permission
 from app.database import get_db
 from app.models import Hackathon, ProblemStatement, Team, TeamMember, User, UserRole
-from app.routers.common import can_access_hackathon, can_manage_hackathon, can_see_problem_statements, team_out
+from app.routers.common import (
+    can_access_hackathon,
+    can_manage_hackathon,
+    can_see_problem_statements,
+    hackathon_not_started,
+    team_out,
+)
 from app.schemas import (
     HackathonCreate,
     HackathonOut,
     HackathonDetail,
+    HackathonPublicDetail,
     HackathonPublicOut,
     HackathonPublicStats,
+    PublicProblemStatement,
+    slugify,
     HackathonUpdate,
     ProblemStatementOut,
 )
@@ -39,6 +48,46 @@ def _compute_end_date(
 def _check_deadline(start_date: datetime | None, deadline: datetime | None) -> None:
     if start_date and deadline and deadline <= start_date:
         raise HTTPException(status_code=400, detail="The submission deadline must be after the hackathon start time")
+
+
+def _next_partner_number(db: Session, slug: str, exclude_id: int | None = None) -> int:
+    query = db.query(func.max(Hackathon.partner_number)).filter(Hackathon.partner_slug == slug)
+    if exclude_id is not None:
+        query = query.filter(Hackathon.id != exclude_id)
+    return (query.scalar() or 0) + 1
+
+
+def _set_partner(db: Session, hackathon: Hackathon, name: str | None, slug: str | None, website: str | None) -> None:
+    """Set (or clear) the partner. A new partner URL name gets the next number for that partner."""
+    if not name:
+        hackathon.partner_name = hackathon.partner_slug = hackathon.partner_website = None
+        hackathon.partner_number = None
+        hackathon.partner_logo_path = None
+        return
+    slug = slug or hackathon.partner_slug or slugify(name)
+    if not slug or len(slug) < 2:
+        raise HTTPException(status_code=400, detail="Give the partner a URL name, e.g. iit-patna")
+    if slug != hackathon.partner_slug or hackathon.partner_number is None:
+        hackathon.partner_number = _next_partner_number(db, slug, exclude_id=hackathon.id)
+    hackathon.partner_name, hackathon.partner_slug, hackathon.partner_website = name, slug, website
+
+
+def _public_detail(db: Session, hackathon: Hackathon) -> HackathonPublicDetail:
+    started = not hackathon_not_started(hackathon)
+    counts = _hackathon_counts(db, hackathon)
+    return HackathonPublicDetail(
+        **{
+            field: getattr(hackathon, field)
+            for field in (
+                "id", "name", "description", "start_date", "end_date", "duration_hours", "banner_path",
+                "submission_deadline", "partner_name", "partner_slug", "partner_number", "partner_logo_path",
+                "partner_website", "submission_guidelines", "one_statement_per_team", "max_team_members",
+            )
+        },
+        **counts,
+        problem_statements=[PublicProblemStatement.model_validate(ps) for ps in hackathon.problem_statements] if started else [],
+        problem_statements_hidden=not started and bool(hackathon.problem_statements),
+    )
 
 
 def _hackathon_counts(db: Session, hackathon: Hackathon) -> dict:
@@ -89,6 +138,8 @@ def create_hackathon(
         one_statement_per_team=bool(payload.one_statement_per_team),
         created_by=current_user.id,
     )
+    if payload.partner_name:
+        _set_partner(db, hackathon, payload.partner_name, payload.partner_slug, payload.partner_website)
     db.add(hackathon)
     db.commit()
     db.refresh(hackathon)
@@ -119,6 +170,10 @@ def list_public_hackathons(db: Session = Depends(get_db)):
                 duration_hours=h.duration_hours,
                 banner_path=h.banner_path,
                 submission_deadline=h.submission_deadline,
+                partner_name=h.partner_name,
+                partner_slug=h.partner_slug,
+                partner_number=h.partner_number,
+                partner_logo_path=h.partner_logo_path,
                 **counts,
             )
         )
@@ -139,6 +194,31 @@ def public_hackathon_stats(db: Session = Depends(get_db)):
         "total_submissions": total_submissions,
         "total_evaluations": total_evaluations,
     }
+
+
+@router.get("/public/partner/{partner_slug}/{partner_number}", response_model=HackathonPublicDetail)
+def get_public_hackathon_by_partner(partner_slug: str, partner_number: int, db: Session = Depends(get_db)):
+    """A partner hackathon by its URL, e.g. /hackathons/iit-patna/1. No login needed."""
+    hackathon = (
+        db.query(Hackathon)
+        .options(selectinload(Hackathon.problem_statements))
+        .filter(Hackathon.partner_slug == partner_slug.lower(), Hackathon.partner_number == partner_number)
+        .first()
+    )
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+    return _public_detail(db, hackathon)
+
+
+@router.get("/public/{hackathon_id}", response_model=HackathonPublicDetail)
+def get_public_hackathon(hackathon_id: int, db: Session = Depends(get_db)):
+    """The public view of a hackathon: no login needed, no teams or scores."""
+    hackathon = (
+        db.query(Hackathon).options(selectinload(Hackathon.problem_statements)).filter(Hackathon.id == hackathon_id).first()
+    )
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+    return _public_detail(db, hackathon)
 
 
 @router.get("/{hackathon_id}", response_model=HackathonDetail)
@@ -208,6 +288,13 @@ def update_hackathon(
     if "max_team_members" in payload.model_fields_set:
         hackathon.max_team_members = payload.max_team_members
 
+    partner_fields = {"partner_name", "partner_slug", "partner_website"}
+    if partner_fields & payload.model_fields_set:
+        name = payload.partner_name if "partner_name" in payload.model_fields_set else hackathon.partner_name
+        slug = payload.partner_slug if "partner_slug" in payload.model_fields_set else None
+        website = payload.partner_website if "partner_website" in payload.model_fields_set else hackathon.partner_website
+        _set_partner(db, hackathon, name, slug, website)
+
     if "submission_guidelines" in payload.model_fields_set:
         hackathon.submission_guidelines = payload.submission_guidelines
     if payload.one_statement_per_team is not None:
@@ -246,6 +333,29 @@ async def upload_hackathon_banner(
     db.commit()
     db.refresh(hackathon)
     logger.info("Banner uploaded for hackathon id=%s by user id=%s", hackathon.id, current_user.id)
+    return hackathon
+
+
+@router.post("/{hackathon_id}/partner-logo", response_model=HackathonOut)
+async def upload_partner_logo(
+    hackathon_id: int,
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("edit_hackathon")),
+):
+    hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
+    if not hackathon:
+        raise HTTPException(status_code=404, detail="Hackathon not found")
+    if not can_manage_hackathon(current_user, hackathon):
+        raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can change the partner logo")
+    if not hackathon.partner_name:
+        raise HTTPException(status_code=400, detail="Add a partner before uploading its logo")
+    if not (file.filename or "").lower().endswith((".png", ".jpg", ".jpeg", ".gif", ".webp")):
+        raise HTTPException(status_code=400, detail="Partner logo must be a PNG, JPG, GIF or WebP image")
+    hackathon.partner_logo_path = await save_upload(file)
+    db.commit()
+    db.refresh(hackathon)
+    logger.info("Partner logo uploaded for hackathon id=%s by user id=%s", hackathon.id, current_user.id)
     return hackathon
 
 

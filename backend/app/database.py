@@ -27,6 +27,11 @@ MIGRATION_SPECS = {
         ("submission_deadline", "TIMESTAMP"),
         ("submission_guidelines", "TEXT"),
         ("one_statement_per_team", "BOOLEAN"),
+        ("partner_name", "VARCHAR"),
+        ("partner_slug", "VARCHAR"),
+        ("partner_number", "INTEGER"),
+        ("partner_logo_path", "VARCHAR"),
+        ("partner_website", "VARCHAR"),
     ],
     "problem_statements": [
         ("rubric", "JSON"),
@@ -80,6 +85,15 @@ def ensure_columns(engine):
                     )
 
     _flag_legacy_mock_evaluations(engine)
+
+    # Each partner's hackathons are numbered 1, 2, 3... with no duplicates.
+    try:
+        with engine.begin() as conn:
+            conn.execute(text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS idx_hackathons_partner ON hackathons(partner_slug, partner_number)"
+            ))
+    except Exception:
+        logging.getLogger(__name__).exception("Could not create the partner URL index")
 
     # Ensure unique index on team join codes (existing NULLs are allowed by most DBs).
     try:

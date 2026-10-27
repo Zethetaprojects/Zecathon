@@ -1,8 +1,31 @@
+import re
 from datetime import datetime, timezone
 from typing import Optional, List, Dict, Any
 from pydantic import BaseModel as _PydanticBaseModel, ConfigDict, EmailStr, field_serializer, field_validator
 
 from app.models import SubmissionType, SubmissionStatus, UserRole
+
+
+PARTNER_SLUG_RE = re.compile(r"^[a-z0-9]+(?:-[a-z0-9]+)*$")
+# Path segments that already mean something under /hackathons/.
+RESERVED_PARTNER_SLUGS = {"new", "public", "edit", "teams", "leaderboard", "submit"}
+
+
+def slugify(value: str) -> str:
+    """'IIT Patna' -> 'iit-patna' (lowercase letters, digits and single hyphens)."""
+    slug = re.sub(r"[^a-z0-9]+", "-", value.lower()).strip("-")
+    return slug[:50].rstrip("-")
+
+
+def check_partner_slug(value: Optional[str]) -> Optional[str]:
+    if value is None or not value.strip():
+        return None
+    slug = value.strip().lower()
+    if not (2 <= len(slug) <= 50) or not PARTNER_SLUG_RE.match(slug):
+        raise ValueError("Partner URL name must be 2-50 lowercase letters, digits or single hyphens, e.g. iit-patna")
+    if slug in RESERVED_PARTNER_SLUGS:
+        raise ValueError(f"'{slug}' is reserved; choose another partner URL name")
+    return slug
 
 
 def to_naive_utc(value: Optional[datetime]) -> Optional[datetime]:
@@ -149,6 +172,33 @@ class HackathonBase(BaseModel):
     submission_deadline: Optional[datetime] = None
     submission_guidelines: Optional[str] = None
     one_statement_per_team: Optional[bool] = None
+    partner_name: Optional[str] = None
+    partner_slug: Optional[str] = None
+    partner_website: Optional[str] = None
+
+    @field_validator("partner_name")
+    @classmethod
+    def validate_partner_name(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or not v.strip():
+            return None
+        if len(v.strip()) > 100:
+            raise ValueError("Partner name can be at most 100 characters")
+        return v.strip()
+
+    @field_validator("partner_slug")
+    @classmethod
+    def validate_partner_slug(cls, v: Optional[str]) -> Optional[str]:
+        return check_partner_slug(v)
+
+    @field_validator("partner_website")
+    @classmethod
+    def validate_partner_website(cls, v: Optional[str]) -> Optional[str]:
+        if v is None or not v.strip():
+            return None
+        v = v.strip()
+        if not re.match(r"^https?://[^\s/$.?#].[^\s]*$", v) or len(v) > 300:
+            raise ValueError("Partner website must be a full link starting with https://")
+        return v
 
     @field_validator("max_participants", "max_team_members")
     @classmethod
@@ -195,6 +245,9 @@ class HackathonUpdate(HackathonBase):
     submission_deadline: Optional[datetime] = None
     submission_guidelines: Optional[str] = None
     one_statement_per_team: Optional[bool] = None
+    partner_name: Optional[str] = None
+    partner_slug: Optional[str] = None
+    partner_website: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -208,6 +261,8 @@ class HackathonOut(HackathonBase):
     id: int
     created_by: int
     created_at: datetime
+    partner_number: Optional[int] = None
+    partner_logo_path: Optional[str] = None
     problem_statement_count: int = 0
     team_count: int = 0
 
@@ -406,10 +461,34 @@ class HackathonPublicOut(BaseModel):
     duration_hours: Optional[int] = None
     banner_path: Optional[str] = None
     submission_deadline: Optional[datetime] = None
+    partner_name: Optional[str] = None
+    partner_slug: Optional[str] = None
+    partner_number: Optional[int] = None
+    partner_logo_path: Optional[str] = None
     problem_statement_count: int = 0
     team_count: int = 0
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class PublicProblemStatement(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None
+    file_path: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HackathonPublicDetail(HackathonPublicOut):
+    """What anyone can see without logging in (no teams, rubrics or scores)."""
+
+    partner_website: Optional[str] = None
+    submission_guidelines: Optional[str] = None
+    one_statement_per_team: Optional[bool] = None
+    max_team_members: Optional[int] = None
+    problem_statements: List[PublicProblemStatement] = []
+    problem_statements_hidden: bool = False
 
 
 class HackathonPublicStats(BaseModel):
