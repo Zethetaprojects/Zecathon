@@ -817,7 +817,9 @@ export default function HackathonDetail() {
             <div>
               <h2 className="font-pixel text-sm text-white">PROBLEM STATEMENTS</h2>
               <p className="text-xs text-slate-400 mt-2">
-                {statements.length === 0
+                {hackathon.problem_statements_hidden
+                  ? 'Revealed when the hackathon starts.'
+                  : statements.length === 0
                   ? 'Nothing published yet.'
                   : myTeam
                     ? hackathon.one_statement_per_team
@@ -834,7 +836,7 @@ export default function HackathonDetail() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
               </svg>
               <p className="text-white text-sm font-semibold">
-                {hackathon.problem_statement_count ?? 0} problem statement{hackathon.problem_statement_count === 1 ? '' : 's'} unlock
+                {hackathon.problem_statement_count ?? 0} problem statement{hackathon.problem_statement_count === 1 ? ' unlocks' : 's unlock'}{' '}
                 when the hackathon starts
               </p>
               <p className="text-neon-purple text-sm mt-2 font-mono">
