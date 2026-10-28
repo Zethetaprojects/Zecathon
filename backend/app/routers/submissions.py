@@ -10,8 +10,9 @@ from app.auth import get_current_active_user, require_permission
 from app.database import get_db
 from app.models import Hackathon, ProblemStatement, Submission, SubmissionStatus, SubmissionType, Team, TeamMember, User, UserRole
 from app.routers.common import can_manage_hackathon, hackathon_not_started, is_manager
-from app.schemas import SubmissionDetail, SubmissionOut
+from app.schemas import StaffSubmissionDetail, SubmissionDetail, SubmissionOut
 from app.services.file_storage import save_upload
+from app.services.rounds import get_round, is_shortlisted, round_name
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -45,6 +46,7 @@ async def create_submission(
     github_url: str = Form(None),
     submission_file: UploadFile = File(None),
     ppt_file: UploadFile = File(None),
+    round_number: int = Form(1),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("submit_project")),
 ):
@@ -67,10 +69,26 @@ async def create_submission(
             detail=f"Submissions open when the hackathon starts ({team.hackathon.start_date.strftime('%Y-%m-%d %H:%M')} UTC).",
         )
 
+    manager = can_manage_hackathon(current_user, team.hackathon)
+    round_number = round_number or 1
+    if round_number < 1:
+        raise HTTPException(status_code=400, detail="Invalid round")
+    deadline = team.hackathon.submission_deadline
+    if round_number > 1:
+        # Later rounds are for shortlisted teams, once the organiser publishes the round.
+        round_row = get_round(db, team.hackathon_id, round_number)
+        if not round_row:
+            raise HTTPException(status_code=404, detail="Round not found")
+        label = round_name(round_number, round_row)
+        if not manager and not round_row.published:
+            raise HTTPException(status_code=403, detail=f"{label} has not opened yet.")
+        if not is_shortlisted(round_row, team.id):
+            raise HTTPException(status_code=403, detail=f"Your team was not shortlisted for {label}.")
+        deadline = round_row.submission_deadline
+
     # After the deadline only the hackathon's managers may still submit (on a
     # team's behalf, e.g. after a technical problem); participants are refused.
-    deadline = team.hackathon.submission_deadline
-    if deadline and datetime.utcnow() > deadline and not can_manage_hackathon(current_user, team.hackathon):
+    if deadline and datetime.utcnow() > deadline and not manager:
         raise HTTPException(
             status_code=403,
             detail=f"Submissions closed at {deadline.strftime('%Y-%m-%d %H:%M')} UTC. Contact the organisers if you had a problem submitting.",
@@ -84,11 +102,16 @@ async def create_submission(
 
     existing = (
         db.query(Submission)
-        .filter(Submission.team_id == team_id, Submission.problem_statement_id == problem_statement_id)
+        .filter(
+            Submission.team_id == team_id,
+            Submission.problem_statement_id == problem_statement_id,
+            Submission.round_number == round_number,
+        )
         .first()
     )
     if existing:
-        raise HTTPException(status_code=400, detail="Submission already exists for this team and problem statement")
+        detail = "Submission already exists for this team and problem statement"
+        raise HTTPException(status_code=400, detail=detail if round_number == 1 else f"{detail} in this round")
 
     if team.hackathon.one_statement_per_team:
         other = (
@@ -136,15 +159,16 @@ async def create_submission(
         github_url=final_github,
         ppt_url=ppt_url,
         status=SubmissionStatus.pending,
+        round_number=round_number,
     )
     db.add(submission)
     db.commit()
     db.refresh(submission)
-    logger.info("Submission created id=%s type=%s team_id=%s ps_id=%s by user id=%s", submission.id, submission.type, team_id, problem_statement_id, current_user.id)
+    logger.info("Submission created id=%s type=%s team_id=%s ps_id=%s round=%s by user id=%s", submission.id, submission.type, team_id, problem_statement_id, round_number, current_user.id)
     return submission
 
 
-@router.get("/hackathon/{hackathon_id}", response_model=List[SubmissionDetail])
+@router.get("/hackathon/{hackathon_id}", response_model=List[StaffSubmissionDetail])
 def list_hackathon_submissions(
     hackathon_id: int,
     db: Session = Depends(get_db),
@@ -163,7 +187,7 @@ def list_hackathon_submissions(
     return (
         db.query(Submission)
         .join(Team, Submission.team_id == Team.id)
-        .options(selectinload(Submission.evaluation))
+        .options(selectinload(Submission.evaluation), selectinload(Submission.judge_scores))
         .filter(Team.hackathon_id == hackathon_id)
         .order_by(Submission.created_at.asc())
         .all()

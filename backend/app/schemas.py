@@ -352,10 +352,16 @@ class SubmissionOut(BaseModel):
     github_url: Optional[str]
     ppt_url: Optional[str]
     status: SubmissionStatus
+    round_number: int = 1
     created_at: datetime
     updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+    @field_validator("round_number", mode="before")
+    @classmethod
+    def _default_round(cls, v):
+        return v or 1
 
 
 class EvaluationOut(BaseModel):
@@ -388,6 +394,14 @@ class SubmissionDetail(SubmissionOut):
     model_config = ConfigDict(from_attributes=True)
 
 
+class StaffSubmissionDetail(SubmissionDetail):
+    """A submission as organisers and judges see it, with the judges' marks."""
+
+    judge_scores: List["JudgeScoreOut"] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class SubmissionReport(SubmissionDetail):
     team_name: str
     problem_statement_title: str
@@ -407,6 +421,99 @@ class LeaderboardEntry(BaseModel):
     percentage: float
     verdict: str
     needs_review: bool
+    round_number: int = 1
+    # Round score parts: total_score above is the final score for the round.
+    ai_score: Optional[int] = None
+    judge_score: Optional[float] = None
+    judge_count: int = 0
+    awaiting_judges: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+# Round schemas
+class RoundOut(BaseModel):
+    number: int
+    name: str
+    instructions: Optional[str] = None
+    # Round 1 uses the hackathon's own deadline.
+    submission_deadline: Optional[datetime] = None
+    judge_weight: int = 0
+    published: bool = False
+    # Teams that advanced to this round (rounds 2+). Visible to the hackathon's
+    # managers and judges always, and to everyone once the round is published.
+    shortlisted_team_ids: Optional[List[int]] = None
+    shortlisted_teams: Optional[List[Dict[str, Any]]] = None
+    submission_count: int = 0
+
+
+class RoundUpdate(BaseModel):
+    name: Optional[str] = None
+    instructions: Optional[str] = None
+    submission_deadline: Optional[datetime] = None
+    judge_weight: Optional[int] = None
+    published: Optional[bool] = None
+
+    @field_validator("name")
+    @classmethod
+    def _name(cls, v):
+        if v is not None:
+            v = v.strip()
+            if len(v) > 80:
+                raise ValueError("Round name must be 80 characters or fewer")
+        return v or None
+
+    @field_validator("instructions")
+    @classmethod
+    def _instructions(cls, v):
+        if v is not None and len(v) > 5000:
+            raise ValueError("Round instructions must be 5000 characters or fewer")
+        return v.strip() or None if v is not None else None
+
+    @field_validator("judge_weight")
+    @classmethod
+    def _weight(cls, v):
+        if v is not None and not 0 <= v <= 100:
+            raise ValueError("Judge weight must be between 0 and 100")
+        return v
+
+    @field_validator("submission_deadline")
+    @classmethod
+    def _deadline(cls, v):
+        return to_naive_utc(v)
+
+
+class ShortlistUpdate(BaseModel):
+    team_ids: List[int]
+
+
+class JudgeScoreIn(BaseModel):
+    score: int
+    comment: Optional[str] = None
+
+    @field_validator("score")
+    @classmethod
+    def _score(cls, v):
+        if not 0 <= v <= 1000:
+            raise ValueError("Score must be between 0 and 1000")
+        return v
+
+    @field_validator("comment")
+    @classmethod
+    def _comment(cls, v):
+        if v is not None and len(v) > 2000:
+            raise ValueError("Comment must be 2000 characters or fewer")
+        return v.strip() or None if v is not None else None
+
+
+class JudgeScoreOut(BaseModel):
+    id: int
+    submission_id: int
+    judge_id: int
+    judge_username: Optional[str] = None
+    score: int
+    comment: Optional[str] = None
+    updated_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -424,6 +531,7 @@ class TeamReportEntry(BaseModel):
     status: Optional[str] = None
     needs_review: Optional[bool] = None
     llm_source: Optional[str] = None
+    round_number: int = 1
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -523,3 +631,6 @@ class GlobalSettingsUpdate(BaseModel):
 class MyPermissionsOut(BaseModel):
     role: UserRole
     permissions: Dict[str, bool]
+
+
+StaffSubmissionDetail.model_rebuild()

@@ -42,6 +42,7 @@ MIGRATION_SPECS = {
     "submissions": [
         ("github_url", "VARCHAR"),
         ("ppt_url", "VARCHAR"),
+        ("round_number", "INTEGER"),
     ],
     "evaluations": [
         ("category_max_points", "JSON"),
@@ -88,6 +89,13 @@ def ensure_columns(engine):
                     )
 
     _flag_legacy_mock_evaluations(engine)
+
+    # Submissions made before rounds existed belong to round 1.
+    try:
+        with engine.begin() as conn:
+            conn.execute(text("UPDATE submissions SET round_number = 1 WHERE round_number IS NULL"))
+    except Exception:
+        logging.getLogger(__name__).exception("Could not backfill submission round numbers")
 
     # Each partner's hackathons are numbered 1, 2, 3... with no duplicates.
     try:

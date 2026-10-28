@@ -1,47 +1,83 @@
-from typing import List
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
+from fastapi import APIRouter, Depends, HTTPException, Query
+from sqlalchemy import or_
+from sqlalchemy.orm import Session, selectinload
 
 from app.auth import require_permission
 from app.database import get_db
-from app.models import Evaluation, Hackathon, ProblemStatement, Submission, Team, User
+from app.models import Evaluation, Hackathon, JudgeScore, ProblemStatement, Submission, Team, User
 from app.routers.common import can_access_hackathon
 from app.schemas import LeaderboardEntry
+from app.services.rounds import get_round, round_score
+from app.services.scoring.constants import verdict_for_score
 
 router = APIRouter()
 
 
-def _build_leaderboard(db: Session, hackathon_id: int) -> List[LeaderboardEntry]:
+def default_round(db: Session, hackathon_id: int) -> int:
+    """The latest round that has scored submissions (1 when nothing is scored yet)."""
+    numbers = [
+        n or 1
+        for (n,) in db.query(Submission.round_number)
+        .join(Team, Submission.team_id == Team.id)
+        .outerjoin(Evaluation, Submission.id == Evaluation.submission_id)
+        .filter(Team.hackathon_id == hackathon_id)
+        .filter(or_(Evaluation.id.isnot(None), Submission.judge_scores.any()))
+        .distinct()
+    ]
+    return max(numbers, default=1)
+
+
+def _build_leaderboard(db: Session, hackathon_id: int, round_number: Optional[int] = None) -> List[LeaderboardEntry]:
+    round_number = round_number or default_round(db, hackathon_id)
+    row = get_round(db, hackathon_id, round_number)
+    judge_weight = row.judge_weight if row else 0
+
     rows = (
-        db.query(Team, ProblemStatement, Submission, Evaluation)
+        db.query(Team, ProblemStatement, Submission)
         .join(Submission, Team.id == Submission.team_id)
         .join(ProblemStatement, Submission.problem_statement_id == ProblemStatement.id)
-        .join(Evaluation, Submission.id == Evaluation.submission_id)
+        .options(selectinload(Submission.evaluation), selectinload(Submission.judge_scores))
         .filter(Team.hackathon_id == hackathon_id)
-        .order_by(Evaluation.total_score.desc())
+        .filter(Submission.round_number == round_number)
         .all()
     )
-    return [
-        LeaderboardEntry(
-            team_id=team.id,
-            team_name=team.name,
-            problem_statement_id=ps.id,
-            problem_statement_title=ps.title,
-            submission_id=sub.id,
-            type=sub.type,
-            total_score=ev.total_score,
-            percentage=ev.percentage,
-            verdict=ev.verdict,
-            needs_review=ev.needs_review,
+    entries: List[LeaderboardEntry] = []
+    for team, ps, sub in rows:
+        ev = sub.evaluation
+        final, ai, judge_avg, judge_count, awaiting = round_score(ev, sub.judge_scores, judge_weight)
+        if final is None:
+            continue  # not scored yet
+        # The AI verdict stands while the score is the AI score; otherwise derive it.
+        verdict = ev.verdict if ev and final == ai and not judge_count else verdict_for_score(final)
+        entries.append(
+            LeaderboardEntry(
+                team_id=team.id,
+                team_name=team.name,
+                problem_statement_id=ps.id,
+                problem_statement_title=ps.title,
+                submission_id=sub.id,
+                type=sub.type,
+                total_score=final,
+                percentage=round(final / 10.0, 2),
+                verdict=verdict,
+                needs_review=bool(ev.needs_review) if ev else False,
+                round_number=round_number,
+                ai_score=ai,
+                judge_score=judge_avg,
+                judge_count=judge_count,
+                awaiting_judges=awaiting,
+            )
         )
-        for team, ps, sub, ev in rows
-    ]
+    entries.sort(key=lambda e: e.total_score, reverse=True)
+    return entries
 
 
 @router.get("/{hackathon_id}", response_model=List[LeaderboardEntry])
 def get_leaderboard(
     hackathon_id: int,
+    round: Optional[int] = Query(None, ge=1, description="Round number; defaults to the latest scored round"),
     db: Session = Depends(get_db),
     current_user: User = Depends(require_permission("view_leaderboard")),
 ):
@@ -50,12 +86,23 @@ def get_leaderboard(
         raise HTTPException(status_code=404, detail="Hackathon not found")
     if not can_access_hackathon(current_user, hackathon):
         raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
-    return _build_leaderboard(db, hackathon_id)
+    return _build_leaderboard(db, hackathon_id, round)
 
 
 @router.get("/public/{hackathon_id}", response_model=List[LeaderboardEntry])
-def get_public_leaderboard(hackathon_id: int, db: Session = Depends(get_db)):
+def get_public_leaderboard(
+    hackathon_id: int,
+    round: Optional[int] = Query(None, ge=1),
+    db: Session = Depends(get_db),
+):
     hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    return _build_leaderboard(db, hackathon_id)
+    # Later rounds are public only once the organiser has published them.
+    number = round or default_round(db, hackathon_id)
+    row = get_round(db, hackathon_id, number) if number > 1 else None
+    if number > 1 and not (row and row.published):
+        if round:
+            return []
+        number = 1
+    return _build_leaderboard(db, hackathon_id, number)

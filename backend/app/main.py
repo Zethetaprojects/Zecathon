@@ -9,7 +9,7 @@ from fastapi.staticfiles import StaticFiles
 from app.config import settings
 from app.database import engine, Base, ensure_columns, _ensure_user_role_enum
 from app.logger import setup_logging
-from app.routers import auth, hackathons, problem_statements, teams, submissions, evaluate, leaderboard, reports
+from app.routers import auth, hackathons, problem_statements, teams, submissions, evaluate, leaderboard, reports, rounds
 
 
 @asynccontextmanager
@@ -64,8 +64,10 @@ async def upload_security_headers(request: Request, call_next):
 
 app.include_router(auth.router, prefix="/api/auth", tags=["auth"])
 app.include_router(hackathons.router, prefix="/api/hackathons", tags=["hackathons"])
+app.include_router(rounds.router, prefix="/api/hackathons", tags=["rounds"])
 app.include_router(problem_statements.router, prefix="/api/problem-statements", tags=["problem-statements"])
 app.include_router(teams.router, prefix="/api/teams", tags=["teams"])
+app.include_router(rounds.judge_router, prefix="/api/submissions", tags=["rounds"])
 app.include_router(submissions.router, prefix="/api/submissions", tags=["submissions"])
 app.include_router(evaluate.router, prefix="/api/evaluate", tags=["evaluate"])
 app.include_router(leaderboard.router, prefix="/api/leaderboard", tags=["leaderboard"])

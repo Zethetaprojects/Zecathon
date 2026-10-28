@@ -13,13 +13,15 @@ from app.services.scoring.prompts import build_non_tech_prompt
 from app.services.scoring.reconciliation import reconcile_score
 
 
-def _existing_scores_for_hackathon(db: Session, hackathon_id: int, exclude_submission_id: int) -> List[int]:
+def _existing_scores_for_hackathon(db: Session, hackathon_id: int, exclude_submission_id: int, round_number: int = 1) -> List[int]:
+    """Scores already given in the same round (rounds are ranked separately)."""
     return [
         ev.total_score
         for ev in db.query(Evaluation)
         .join(Submission)
         .join(Team)
         .filter(Team.hackathon_id == hackathon_id, Submission.id != exclude_submission_id)
+        .filter(Submission.round_number == round_number)
         .all()
     ]
 
@@ -48,7 +50,7 @@ def evaluate_non_tech(db: Session, submission: Submission, problem_statement: st
     category_scores = result.get("category_scores", {})
     authenticity = non_tech_authenticity(document_text + " " + ppt_text)
 
-    existing = _existing_scores_for_hackathon(db, team.hackathon_id, submission.id)
+    existing = _existing_scores_for_hackathon(db, team.hackathon_id, submission.id, submission.round_number or 1)
     final_score = reconcile_score(raw_subtotal, authenticity["multiplier"], existing, submission.team_id)
 
     verdict = verdict_for_score(final_score)

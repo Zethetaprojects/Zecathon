@@ -1,5 +1,5 @@
 import datetime as dt
-from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, ForeignKey, Enum, JSON, Float
+from sqlalchemy import Column, Integer, String, Boolean, Text, DateTime, ForeignKey, Enum, JSON, Float, UniqueConstraint
 from sqlalchemy.orm import relationship
 import enum
 
@@ -171,6 +171,49 @@ class Hackathon(Base):
     owner = relationship("User")
     problem_statements = relationship("ProblemStatement", back_populates="hackathon", cascade="all, delete-orphan")
     teams = relationship("Team", back_populates="hackathon", cascade="all, delete-orphan")
+    rounds = relationship("HackathonRound", back_populates="hackathon", cascade="all, delete-orphan",
+                          order_by="HackathonRound.number")
+
+
+class HackathonRound(Base):
+    """Settings for one round of a hackathon.
+
+    Round 1 is the hackathon itself (its start time and submission deadline); a
+    row for it exists only once the organiser names it or sets its judge weight.
+    Rounds 2, 3... are open only to the teams on their shortlist, and only after
+    the organiser publishes the shortlist.
+    """
+
+    __tablename__ = "hackathon_rounds"
+    __table_args__ = (UniqueConstraint("hackathon_id", "number", name="uq_round_number"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    hackathon_id = Column(Integer, ForeignKey("hackathons.id"), nullable=False, index=True)
+    number = Column(Integer, nullable=False)
+    name = Column(String, nullable=True)
+    instructions = Column(Text, nullable=True)
+    submission_deadline = Column(DateTime, nullable=True)  # ignored for round 1 (the hackathon's own deadline applies)
+    # Share of the round score that comes from judges' marks (0 = AI score only, 100 = judges only).
+    judge_weight = Column(Integer, nullable=False, default=0)
+    # Shortlisted teams learn they advanced, and may submit, only once this is set.
+    published = Column(Boolean, nullable=False, default=False)
+    created_at = Column(DateTime, default=dt.datetime.utcnow)
+
+    hackathon = relationship("Hackathon", back_populates="rounds")
+    shortlist = relationship("RoundShortlist", back_populates="round", cascade="all, delete-orphan")
+
+
+class RoundShortlist(Base):
+    __tablename__ = "round_shortlists"
+    __table_args__ = (UniqueConstraint("round_id", "team_id", name="uq_round_team"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    round_id = Column(Integer, ForeignKey("hackathon_rounds.id"), nullable=False, index=True)
+    team_id = Column(Integer, ForeignKey("teams.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=dt.datetime.utcnow)
+
+    round = relationship("HackathonRound", back_populates="shortlist")
+    team = relationship("Team", back_populates="shortlists")
 
 
 class ProblemStatement(Base):
@@ -207,6 +250,7 @@ class Team(Base):
     hackathon = relationship("Hackathon", back_populates="teams")
     members = relationship("TeamMember", back_populates="team", cascade="all, delete-orphan")
     submissions = relationship("Submission", back_populates="team")
+    shortlists = relationship("RoundShortlist", back_populates="team", cascade="all, delete-orphan")
 
 
 class TeamMember(Base):
@@ -249,12 +293,14 @@ class Submission(Base):
     github_url = Column(String, nullable=True)     # optional GitHub for non-tech submissions
     ppt_url = Column(String, nullable=True)  # optional PPT for non-tech
     status = Column(Enum(SubmissionStatus), default=SubmissionStatus.pending)
+    round_number = Column(Integer, nullable=False, default=1)  # 1 = the main round
     created_at = Column(DateTime, default=dt.datetime.utcnow)
     updated_at = Column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow)
 
     team = relationship("Team", back_populates="submissions")
     problem_statement = relationship("ProblemStatement", back_populates="submissions")
     evaluation = relationship("Evaluation", back_populates="submission", uselist=False, cascade="all, delete-orphan")
+    judge_scores = relationship("JudgeScore", back_populates="submission", cascade="all, delete-orphan")
 
 
 class Evaluation(Base):
@@ -283,6 +329,28 @@ class Evaluation(Base):
     evaluated_at = Column(DateTime, default=dt.datetime.utcnow)
 
     submission = relationship("Submission", back_populates="evaluation")
+
+
+class JudgeScore(Base):
+    """One judge's mark for one submission, out of 1000."""
+
+    __tablename__ = "judge_scores"
+    __table_args__ = (UniqueConstraint("submission_id", "judge_id", name="uq_judge_submission"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    submission_id = Column(Integer, ForeignKey("submissions.id"), nullable=False, index=True)
+    judge_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    score = Column(Integer, nullable=False)
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=dt.datetime.utcnow)
+    updated_at = Column(DateTime, default=dt.datetime.utcnow, onupdate=dt.datetime.utcnow)
+
+    submission = relationship("Submission", back_populates="judge_scores")
+    judge = relationship("User")
+
+    @property
+    def judge_username(self) -> str | None:
+        return self.judge.username if self.judge else None
 
 
 class RateLimitEvent(Base):

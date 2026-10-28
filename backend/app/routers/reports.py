@@ -59,7 +59,7 @@ def _build_report(db: Session, hackathon: Hackathon) -> HackathonReportDetail:
         .join(ProblemStatement, Submission.problem_statement_id == ProblemStatement.id)
         .outerjoin(Evaluation, Submission.id == Evaluation.submission_id)
         .filter(Team.hackathon_id == hackathon.id)
-        .order_by(Team.created_at.asc())
+        .order_by(Team.created_at.asc(), Submission.round_number.asc())
         .all()
     )
 
@@ -78,6 +78,7 @@ def _build_report(db: Session, hackathon: Hackathon) -> HackathonReportDetail:
             status=sub.status.value if sub.status else None,
             needs_review=ev.needs_review if ev else None,
             llm_source=ev.llm_source if ev else None,
+            round_number=sub.round_number or 1,
         )
         for team, ps, sub, ev in rows
     ]

@@ -297,6 +297,7 @@ def _cover(pdf, w: _Writer, report: Dict[str, Any], evaluation: Dict[str, Any]):
 
     meta = [
         f"Submission #{report.get('id', '')}",
+        f"Round {report.get('round_number')}" if (report.get("round_number") or 1) > 1 else "",
         (report.get("type") or "").replace("_", "-").title() + " track" if report.get("type") else "",
         f"Evaluated {_fmt_date(evaluation.get('evaluated_at'))}" if evaluation.get("evaluated_at") else "",
         SCORER_LABELS.get(evaluation.get("llm_source") or "", ""),
