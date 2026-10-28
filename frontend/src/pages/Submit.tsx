@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { useParams, Link, useNavigate } from 'react-router-dom';
+import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { submissionsApi } from '../api/teams';
-import { Hackathon, Team, ProblemStatement, Submission } from '../types';
+import { roundsApi } from '../api/rounds';
+import { Hackathon, HackathonRound, Team, ProblemStatement, Submission } from '../types';
 import { formatError } from '../utils/formatError';
 import { useAuth } from '../hooks/useAuth';
 import { useConfirm } from '../hooks/useConfirm';
@@ -21,6 +22,10 @@ export default function Submit() {
     problemStatementId: string;
   }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  // 1 = the main round; later rounds are for shortlisted teams.
+  const roundNumber = Math.max(1, Number(searchParams.get('round')) || 1);
+  const [round, setRound] = useState<HackathonRound | null>(null);
   const { user, can } = useAuth();
   const confirm = useConfirm();
   const canSubmit = can('submit_project') && user?.role !== 'judge';
@@ -38,6 +43,14 @@ export default function Submit() {
   const [teamSubmissions, setTeamSubmissions] = useState<Submission[]>([]);
   // Teams must confirm they have read the guidelines before submitting.
   const [acknowledged, setAcknowledged] = useState(false);
+
+  useEffect(() => {
+    if (roundNumber === 1) return;
+    roundsApi
+      .list(Number(hackathonId))
+      .then((res) => setRound(res.data.find((r) => r.number === roundNumber) ?? null))
+      .catch(() => setRound(null));
+  }, [hackathonId, roundNumber]);
 
   useEffect(() => {
     submissionsApi
@@ -81,7 +94,8 @@ export default function Submit() {
       title: 'Submit your project?',
       message: (
         <>
-          This is your team's only submission for <span className="text-white">{ps.title}</span>, and it can't be changed
+          This is your team's only submission for <span className="text-white">{ps.title}</span>
+          {roundNumber > 1 ? ` in ${round?.name ?? `round ${roundNumber}`}` : ''}, and it can't be changed
           after you submit. Check that the {type === 'tech' ? 'repository link is correct and public' : 'document is the final version'}.
         </>
       ),
@@ -94,6 +108,7 @@ export default function Submit() {
       form.append('team_id', team.id.toString());
       form.append('problem_statement_id', ps.id.toString());
       form.append('type', type);
+      if (roundNumber > 1) form.append('round_number', String(roundNumber));
       if (type === 'tech') {
         form.append('submission_url', url.trim());
       } else if (file) {
@@ -102,7 +117,7 @@ export default function Submit() {
       }
       if (ppt) form.append('ppt_file', ppt);
       await submissionsApi.create(form);
-      navigate(`/hackathons/${hackathonId}/teams`);
+      navigate(`/hackathons/${hackathonId}/teams${roundNumber > 1 ? `?round=${roundNumber}` : ''}`);
     } catch (err: any) {
       setError(formatError(err, 'Submission failed'));
     } finally {
@@ -148,11 +163,32 @@ export default function Submit() {
     );
   }
 
-  const deadline = hackathon.submission_deadline;
+  const deadline = roundNumber === 1 ? hackathon.submission_deadline : round?.submission_deadline;
   const closed = isPast(deadline);
   const isManager = isManagerRole(user?.role);
+  const roundName = round?.name ?? `Round ${roundNumber}`;
 
-  const alreadySubmitted = teamSubmissions.some((s) => s.problem_statement_id === ps.id);
+  if (roundNumber > 1 && (!round || !round.shortlisted_team_ids?.includes(team.id) || (!round.published && !isManager))) {
+    return (
+      <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto glass-panel p-8 text-center">
+          <h2 className="font-pixel text-lg text-neon-pink mb-2">NOT IN THIS ROUND</h2>
+          <p className="text-slate-300 mb-4">
+            {!round
+              ? 'This round does not exist or has not opened yet.'
+              : `${team.name} is not shortlisted for ${roundName}, so it cannot submit to it.`}
+          </p>
+          <Link to={`/hackathons/${hackathonId}/teams`} className="text-neon-cyan hover:text-white text-sm">
+            ← Back to the team page
+          </Link>
+        </div>
+      </PageLayout>
+    );
+  }
+
+  const alreadySubmitted = teamSubmissions.some(
+    (s) => s.problem_statement_id === ps.id && (s.round_number ?? 1) === roundNumber,
+  );
   const otherTrack = hackathon.one_statement_per_team
     ? teamSubmissions.find((s) => s.problem_statement_id !== ps.id)
     : undefined;
@@ -167,10 +203,10 @@ export default function Submit() {
           <h2 className="font-pixel text-lg text-neon-yellow mb-2">{alreadySubmitted ? 'ALREADY SUBMITTED' : 'TRACK ALREADY CHOSEN'}</h2>
           <p className="text-slate-300 mb-4">
             {alreadySubmitted
-              ? `${team.name} has already submitted for this problem statement. Submissions cannot be changed.`
+              ? `${team.name} has already submitted for this problem statement${roundNumber > 1 ? ` in ${roundName}` : ''}. Submissions cannot be changed.`
               : `This hackathon allows one problem statement per team, and ${team.name} already submitted for "${otherTrackTitle ?? 'another statement'}".`}
           </p>
-          <Link to={`/hackathons/${hackathonId}/teams`} className="text-neon-cyan hover:text-white text-sm">
+          <Link to={`/hackathons/${hackathonId}/teams${roundNumber > 1 ? `?round=${roundNumber}` : ''}`} className="text-neon-cyan hover:text-white text-sm">
             ← Back to the team page
           </Link>
         </div>
@@ -184,7 +220,7 @@ export default function Submit() {
         <div className="max-w-3xl mx-auto glass-panel p-8 text-center">
           <h2 className="font-pixel text-lg text-neon-pink mb-2">SUBMISSIONS CLOSED</h2>
           <p className="text-slate-300 mb-4">
-            The deadline for {hackathon.name} was {formatDateTime(deadline)}. If you had a technical problem, contact the
+            The deadline for {roundNumber > 1 ? `${roundName} of ${hackathon.name}` : hackathon.name} was {formatDateTime(deadline)}. If you had a technical problem, contact the
             organisers; they can submit on your team's behalf.
           </p>
           <Link to={`/hackathons/${hackathonId}/teams`} className="text-neon-cyan hover:text-white text-sm">
@@ -218,11 +254,12 @@ export default function Submit() {
 
         <div className="glass-panel p-6 sm:p-8">
           <h1 className="font-pixel text-lg text-white text-shadow-neon mb-4">SUBMIT PROJECT</h1>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-6">
+          <div className={`grid grid-cols-1 gap-3 mb-6 ${roundNumber > 1 ? 'sm:grid-cols-2' : 'sm:grid-cols-3'}`}>
             {[
               { k: 'Hackathon', v: hackathon.name, tone: 'text-neon-cyan' },
               { k: 'Team', v: team.name, tone: 'text-white' },
               { k: 'Problem statement', v: ps.title, tone: 'text-white' },
+              ...(roundNumber > 1 ? [{ k: 'Round', v: roundName, tone: 'text-neon-purple' }] : []),
             ].map((item) => (
               <div key={item.k} className="p-3 rounded-lg bg-black/20 border border-white/10 min-w-0">
                 <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">{item.k}</p>
@@ -241,6 +278,12 @@ export default function Submit() {
             <div className="mb-6 px-4 py-3 rounded bg-neon-yellow/10 border border-neon-yellow/40 text-neon-yellow text-sm">
               The submission deadline passed on {formatDateTime(deadline)}. As an organiser you can still submit on this team's
               behalf, for example after a technical problem.
+            </div>
+          )}
+          {roundNumber > 1 && round?.instructions && (
+            <div className="mb-6 p-4 rounded-lg border border-neon-purple/40 bg-neon-purple/5">
+              <p className="text-[10px] uppercase tracking-widest text-neon-purple mb-1">What to submit for {roundName}</p>
+              <p className="text-sm text-slate-200 whitespace-pre-line">{round.instructions}</p>
             </div>
           )}
           <div className="mb-6">
@@ -349,7 +392,8 @@ export default function Submit() {
                 className="mt-1 accent-[#f7ff58]"
               />
               <span className="text-sm text-slate-200">
-                I have read the submission guidelines, and this is my team's final submission for this problem statement.
+                I have read the submission guidelines, and this is my team's final submission for this problem statement
+                {roundNumber > 1 ? ` in ${roundName}` : ''}.
               </span>
             </label>
 

@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useParams, Link, useSearchParams } from 'react-router-dom';
 import { hackathonsApi } from '../api/hackathons';
 import { teamsApi, submissionsApi } from '../api/teams';
-import { Hackathon, Team, TeamMember, ProblemStatement, Submission, Evaluation, isFallbackScore } from '../types';
+import { roundsApi } from '../api/rounds';
+import { Hackathon, HackathonRound, Team, TeamMember, ProblemStatement, Submission, Evaluation, isFallbackScore } from '../types';
 import { formatError } from '../utils/formatError';
 import { isManagerRole } from '../utils/role';
 import { formatDateTime, isPast } from '../utils/hackathon';
@@ -15,6 +16,8 @@ import LoadingScreen from '../components/LoadingScreen';
 import CopyButton from '../components/CopyButton';
 import Countdown from '../components/Countdown';
 import SubmissionGuidelines from '../components/SubmissionGuidelines';
+import RoundTabs from '../components/RoundTabs';
+import JudgeMarks from '../components/JudgeMarks';
 
 const AVATAR_COLORS = ['bg-neon-pink/20 text-neon-pink', 'bg-neon-cyan/20 text-neon-cyan', 'bg-neon-purple/20 text-neon-purple', 'bg-neon-yellow/15 text-neon-yellow'];
 
@@ -104,6 +107,14 @@ export default function HackathonTeams() {
   const [memberBusy, setMemberBusy] = useState<Record<number, boolean>>({});
   const [bulk, setBulk] = useState<BulkState | null>(null);
   const stopRequested = useRef(false);
+  const [rounds, setRounds] = useState<HackathonRound[]>([]);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const roundParam = Number(searchParams.get('round')) || undefined;
+  const [activeRound, setActiveRound] = useState<number>(roundParam ?? 1);
+  const chooseRound = (n: number) => {
+    setActiveRound(n);
+    setSearchParams(n > 1 ? { round: String(n) } : {}, { replace: true });
+  };
 
   const fetchHackathon = () =>
     hackathonsApi
@@ -146,6 +157,15 @@ export default function HackathonTeams() {
     });
   };
 
+  const fetchRounds = () =>
+    roundsApi
+      .list(hackathonId)
+      .then((res) => {
+        setRounds(res.data);
+        return res.data;
+      })
+      .catch(() => [] as HackathonRound[]);
+
   useEffect(() => {
     fetchHackathon();
     fetchTeams();
@@ -171,10 +191,28 @@ export default function HackathonTeams() {
   };
 
   const myTeam = useMemo(() => teams.find((t) => t.members?.some((m) => m.user_id === user?.id)), [teams, user?.id]);
+
+  // Open on the round that matters now: the latest round a participant's team
+  // advanced to; for organisers and judges the latest round with submissions.
+  useEffect(() => {
+    if (!user || loading) return;
+    fetchRounds().then((list) => {
+      if (roundParam || list.length < 2) return;
+      const latest = [...list].reverse();
+      const pick = isParticipantView
+        ? latest.find((r) => r.number > 1 && r.published && myTeam && r.shortlisted_team_ids?.includes(myTeam.id))
+        : latest.find((r) => r.submission_count > 0);
+      if (pick) setActiveRound(pick.number);
+    });
+  }, [hackathonId, user?.id, loading]);
   const isLeaderOf = (team: Team) => team.members?.some((m) => m.user_id === user?.id && m.role === 'leader') ?? false;
   const canManageMembersOf = (team: Team) => can('manage_team_members') && (isManager || isLeaderOf(team));
   const problemStatements = hackathon?.problem_statements ?? [];
-  const submissionsClosed = isPast(hackathon?.submission_deadline);
+  const currentRound = rounds.find((r) => r.number === activeRound);
+  const roundDeadline = activeRound === 1 ? hackathon?.submission_deadline : currentRound?.submission_deadline;
+  const submissionsClosed = isPast(roundDeadline);
+  const roundSubs = (teamId: number) => (submissionsByTeam[teamId] ?? []).filter((s) => (s.round_number ?? 1) === activeRound);
+  const inRound = (team: Team) => activeRound === 1 || Boolean(currentRound?.shortlisted_team_ids?.includes(team.id));
   // With "one statement per team", a team's first submission fixes its track.
   const trackOf = (team: Team) =>
     hackathon?.one_statement_per_team ? submissionsByTeam[team.id]?.[0]?.problem_statement_id : undefined;
@@ -335,12 +373,12 @@ export default function HackathonTeams() {
     const order = new Map((hackathon?.problem_statements ?? []).map((ps, i) => [ps.id, i]));
     const titles = new Map((hackathon?.problem_statements ?? []).map((ps) => [ps.id, ps.title]));
     return teams.flatMap((team) =>
-      (submissionsByTeam[team.id] ?? [])
+      roundSubs(team.id)
         .filter((sub) => !sub.evaluation)
         .sort((a, b) => (order.get(a.problem_statement_id) ?? 0) - (order.get(b.problem_statement_id) ?? 0))
         .map((sub) => ({ sub, label: `${team.name} — ${titles.get(sub.problem_statement_id) ?? 'Problem statement'}` })),
     );
-  }, [teams, submissionsByTeam, hackathon?.problem_statements]);
+  }, [teams, submissionsByTeam, hackathon?.problem_statements, activeRound]);
 
   /** Evaluate every pending submission one at a time (serially), with progress and a stop button. */
   const runBulkEvaluation = async () => {
@@ -476,6 +514,15 @@ export default function HackathonTeams() {
     ) : null;
 
   const submissionRows = (team: Team, onBehalf: boolean) => {
+    if (!inRound(team)) {
+      return (
+        <p className="text-xs text-slate-400">
+          {isParticipantView
+            ? `Your team was not shortlisted for ${currentRound?.name ?? 'this round'}. Thank you for taking part!`
+            : `Not shortlisted for ${currentRound?.name ?? 'this round'}.`}
+        </p>
+      );
+    }
     if (problemStatements.length === 0) {
       return hackathon?.problem_statements_hidden ? (
         <p className="text-xs text-neon-purple">
@@ -490,7 +537,7 @@ export default function HackathonTeams() {
     return (
       <ul className="space-y-2">
         {problemStatements.map((ps: ProblemStatement, i: number) => {
-          const sub = submissionsByTeam[team.id]?.find((s) => s.problem_statement_id === ps.id);
+          const sub = roundSubs(team.id).find((s) => s.problem_statement_id === ps.id);
           const ev = sub?.evaluation;
           return (
             <li key={ps.id} className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3 rounded-lg bg-black/20 border border-white/10">
@@ -525,6 +572,15 @@ export default function HackathonTeams() {
                   </Link>
                 )}
                 {sub && canEvaluate && !isParticipantView && (
+                  <JudgeMarks
+                    key={`${sub.id}-${sub.judge_scores?.length ?? 0}`}
+                    submissionId={sub.id}
+                    marks={sub.judge_scores ?? []}
+                    userId={user?.id}
+                    onChanged={() => fetchSubmissions(teams)}
+                  />
+                )}
+                {sub && canEvaluate && !isParticipantView && (
                   <button
                     type="button"
                     onClick={() => evaluate(sub, Boolean(ev))}
@@ -544,7 +600,7 @@ export default function HackathonTeams() {
                 )}
                 {!sub && canSubmit && trackOf(team) === undefined && (!submissionsClosed || isManager) && (
                   <Link
-                    to={`/hackathons/${hackathonId}/submit/${team.id}/${ps.id}`}
+                    to={`/hackathons/${hackathonId}/submit/${team.id}/${ps.id}${activeRound > 1 ? `?round=${activeRound}` : ''}`}
                     className={`px-3 py-1.5 rounded-lg text-xs ${submissionsClosed ? 'border border-neon-yellow/50 text-neon-yellow hover:bg-neon-yellow/10' : 'neon-btn neon-btn-cyan'}`}
                   >
                     {submissionsClosed ? 'Submit late (organiser)' : onBehalf ? 'Submit on behalf' : 'Submit project'}
@@ -582,7 +638,8 @@ export default function HackathonTeams() {
 
   const otherTeams = teams.filter((t) => t.id !== myTeam?.id);
   const teamLimit = hackathon.max_team_members;
-  const deadline = hackathon.submission_deadline;
+  const deadline = roundDeadline;
+  const shownTeams = activeRound === 1 ? teams : teams.filter(inRound);
 
   return (
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
@@ -612,12 +669,45 @@ export default function HackathonTeams() {
               </p>
             )}
           </div>
-          {can('view_leaderboard') && (
-            <Link to={`/hackathons/${hackathonId}/leaderboard`} className="px-5 py-2.5 rounded neon-btn neon-btn-cyan text-xs">
-              Leaderboard
-            </Link>
-          )}
+          <div className="flex flex-wrap gap-2">
+            {isManager && can('edit_hackathon') && (
+              <Link to={`/hackathons/${hackathonId}/rounds`} className="px-5 py-2.5 rounded neon-btn neon-btn-ghost text-xs">
+                Manage rounds
+              </Link>
+            )}
+            {can('view_leaderboard') && (
+              <Link to={`/hackathons/${hackathonId}/leaderboard`} className="px-5 py-2.5 rounded neon-btn neon-btn-cyan text-xs">
+                Leaderboard
+              </Link>
+            )}
+          </div>
         </div>
+
+        {rounds.length > 1 && (
+          <div className="glass-panel p-4 sm:p-5 mb-6 border border-neon-purple/25">
+            <RoundTabs rounds={rounds} active={activeRound} onChange={chooseRound} showUnpublished={!isParticipantView} />
+            {currentRound && (
+              <div className="mt-3 text-xs text-slate-400 space-y-1">
+                <p>
+                  <span className="text-white font-semibold">{currentRound.name}</span>
+                  {activeRound > 1 && (
+                    <>
+                      {' '}
+                      · {currentRound.shortlisted_team_ids?.length ?? 0} shortlisted team
+                      {(currentRound.shortlisted_team_ids?.length ?? 0) === 1 ? '' : 's'}
+                      {!currentRound.published && <span className="text-neon-yellow"> · draft, not visible to teams yet</span>}
+                    </>
+                  )}
+                  {currentRound.judge_weight > 0 && <> · judges&apos; marks count {currentRound.judge_weight}%</>}
+                </p>
+                {currentRound.instructions && <p className="text-slate-300 whitespace-pre-line">{currentRound.instructions}</p>}
+                {isParticipantView && myTeam && activeRound > 1 && inRound(myTeam) && (
+                  <p className="text-neon-cyan">Your team advanced to this round. Submit below before the deadline.</p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
 
         {error && <div className="mb-6 px-4 py-3 rounded bg-neon-pink/10 border border-neon-pink/30 text-neon-pink text-sm">{error}</div>}
         {notice && (
@@ -841,7 +931,16 @@ export default function HackathonTeams() {
         {!isParticipantView && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             <div className="lg:col-span-2 space-y-6">
-              {teams.length === 0 ? (
+              {activeRound > 1 && shownTeams.length === 0 ? (
+                <div className="glass-panel p-8 text-center">
+                  <p className="text-slate-300">No teams are shortlisted for this round yet.</p>
+                  {isManager && (
+                    <Link to={`/hackathons/${hackathonId}/rounds`} className="inline-block mt-3 text-xs text-neon-cyan hover:text-white">
+                      Shortlist teams →
+                    </Link>
+                  )}
+                </div>
+              ) : teams.length === 0 ? (
                 <div
                   className="glass-panel p-8 text-center cursor-pointer"
                   data-egg-trigger="empty-state"
@@ -852,7 +951,7 @@ export default function HackathonTeams() {
                   <p className="text-xs text-slate-500 mt-1">Teams appear here as participants create or join them.</p>
                 </div>
               ) : (
-                teams.map((team) => (
+                shownTeams.map((team) => (
                   <section key={team.id} className="glass-panel p-6">
                     <div className="flex flex-wrap items-start justify-between gap-4 mb-4">
                       <div className="flex items-center gap-3">

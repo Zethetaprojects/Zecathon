@@ -17,6 +17,7 @@ import CreateHackathon from './pages/CreateHackathon';
 import HackathonDetail from './pages/HackathonDetail';
 import HackathonTeams from './pages/HackathonTeams';
 import EditHackathon from './pages/EditHackathon';
+import HackathonRounds from './pages/HackathonRounds';
 import Submit from './pages/Submit';
 import Leaderboard from './pages/Leaderboard';
 import PublicLeaderboard from './pages/PublicLeaderboard';
@@ -66,6 +67,7 @@ function App() {
                   </Route>
                   <Route element={<PermissionRoute feature="edit_hackathon" />}>
                     <Route path="/hackathons/:id/edit" element={<EditHackathon />} />
+                    <Route path="/hackathons/:id/rounds" element={<HackathonRounds />} />
                   </Route>
                   <Route element={<PermissionRoute feature="create_hackathon" />}>
                     <Route path="/hackathons/new" element={<CreateHackathon />} />

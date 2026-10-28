@@ -80,6 +80,15 @@ export default function LeaderboardTable({ entries }: { entries: LeaderboardEntr
                       Review
                     </span>
                   )}
+                  {(entry.judge_count ?? 0) > 0 && (
+                    <span className="block text-[11px] font-normal text-slate-400 mt-0.5">
+                      {entry.ai_score != null && <>AI {entry.ai_score} · </>}
+                      Judges {entry.judge_score} ({entry.judge_count})
+                    </span>
+                  )}
+                  {entry.awaiting_judges && (
+                    <span className="block text-[11px] font-normal text-neon-purple mt-0.5">AI score · awaiting judges</span>
+                  )}
                 </td>
                 <td className={`py-4 text-sm font-semibold ${verdictColor[entry.verdict] || 'text-slate-300'}`}>{entry.verdict}</td>
               </tr>

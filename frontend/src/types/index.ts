@@ -110,9 +110,41 @@ export interface Submission {
   ppt_url?: string;
   github_url?: string;
   status: SubmissionStatus;
+  /** 1 = the main round; 2+ = later rounds for shortlisted teams. */
+  round_number?: number;
   created_at: string;
   updated_at: string;
   evaluation?: Evaluation;
+  /** Judges' marks; only in the organiser/judge list of a hackathon's submissions. */
+  judge_scores?: JudgeScore[];
+}
+
+export interface JudgeScore {
+  id: number;
+  submission_id: number;
+  judge_id: number;
+  judge_username?: string | null;
+  score: number;
+  comment?: string | null;
+  updated_at: string;
+}
+
+export interface HackathonRound {
+  number: number;
+  name: string;
+  instructions?: string | null;
+  submission_deadline?: string | null;
+  /** Share of the round score from judges' marks (0 = AI only, 100 = judges only). */
+  judge_weight: number;
+  published: boolean;
+  shortlisted_team_ids?: number[] | null;
+  shortlisted_teams?: { id: number; name: string }[] | null;
+  submission_count: number;
+}
+
+export interface RoundStatus {
+  team_id: number | null;
+  rounds: { number: number; name: string; shortlisted: boolean }[];
 }
 
 export interface Evaluation {
@@ -156,6 +188,11 @@ export interface LeaderboardEntry {
   percentage: number;
   verdict: string;
   needs_review: boolean;
+  round_number?: number;
+  ai_score?: number | null;
+  judge_score?: number | null;
+  judge_count?: number;
+  awaiting_judges?: boolean;
 }
 
 export interface TeamReportEntry {

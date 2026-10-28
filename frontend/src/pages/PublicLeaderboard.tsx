@@ -1,7 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { leaderboardApi } from '../api/leaderboard';
-import { LeaderboardEntry } from '../types';
+import { HackathonRound, LeaderboardEntry } from '../types';
+import { roundsApi } from '../api/rounds';
+import RoundTabs from '../components/RoundTabs';
 import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 import LoadingScreen from '../components/LoadingScreen';
@@ -15,13 +17,30 @@ export default function PublicLeaderboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
+  const [rounds, setRounds] = useState<HackathonRound[]>([]);
+  // Undefined until the first load: the server then picks the latest scored round.
+  const [round, setRound] = useState<number | undefined>(undefined);
+
   useEffect(() => {
+    roundsApi
+      .publicList(hackathonId)
+      .then((res) => setRounds(res.data))
+      .catch(() => setRounds([]));
+  }, [hackathonId]);
+
+  useEffect(() => {
+    setLoading(true);
     leaderboardApi
-      .getPublic(hackathonId)
-      .then((res) => setEntries(res.data))
+      .getPublic(hackathonId, round)
+      .then((res) => {
+        setEntries(res.data);
+        if (round === undefined) setRound(res.data[0]?.round_number ?? 1);
+      })
       .catch((err) => setError(formatError(err, 'Failed to load leaderboard')))
       .finally(() => setLoading(false));
-  }, [hackathonId]);
+  }, [hackathonId, round]);
+
+  const activeRound = rounds.find((r) => r.number === round);
 
   return (
     <PageLayout className="px-4 py-8 sm:px-6 lg:px-8">
@@ -42,6 +61,19 @@ export default function PublicLeaderboard() {
               Public share link
             </span>
           </div>
+
+          {rounds.length > 1 && round !== undefined && (
+            <div className="mb-5">
+              <RoundTabs rounds={rounds} active={round} onChange={setRound} />
+              {activeRound && activeRound.judge_weight > 0 && (
+                <p className="text-[11px] text-slate-500 mt-2">
+                  {activeRound.judge_weight === 100
+                    ? "This round is scored by the judges' marks."
+                    : `This round's score is ${100 - activeRound.judge_weight}% AI evaluation and ${activeRound.judge_weight}% judges' marks.`}
+                </p>
+              )}
+            </div>
+          )}
 
           {error && (
             <div className="mb-5 px-4 py-3 rounded bg-neon-pink/10 border border-neon-pink/30 text-neon-pink text-sm">
