@@ -47,6 +47,9 @@ MIGRATION_SPECS = {
         ("category_max_points", "JSON"),
         ("category_explanations", "JSON"),
         ("judge_questions", "JSON"),
+        ("overall_assessment", "TEXT"),
+        ("key_strengths", "JSON"),
+        ("areas_for_improvement", "JSON"),
         ("llm_source", "VARCHAR"),
     ],
 }

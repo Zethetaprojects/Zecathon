@@ -373,6 +373,9 @@ class EvaluationOut(BaseModel):
     review_flags: List[str]
     needs_review: bool
     judge_questions: List[str] = []
+    overall_assessment: Optional[str] = None
+    key_strengths: Optional[List[str]] = None
+    areas_for_improvement: Optional[List[str]] = None
     llm_source: Optional[str] = None
     evaluated_at: datetime
 

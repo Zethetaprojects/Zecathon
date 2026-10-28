@@ -7,7 +7,7 @@ from app.services.github_client import summarize_repo
 from app.services.scoring.admissibility import tech_admissibility
 from app.services.scoring.authenticity import tech_authenticity
 from app.services.scoring.constants import get_rubric, verdict_for_score
-from app.services.scoring.llm_client import LLMClient, MOCK_REVIEW_FLAG
+from app.services.scoring.llm_client import LLMClient, MOCK_REVIEW_FLAG, written_feedback
 from app.services.scoring.prompts import build_tech_prompt
 from app.services.scoring.reconciliation import reconcile_score
 
@@ -70,6 +70,7 @@ def evaluate_tech(db: Session, submission: Submission, problem_statement: str) -
         category_explanations=result.get("category_explanations", {}) if isinstance(result.get("category_explanations", {}), dict) else {},
         review_flags=review_flags,
         judge_questions=result.get("judge_questions", []) if isinstance(result.get("judge_questions"), list) else [],
+        **written_feedback(result),
         needs_review=needs_review,
         llm_source=llm_source,
     )

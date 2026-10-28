@@ -13,9 +13,9 @@ def _llm_response(raw_score: int):
         "category_scores": {"Test": raw_score},
         "authenticity_band": "MIXED",
         "authenticity_multiplier": 0.85,
-        "overall_assessment": "Test",
-        "key_strengths": [],
-        "areas_for_improvement": [],
+        "overall_assessment": "A clear plan with validated demand.",
+        "key_strengths": ["Interviews with real users", "  "],
+        "areas_for_improvement": ["Quantify the savings ₹ per term"],
         "red_flags": [],
         "recommendation": "Test",
     }
@@ -142,6 +142,10 @@ def test_evaluate_non_tech(auth_client, participant_client, fake_llm):
     assert report["team_name"] == "Doc Team"
     assert report["problem_statement_title"] == "Reduce campus food waste"
     assert report["evaluation"]["total_score"] == data["total_score"]
+    # the scorer's written feedback is kept for the report (blank items dropped)
+    assert report["evaluation"]["overall_assessment"] == "A clear plan with validated demand."
+    assert report["evaluation"]["key_strengths"] == ["Interviews with real users"]
+    assert report["evaluation"]["areas_for_improvement"] == ["Quantify the savings ₹ per term"]
 
     # PDF report should be downloadable and return a valid PDF byte stream
     r = auth_client.get(f"/api/reports/submission/{sub_id}/pdf")
@@ -149,6 +153,8 @@ def test_evaluate_non_tech(auth_client, participant_client, fake_llm):
     assert r.headers.get("content-type") == "application/pdf"
     assert len(r.content) > 0
     assert r.content[:4] == b"%PDF"
+    assert len(r.content) > 5000  # a laid-out report, not an empty page
+
 
 
 def test_other_organizer_cannot_evaluate(auth_client, client, participant_client, fake_repo, fake_llm):

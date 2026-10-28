@@ -273,6 +273,9 @@ class Evaluation(Base):
     category_explanations = Column(JSON, default=dict)  # per-rubric explanation text
     review_flags = Column(JSON, default=list)
     judge_questions = Column(JSON, default=list)  # suggested questions for the judging panel
+    overall_assessment = Column(Text, nullable=True)  # the scorer's short written summary
+    key_strengths = Column(JSON, default=list)
+    areas_for_improvement = Column(JSON, default=list)
     needs_review = Column(Boolean, default=False)
     # Which scorer produced this evaluation: gemini, generic, mock, gate (admissibility reject),
     # suspected_mock (legacy rows that match the old silent fallback), or NULL (legacy).

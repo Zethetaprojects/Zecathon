@@ -2,7 +2,7 @@ import json
 import hashlib
 import logging
 import random
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 
@@ -12,6 +12,23 @@ from app.config import settings
 logger = logging.getLogger(__name__)
 
 MOCK_REVIEW_FLAG = "Scored by the offline fallback scorer (no LLM configured). Re-run once an LLM is configured."
+
+
+def written_feedback(result: Dict[str, Any]) -> Dict[str, Any]:
+    """The scorer's written summary, strengths and improvements, cleaned for storage."""
+
+    def _items(key: str) -> List[str]:
+        value = result.get(key)
+        if not isinstance(value, list):
+            return []
+        return [str(v).strip() for v in value if str(v).strip()][:8]
+
+    assessment = result.get("overall_assessment")
+    return {
+        "overall_assessment": assessment.strip() if isinstance(assessment, str) and assessment.strip() else None,
+        "key_strengths": _items("key_strengths"),
+        "areas_for_improvement": _items("areas_for_improvement"),
+    }
 
 
 class LLMUnavailableError(RuntimeError):
