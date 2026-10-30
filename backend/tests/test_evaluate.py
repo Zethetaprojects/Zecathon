@@ -209,3 +209,43 @@ def test_concurrent_evaluation_returns_saved_score(auth_client, participant_clie
     r = auth_client.post(f"/api/evaluate/tech/{sub_id}")
     assert r.status_code == 200, r.text
     assert r.json()["total_score"] == 700
+
+
+def test_reports_sorted_by_score_with_problem_statement_pdf(auth_client, participant_client, client, fake_repo, fake_llm):
+    hid = auth_client.post("/api/hackathons", json={"name": "Sorted Hack"}).json()["id"]
+    ps = auth_client.post(f"/api/hackathons/{hid}/problem-statements", data={
+        "title": "Detect fraud in UPI payments",
+        "description": "Build a model that flags fraudulent UPI transactions — with ₹ amounts and explainable alerts.",
+    }).json()
+
+    def make_team(c, name, url):
+        team_id = c.post("/api/teams", json={"hackathon_id": hid, "name": name}).json()["id"]
+        return c.post("/api/submissions", data={
+            "team_id": team_id, "problem_statement_id": ps["id"], "type": "tech", "submission_url": url,
+        }).json()["id"]
+
+    first = make_team(participant_client, "Alpha", "https://github.com/o/a")
+    for username in ("bravo_user", "charlie_user"):
+        client.post("/api/auth/register", json={"username": username, "email": f"{username}@example.com", "password": "Secret123!"})
+    other = []
+    for username, team in (("bravo_user", "Bravo"), ("charlie_user", "Charlie")):
+        token = client.post("/api/auth/login", data={"username": username, "password": "Secret123!"}).json()["access_token"]
+        client.headers["Authorization"] = f"Bearer {token}"
+        other.append(make_team(client, team, f"https://github.com/o/{team.lower()}"))
+    for sid in (first, other[0]):
+        assert auth_client.post(f"/api/evaluate/tech/{sid}").status_code == 200
+
+    entries = auth_client.get(f"/api/reports/{hid}").json()["team_entries"]
+    scores = [e["total_score"] for e in entries]
+    assert scores[-1] is None  # the unscored team comes last
+    assert scores[:-1] == sorted(scores[:-1], reverse=True)
+
+    # The team report carries the statement text, and its PDF includes it.
+    report = auth_client.get(f"/api/reports/submission/{first}").json()
+    assert report["problem_statement_description"].startswith("Build a model")
+    r = auth_client.get(f"/api/reports/problem-statement/{ps['id']}/pdf")
+    assert r.status_code == 200 and r.content[:4] == b"%PDF"
+    assert "attachment" in r.headers["content-disposition"]
+    # Participants cannot read reports.
+    assert participant_client.get(f"/api/reports/problem-statement/{ps['id']}/pdf").status_code == 403
+    assert auth_client.get("/api/reports/problem-statement/999999/pdf").status_code == 404

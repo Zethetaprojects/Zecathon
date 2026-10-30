@@ -406,6 +406,9 @@ class SubmissionReport(SubmissionDetail):
     team_name: str
     problem_statement_title: str
     hackathon_name: str
+    problem_statement_description: Optional[str] = None
+    # Path of the brief the organisers attached to the statement, if any.
+    problem_statement_file: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -532,6 +535,7 @@ class TeamReportEntry(BaseModel):
     needs_review: Optional[bool] = None
     llm_source: Optional[str] = None
     round_number: int = 1
+    problem_statement_file: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

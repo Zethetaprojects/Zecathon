@@ -105,7 +105,7 @@ def _number(value: Any) -> float:
         return 0.0
 
 
-def _make_pdf(header_title: str):
+def _make_pdf(header_title: str, footer_note: str = "Zeckathon by Zetheta Algorithms · AI-assisted evaluation, for judges' reference"):
     from fpdf import FPDF
 
     class _ReportPDF(FPDF):
@@ -159,7 +159,7 @@ def _make_pdf(header_title: str):
             self.ln(2)
             self.set_font("Helvetica", "", 7.5)
             self.set_text_color(*MUTED)
-            self.cell(CONTENT_W / 2, 5, "Zeckathon by Zetheta Algorithms · AI-assisted evaluation, for judges' reference")
+            self.cell(CONTENT_W / 2, 5, footer_note)
             self.cell(CONTENT_W / 2, 5, f"Page {self.page_no()} of {{nb}}", align="R")
 
     return _ReportPDF()
@@ -250,10 +250,8 @@ class _Writer:
             pdf.rect(x, y, filled, h, style="F")
 
 
-def _cover(pdf, w: _Writer, report: Dict[str, Any], evaluation: Dict[str, Any]):
-    pdf.add_page()
-
-    # Banner
+def _banner(pdf, title: str, hackathon: str):
+    """Dark first-page banner with the wordmark, a title and the hackathon name."""
     pdf.set_fill_color(*INK)
     pdf.rect(0, 0, PAGE_W, 38, style="F")
     pdf.set_fill_color(*CYAN)
@@ -269,13 +267,17 @@ def _cover(pdf, w: _Writer, report: Dict[str, Any], evaluation: Dict[str, Any]):
     pdf.set_xy(PAGE_W - MARGIN - 90, 11)
     pdf.set_font("Helvetica", "B", 13)
     pdf.set_text_color(255, 255, 255)
-    pdf.cell(90, 7, "Evaluation Report", align="R")
-    hackathon = report.get("hackathon_name") or ""
+    pdf.cell(90, 7, title, align="R")
     if hackathon:
         pdf.set_xy(PAGE_W - MARGIN - 110, 19)
         pdf.set_font("Helvetica", "", 9)
         pdf.set_text_color(203, 213, 225)
         pdf.multi_cell(110, 4.6, hackathon, align="R", max_line_height=4.6)
+
+
+def _cover(pdf, w: _Writer, report: Dict[str, Any], evaluation: Dict[str, Any]):
+    pdf.add_page()
+    _banner(pdf, "Evaluation Report", report.get("hackathon_name") or "")
 
     # Team and statement
     pdf.set_y(48)
@@ -475,6 +477,26 @@ def _links(pdf, w: _Writer, report: Dict[str, Any]):
         pdf.multi_cell(CONTENT_W - 40, 5, str(url), link=str(url), new_x="LMARGIN", new_y="NEXT")
 
 
+def _problem_statement(pdf, w: _Writer, title: str, description: str, has_attachment: bool, heading: str):
+    """The full problem statement text, so judges can read what the team was asked to do."""
+    if not (title or description):
+        return
+    w.section(heading, accent=MUTED)
+    if title:
+        pdf.set_font("Helvetica", "B", 11)
+        pdf.set_text_color(*INK)
+        pdf.multi_cell(CONTENT_W, 6, title, new_x="LMARGIN", new_y="NEXT")
+        pdf.ln(1.5)
+    if description and description.strip():
+        w.paragraph(description.strip(), size=9.5, line_h=5)
+    else:
+        w.paragraph("No written description was provided for this statement.", size=9.5, color=MUTED)
+    if has_attachment:
+        pdf.ln(2)
+        w.paragraph("The organisers also attached a brief file to this statement; open it from the hackathon page "
+                    "or the reports page.", size=8.5, color=MUTED)
+
+
 def _no_evaluation(pdf, w: _Writer):
     w.section("Not evaluated yet", accent=AMBER)
     w.callout("This submission has not been evaluated. Run the evaluation from the hackathon's submissions page, "
@@ -519,5 +541,27 @@ def generate_pdf(report: Any) -> bytes:
 
     _judge_questions(pdf, w, evaluation.get("judge_questions"))
     _links(pdf, w, report)
+    _problem_statement(
+        pdf, w,
+        report.get("problem_statement_title") or "",
+        report.get("problem_statement_description") or "",
+        bool(report.get("problem_statement_file")),
+        "Problem statement the team took on",
+    )
 
+    return bytes(pdf.output())
+
+
+def generate_problem_statement_pdf(statement: Dict[str, Any]) -> bytes:
+    """A problem statement on its own: title, hackathon and full description."""
+    title = statement.get("title") or "Problem statement"
+    hackathon = statement.get("hackathon_name") or ""
+    pdf = _make_pdf(" · ".join(x for x in (title, hackathon) if x), "Zeckathon by Zetheta Algorithms")
+    pdf.set_title(f"Problem statement - {title}")
+    pdf.set_author("Zeckathon")
+    w = _Writer(pdf)
+    pdf.add_page()
+    _banner(pdf, "Problem Statement", hackathon)
+    pdf.set_y(48)
+    _problem_statement(pdf, w, title, statement.get("description") or "", bool(statement.get("file_path")), "Problem statement")
     return bytes(pdf.output())

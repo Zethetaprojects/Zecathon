@@ -10,7 +10,7 @@ from app.database import get_db
 from app.models import Evaluation, Hackathon, ProblemStatement, Submission, Team, User
 from app.routers.common import can_access_hackathon
 from app.schemas import HackathonReportDetail, HackathonReportSummary, SubmissionReport, TeamReportEntry, EvaluationOut
-from app.services.pdf_generator import generate_pdf
+from app.services.pdf_generator import generate_pdf, generate_problem_statement_pdf
 
 router = APIRouter()
 
@@ -79,9 +79,12 @@ def _build_report(db: Session, hackathon: Hackathon) -> HackathonReportDetail:
             needs_review=ev.needs_review if ev else None,
             llm_source=ev.llm_source if ev else None,
             round_number=sub.round_number or 1,
+            problem_statement_file=ps.file_path,
         )
         for team, ps, sub, ev in rows
     ]
+    # Highest score first so judges can go down the list; unscored entries last.
+    team_entries.sort(key=lambda e: (e.total_score is None, -(e.total_score or 0), e.round_number, e.team_name.lower()))
 
     return HackathonReportDetail(
         id=hackathon.id,
@@ -173,6 +176,8 @@ def _build_submission_report(
         team_name=team.name if team else "",
         problem_statement_title=problem_statement.title if problem_statement else "",
         hackathon_name=hackathon.name if hackathon else "",
+        problem_statement_description=problem_statement.description if problem_statement else None,
+        problem_statement_file=problem_statement.file_path if problem_statement else None,
         evaluation=EvaluationOut.model_validate(submission.evaluation) if submission.evaluation else None,
     )
 
@@ -227,3 +232,35 @@ def get_report(
     if not can_access_hackathon(current_user, hackathon):
         raise HTTPException(status_code=403, detail="You do not have access to this hackathon's reports")
     return _build_report(db, hackathon)
+
+
+@router.get("/problem-statement/{problem_statement_id}/pdf")
+def download_problem_statement_pdf(
+    problem_statement_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("view_reports")),
+):
+    """The problem statement as a PDF, so judges can read what a team was asked to do."""
+    ps = db.query(ProblemStatement).filter(ProblemStatement.id == problem_statement_id).first()
+    if not ps:
+        raise HTTPException(status_code=404, detail="Problem statement not found")
+    hackathon = db.query(Hackathon).filter(Hackathon.id == ps.hackathon_id).first()
+    if not can_access_hackathon(current_user, hackathon):
+        raise HTTPException(status_code=403, detail="You do not have access to this hackathon's reports")
+
+    try:
+        pdf_bytes = generate_problem_statement_pdf({
+            "title": ps.title,
+            "description": ps.description,
+            "file_path": ps.file_path,
+            "hackathon_name": hackathon.name if hackathon else "",
+        })
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Failed to generate PDF: {exc}")
+
+    safe_title = "".join(c if c.isalnum() or c in ("-", "_") else "_" for c in ps.title)[:60].strip("_").lower()
+    return StreamingResponse(
+        iter([pdf_bytes]),
+        media_type="application/pdf",
+        headers={"Content-Disposition": f"attachment; filename={safe_title or 'problem-statement'}.pdf"},
+    )
