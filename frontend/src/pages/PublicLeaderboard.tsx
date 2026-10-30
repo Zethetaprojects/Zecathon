@@ -64,7 +64,7 @@ export default function PublicLeaderboard() {
 
           {rounds.length > 1 && round !== undefined && (
             <div className="mb-5">
-              <RoundTabs rounds={rounds} active={round} onChange={setRound} />
+              <RoundTabs rounds={rounds.filter((r) => r.results_published)} active={round} onChange={setRound} />
               {activeRound && activeRound.judge_weight > 0 && (
                 <p className="text-[11px] text-slate-500 mt-2">
                   {activeRound.judge_weight === 100
@@ -92,7 +92,8 @@ export default function PublicLeaderboard() {
               data-egg-message="Still hopeful! +25 XP"
               data-egg-color="pink"
             >
-              <p className="text-slate-300 mb-4">No evaluated submissions yet.</p>
+              <p className="text-slate-300 mb-2">Results not published yet.</p>
+              <p className="text-xs text-slate-500">The organisers will publish the scores once judging is complete.</p>
             </div>
           ) : (
             <LeaderboardTable entries={entries} />

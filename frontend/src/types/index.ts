@@ -137,6 +137,8 @@ export interface HackathonRound {
   /** Share of the round score from judges' marks (0 = AI only, 100 = judges only). */
   judge_weight: number;
   published: boolean;
+  /** Scores and rankings are visible to teams and the public only once this is on. */
+  results_published: boolean;
   shortlisted_team_ids?: number[] | null;
   shortlisted_teams?: { id: number; name: string }[] | null;
   submission_count: number;
@@ -167,6 +169,10 @@ export interface Evaluation {
   overall_assessment?: string;
   key_strengths?: string[];
   areas_for_improvement?: string[];
+  /** A judge's note after checking a flagged score (staff only). */
+  review_note?: string | null;
+  reviewed_by?: string | null;
+  reviewed_at?: string | null;
   red_flags?: string[];
   recommendation?: string;
 }
@@ -214,6 +220,8 @@ export interface TeamReportEntry {
   github_url?: string | null;
   ppt_url?: string | null;
   submitted_at?: string | null;
+  review_note?: string | null;
+  reviewed_by?: string | null;
 }
 
 export interface SubmissionReport extends Submission {

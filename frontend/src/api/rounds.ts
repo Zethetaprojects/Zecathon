@@ -1,5 +1,5 @@
 import api from './client';
-import { HackathonRound, JudgeScore, RoundStatus } from '../types';
+import { Evaluation, HackathonRound, JudgeScore, RoundStatus } from '../types';
 
 export interface RoundSettings {
   name?: string | null;
@@ -7,6 +7,7 @@ export interface RoundSettings {
   submission_deadline?: string | null;
   judge_weight?: number;
   published?: boolean;
+  results_published?: boolean;
 }
 
 export const roundsApi = {
@@ -26,4 +27,8 @@ export const judgeApi = {
   set: (submissionId: number, score: number, comment?: string) =>
     api.put<JudgeScore>(`/submissions/${submissionId}/judge-score`, { score, comment: comment || null }),
   remove: (submissionId: number) => api.delete(`/submissions/${submissionId}/judge-score`),
+  /** Record that a flagged score was checked; clears the "needs review" flag. */
+  resolveReview: (submissionId: number, note: string) =>
+    api.put<Evaluation>(`/submissions/${submissionId}/review`, { note }),
+  reopenReview: (submissionId: number) => api.delete<Evaluation>(`/submissions/${submissionId}/review`),
 };

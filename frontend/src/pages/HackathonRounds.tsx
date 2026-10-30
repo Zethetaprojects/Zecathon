@@ -191,6 +191,29 @@ export default function HackathonRounds() {
     });
   };
 
+  const setResultsPublished = async (round: HackathonRound, publish: boolean) => {
+    const ok = await confirm(
+      publish
+        ? {
+            title: `Publish the results of ${round.name}?`,
+            message: 'Teams and anyone with the leaderboard link will see every score and the ranking for this round.',
+            confirmLabel: 'Publish results',
+          }
+        : {
+            title: `Hide the results of ${round.name}?`,
+            message: 'Teams and the public will see "Results not published yet" until you publish again.',
+            confirmLabel: 'Hide results',
+            tone: 'danger',
+          },
+    );
+    if (!ok) return;
+    run(`results-${round.number}`, async () => {
+      const { data } = await roundsApi.update(hackathonId, round.number, { results_published: publish });
+      replaceRound(data);
+      flash(publish ? `Results of ${data.name} are public.` : `Results of ${data.name} are private again.`);
+    });
+  };
+
   /** Best score per team in a round's results, for shortlisting. */
   const resultsByTeam = (number: number) => {
     const map = new Map<number, LeaderboardEntry>();
@@ -333,6 +356,30 @@ export default function HackathonRounds() {
                       </button>
                     )}
                   </div>
+                </div>
+
+                <div
+                  className={`mb-5 px-4 py-3 rounded-lg border flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs ${
+                    round.results_published ? 'border-neon-cyan/30 bg-neon-cyan/5 text-slate-300' : 'border-white/10 bg-black/20 text-slate-400'
+                  }`}
+                >
+                  <span>
+                    <span className="text-white font-semibold">Results: {round.results_published ? 'published' : 'private'}.</span>{' '}
+                    {round.results_published
+                      ? 'Teams and the public can see the scores and ranking.'
+                      : 'Only organisers, admins and judges can see scores, so you can check and correct them first.'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setResultsPublished(round, !round.results_published)}
+                    disabled={busy[`results-${round.number}`] || (round.number > 1 && !round.published)}
+                    title={round.number > 1 && !round.published ? 'Publish the round first' : undefined}
+                    className={`px-3 py-1.5 rounded text-xs whitespace-nowrap disabled:opacity-50 ${
+                      round.results_published ? 'border border-white/15 text-slate-300 hover:text-neon-pink' : 'neon-btn neon-btn-primary'
+                    }`}
+                  >
+                    {round.results_published ? 'Hide results' : 'Publish results'}
+                  </button>
                 </div>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

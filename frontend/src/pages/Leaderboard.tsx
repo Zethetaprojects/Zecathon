@@ -10,6 +10,9 @@ import PageLayout from '../components/PageLayout';
 import BackButton from '../components/BackButton';
 import LoadingScreen from '../components/LoadingScreen';
 import LeaderboardTable from '../components/LeaderboardTable';
+import { useAuth } from '../hooks/useAuth';
+import { useConfirm } from '../hooks/useConfirm';
+import { isManagerRole } from '../utils/role';
 
 
 export default function Leaderboard() {
@@ -19,6 +22,12 @@ export default function Leaderboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const { user, can } = useAuth();
+  const confirm = useConfirm();
+  // Organisers, admins and judges see scores before they are published.
+  const staff = isManagerRole(user?.role) || user?.role === 'judge';
+  const canPublish = isManagerRole(user?.role) && can('edit_hackathon');
+  const [publishing, setPublishing] = useState(false);
 
   const [rounds, setRounds] = useState<HackathonRound[]>([]);
   // Undefined until the first load: the server then picks the latest scored round.
@@ -44,6 +53,38 @@ export default function Leaderboard() {
   }, [hackathonId, round]);
 
   const activeRound = rounds.find((r) => r.number === round);
+  const resultsRound = activeRound ?? rounds.find((r) => r.number === (round ?? 1));
+  const tabRounds = staff ? rounds : rounds.filter((r) => r.results_published);
+
+  const setResultsPublished = async (publish: boolean) => {
+    const target = resultsRound?.number ?? 1;
+    const name = resultsRound?.name ?? 'this round';
+    const ok = await confirm(
+      publish
+        ? {
+            title: `Publish the results of ${name}?`,
+            message: 'Teams and anyone with the share link will see every score and the ranking. You can hide them again later.',
+            confirmLabel: 'Publish results',
+          }
+        : {
+            title: `Hide the results of ${name}?`,
+            message: 'Teams and the public will see "Results not published yet" until you publish again.',
+            confirmLabel: 'Hide results',
+            tone: 'danger',
+          },
+    );
+    if (!ok) return;
+    setPublishing(true);
+    setError('');
+    try {
+      const { data } = await roundsApi.update(hackathonId, target, { results_published: publish });
+      setRounds((list) => (list.some((r) => r.number === data.number) ? list.map((r) => (r.number === data.number ? data : r)) : [...list, data]));
+    } catch (err) {
+      setError(formatError(err, 'Could not change the results visibility'));
+    } finally {
+      setPublishing(false);
+    }
+  };
 
   const copyShareLink = async () => {
     const url = `${window.location.origin}/public/leaderboard/${hackathonId}`;
@@ -76,9 +117,39 @@ export default function Leaderboard() {
             </button>
           </div>
 
-          {rounds.length > 1 && round !== undefined && (
+          {staff && !loading && (
+            <div
+              className={`mb-5 px-4 py-3 rounded border text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${
+                resultsRound?.results_published
+                  ? 'border-neon-cyan/30 bg-neon-cyan/5 text-slate-300'
+                  : 'border-neon-yellow/40 bg-neon-yellow/5 text-neon-yellow'
+              }`}
+            >
+              <span>
+                {resultsRound?.results_published
+                  ? 'Published: teams and the public can see these results.'
+                  : 'Private: only organisers, admins and judges can see these scores. Teams and the public see "Results not published yet" until you publish.'}
+              </span>
+              {canPublish && (
+                <button
+                  type="button"
+                  onClick={() => setResultsPublished(!resultsRound?.results_published)}
+                  disabled={publishing}
+                  className={`px-4 py-2 rounded text-xs whitespace-nowrap disabled:opacity-50 ${
+                    resultsRound?.results_published
+                      ? 'border border-white/15 text-slate-300 hover:text-neon-pink'
+                      : 'neon-btn neon-btn-primary'
+                  }`}
+                >
+                  {publishing ? 'Saving...' : resultsRound?.results_published ? 'Hide results' : 'Publish results'}
+                </button>
+              )}
+            </div>
+          )}
+
+          {tabRounds.length > 1 && round !== undefined && (
             <div className="mb-5">
-              <RoundTabs rounds={rounds} active={round} onChange={setRound} />
+              <RoundTabs rounds={tabRounds} active={round} onChange={setRound} />
               {activeRound && activeRound.judge_weight > 0 && (
                 <p className="text-[11px] text-slate-500 mt-2">
                   {activeRound.judge_weight === 100
@@ -106,13 +177,22 @@ export default function Leaderboard() {
               data-egg-message="Still hopeful! +25 XP"
               data-egg-color="pink"
             >
-              <p className="text-slate-300 mb-4">No evaluated submissions yet.</p>
-              <Link
-                to={`/hackathons/${hackathonId}/teams`}
-                className="px-5 py-2 rounded neon-btn neon-btn-cyan text-xs"
-              >
-                Evaluate projects
-              </Link>
+              {staff ? (
+                <>
+                  <p className="text-slate-300 mb-4">No evaluated submissions yet.</p>
+                  <Link
+                    to={`/hackathons/${hackathonId}/teams`}
+                    className="px-5 py-2 rounded neon-btn neon-btn-cyan text-xs"
+                  >
+                    Evaluate projects
+                  </Link>
+                </>
+              ) : (
+                <>
+                  <p className="text-slate-300 mb-2">Results not published yet.</p>
+                  <p className="text-xs text-slate-500">The organisers will publish the scores once judging is complete.</p>
+                </>
+              )}
             </div>
           ) : (
             <LeaderboardTable entries={entries} />

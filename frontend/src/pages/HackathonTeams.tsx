@@ -18,6 +18,7 @@ import Countdown from '../components/Countdown';
 import SubmissionGuidelines from '../components/SubmissionGuidelines';
 import RoundTabs from '../components/RoundTabs';
 import JudgeMarks from '../components/JudgeMarks';
+import SubmissionLinks from '../components/SubmissionLinks';
 
 const AVATAR_COLORS = ['bg-neon-pink/20 text-neon-pink', 'bg-neon-cyan/20 text-neon-cyan', 'bg-neon-purple/20 text-neon-purple', 'bg-neon-yellow/15 text-neon-yellow'];
 
@@ -368,6 +369,30 @@ export default function HackathonTeams() {
     }
   };
 
+  const letTeamResubmit = async (team: Team, sub: Submission, psTitle: string) => {
+    const ok = await confirm({
+      title: `Let ${team.name} resubmit?`,
+      message: (
+        <>
+          This removes their submission for <span className="text-white">{psTitle}</span>
+          {sub.evaluation ? ', its score' : ''} and any judge marks, so the team can submit again (for example after a wrong
+          or Google Drive link). It cannot be undone.
+        </>
+      ),
+      confirmLabel: 'Remove submission',
+      tone: 'danger',
+    });
+    if (!ok) return;
+    setError('');
+    try {
+      await submissionsApi.remove(sub.id);
+      fetchSubmissions(teams);
+      flash(`${team.name} can submit again for ${psTitle}.`);
+    } catch (err: any) {
+      setError(formatError(err, 'Could not remove the submission'));
+    }
+  };
+
   // Every submission in the round, in team order then problem statement order.
   const roundQueue = useMemo(() => {
     const order = new Map((hackathon?.problem_statements ?? []).map((ps, i) => [ps.id, i]));
@@ -574,6 +599,11 @@ export default function HackathonTeams() {
                   <StatusPill submission={sub} />
                   {sub && <span className="text-[11px] text-slate-500 uppercase">{sub.type === 'tech' ? 'Tech' : 'Non-tech'}</span>}
                 </div>
+                {sub && !isParticipantView && (
+                  <div className="mt-2">
+                    <SubmissionLinks submission={sub} />
+                  </div>
+                )}
               </div>
               <div className="flex flex-wrap items-center gap-2">
                 {ev && (
@@ -614,6 +644,17 @@ export default function HackathonTeams() {
                     }`}
                   >
                     {evaluating[sub.id] ? 'Evaluating… up to a minute' : ev ? 'Re-run' : 'Evaluate'}
+                  </button>
+                )}
+                {sub && isManager && (
+                  <button
+                    type="button"
+                    onClick={() => letTeamResubmit(team, sub, ps.title)}
+                    disabled={evaluating[sub.id] || bulk?.running}
+                    title="Remove this submission so the team can submit again"
+                    className="px-3 py-1.5 rounded-lg text-xs text-neon-pink border border-neon-pink/30 hover:bg-neon-pink/10 transition disabled:opacity-50"
+                  >
+                    Let team resubmit
                   </button>
                 )}
                 {!sub && canSubmit && trackOf(team) !== undefined && trackOf(team) !== ps.id && (

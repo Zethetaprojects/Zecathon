@@ -240,7 +240,15 @@ export default function HackathonReportPage() {
                             title="The evaluator asks a judge to check this score: open the report and see Review flags."
                             className="block w-fit mt-1 text-[10px] px-1.5 py-0.5 rounded bg-neon-yellow/10 text-neon-yellow border border-neon-yellow/30 whitespace-nowrap"
                           >
-                            Needs review
+                                  Needs review
+                                </span>
+                              )}
+                        {entry.review_note && (
+                          <span
+                            title={`${entry.review_note}${entry.reviewed_by ? ` (${entry.reviewed_by})` : ''}`}
+                            className="block w-fit mt-1 text-[10px] px-1.5 py-0.5 rounded bg-green-400/10 text-green-300 border border-green-400/30 whitespace-nowrap cursor-help"
+                          >
+                            Reviewed ✓
                           </span>
                         )}
                       </td>

@@ -85,6 +85,12 @@ export default function Submit() {
       setError('Enter the full GitHub repository link, e.g. https://github.com/your-team/your-project. The repository must be public.');
       return;
     }
+    if (type === 'non_tech' && githubUrl.trim() && !/^(https?:\/\/)?(www\.)?github\.com\/[^/\s]+\/[^/\s]+/i.test(githubUrl.trim())) {
+      setError(
+        'The supporting link must be a public GitHub repository, e.g. https://github.com/your-team/your-project. Google Drive and other links are not accepted: download the file and upload it as your project document instead.',
+      );
+      return;
+    }
     if (type === 'non_tech' && !file) {
       setError('Choose your project document to upload.');
       return;
@@ -342,7 +348,9 @@ export default function Submit() {
                   className="w-full rounded px-4 py-3 neon-input"
                   placeholder="https://github.com/your-team/your-project"
                 />
-                <p className="text-[11px] text-slate-500 mt-1.5">Make sure the repository is public, otherwise it cannot be evaluated.</p>
+                <p className="text-[11px] text-slate-500 mt-1.5">
+                  Must be a public github.com repository. Google Drive or other links are rejected and cannot be evaluated.
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
@@ -368,6 +376,9 @@ export default function Submit() {
                     className="w-full rounded px-4 py-3 neon-input"
                     placeholder="https://github.com/owner/repo"
                   />
+                  <p className="text-[11px] text-slate-500 mt-1.5">
+                    GitHub repositories only. Google Drive, Dropbox and other links are rejected; upload files above instead.
+                  </p>
                 </div>
               </div>
             )}

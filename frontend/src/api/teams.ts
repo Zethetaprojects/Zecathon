@@ -23,6 +23,8 @@ export const submissionsApi = {
     }),
   get: (id: number) => api.get<Submission>(`/submissions/${id}`),
   listByTeam: (teamId: number) => api.get<Submission[]>(`/submissions?team_id=${teamId}`),
+  /** Organisers only: remove a submission so the team can submit again. */
+  remove: (id: number) => api.delete(`/submissions/${id}`),
   /** All submissions (with evaluations) in a hackathon; organisers and judges only. */
   listByHackathon: (hackathonId: number) => api.get<Submission[]>(`/submissions/hackathon/${hackathonId}`),
   evaluateTech: (id: number) => api.post<Evaluation>(`/evaluate/tech/${id}`),
