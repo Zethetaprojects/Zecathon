@@ -368,33 +368,54 @@ export default function HackathonTeams() {
     }
   };
 
-  // Submissions without an evaluation, in team order then problem statement order.
-  const pendingQueue = useMemo(() => {
+  // Every submission in the round, in team order then problem statement order.
+  const roundQueue = useMemo(() => {
     const order = new Map((hackathon?.problem_statements ?? []).map((ps, i) => [ps.id, i]));
     const titles = new Map((hackathon?.problem_statements ?? []).map((ps) => [ps.id, ps.title]));
     return teams.flatMap((team) =>
       roundSubs(team.id)
-        .filter((sub) => !sub.evaluation)
         .sort((a, b) => (order.get(a.problem_statement_id) ?? 0) - (order.get(b.problem_statement_id) ?? 0))
         .map((sub) => ({ sub, label: `${team.name} — ${titles.get(sub.problem_statement_id) ?? 'Problem statement'}` })),
     );
   }, [teams, submissionsByTeam, hackathon?.problem_statements, activeRound]);
+  // Submissions without an evaluation.
+  const pendingQueue = useMemo(() => roundQueue.filter(({ sub }) => !sub.evaluation), [roundQueue]);
 
-  /** Evaluate every pending submission one at a time (serially), with progress and a stop button. */
-  const runBulkEvaluation = async () => {
-    const queue = pendingQueue;
+  /**
+   * Evaluate submissions one at a time (serially), with progress and a stop button.
+   * 'pending' scores only unevaluated submissions; 'all' re-runs every submission in
+   * the round and replaces its score (a failed re-run keeps the old score).
+   */
+  const runBulkEvaluation = async (mode: 'pending' | 'all' = 'pending') => {
+    const queue = mode === 'all' ? roundQueue : pendingQueue;
     if (queue.length === 0) return;
-    const ok = await confirm({
-      title: `Evaluate ${queue.length} pending submission${queue.length === 1 ? '' : 's'}?`,
-      message: (
-        <>
-          Submissions are evaluated one at a time, which can take up to a minute each (roughly {queue.length} minute
-          {queue.length === 1 ? '' : 's'} in total). Keep this page open until it finishes. You can stop after the current
-          submission at any time. Already-evaluated submissions are not touched.
-        </>
-      ),
-      confirmLabel: 'Start evaluating',
-    });
+    const n = queue.length;
+    const ok = await confirm(
+      mode === 'all'
+        ? {
+            title: `Re-evaluate all ${n} submission${n === 1 ? '' : 's'}?`,
+            message: (
+              <>
+                Every submission in this round is evaluated again, one at a time (roughly {n} minute{n === 1 ? '' : 's'} in
+                total), and the new scores replace the current ones, so rankings can change. If the evaluator fails on a
+                submission, its current score is kept. Keep this page open; you can stop after the current submission.
+              </>
+            ),
+            confirmLabel: 'Re-evaluate all',
+            tone: 'danger',
+          }
+        : {
+            title: `Evaluate ${n} pending submission${n === 1 ? '' : 's'}?`,
+            message: (
+              <>
+                Submissions are evaluated one at a time, which can take up to a minute each (roughly {n} minute
+                {n === 1 ? '' : 's'} in total). Keep this page open until it finishes. You can stop after the current
+                submission at any time. Already-evaluated submissions are not touched.
+              </>
+            ),
+            confirmLabel: 'Start evaluating',
+          },
+    );
     if (!ok) return;
 
     stopRequested.current = false;
@@ -410,8 +431,11 @@ export default function HackathonTeams() {
       setBulk((b) => (b ? { ...b, current: label } : b));
       let result: BulkResult;
       try {
+        const rerun = mode === 'all' && Boolean(sub.evaluation);
         const { data } =
-          sub.type === 'tech' ? await submissionsApi.evaluateTech(sub.id) : await submissionsApi.evaluateNonTech(sub.id);
+          sub.type === 'tech'
+            ? await (rerun ? submissionsApi.retryTech(sub.id) : submissionsApi.evaluateTech(sub.id))
+            : await (rerun ? submissionsApi.retryNonTech(sub.id) : submissionsApi.evaluateNonTech(sub.id));
         result = { label, ok: true, detail: `${data.total_score} pts · ${data.verdict}` };
       } catch (err: any) {
         result = { label, ok: false, detail: formatError(err, 'Evaluation failed') };
@@ -848,7 +872,7 @@ export default function HackathonTeams() {
         )}
 
         {/* ---------------- Bulk evaluation ---------------- */}
-        {!isParticipantView && canEvaluate && (pendingQueue.length > 0 || bulk) && (
+        {!isParticipantView && canEvaluate && (roundQueue.length > 0 || bulk) && (
           <section className="glass-panel p-5 sm:p-6 mb-6 border border-neon-purple/30" aria-live="polite">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
@@ -858,7 +882,7 @@ export default function HackathonTeams() {
                     ? `Evaluating ${Math.min(bulk.done + 1, bulk.total)} of ${bulk.total}. Keep this page open.`
                     : pendingQueue.length > 0
                       ? `${pendingQueue.length} submission${pendingQueue.length === 1 ? ' is' : 's are'} waiting for evaluation. They run one at a time.`
-                      : 'All submissions have been evaluated.'}
+                      : `All ${roundQueue.length} submission${roundQueue.length === 1 ? ' has' : 's have'} been evaluated. You can re-run them all if needed.`}
                 </p>
               </div>
               <div className="flex gap-2">
@@ -876,8 +900,17 @@ export default function HackathonTeams() {
                 ) : (
                   <>
                     {pendingQueue.length > 0 && (
-                      <button type="button" onClick={runBulkEvaluation} className="px-4 py-2 rounded neon-btn neon-btn-primary text-xs">
+                      <button type="button" onClick={() => runBulkEvaluation('pending')} className="px-4 py-2 rounded neon-btn neon-btn-primary text-xs">
                         Evaluate all pending ({pendingQueue.length})
+                      </button>
+                    )}
+                    {roundQueue.length > pendingQueue.length && (
+                      <button
+                        type="button"
+                        onClick={() => runBulkEvaluation('all')}
+                        className="px-4 py-2 rounded text-xs border border-white/15 text-slate-300 hover:text-neon-pink hover:border-neon-pink/50 transition"
+                      >
+                        Re-evaluate all ({roundQueue.length})
                       </button>
                     )}
                     {bulk && (
