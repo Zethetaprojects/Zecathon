@@ -75,11 +75,6 @@ export default function LeaderboardTable({ entries }: { entries: LeaderboardEntr
                 <td className="py-4 pr-4 text-slate-400 text-sm capitalize">{entry.type.replace('_', '-')}</td>
                 <td className="py-4 pr-4 font-semibold text-white">
                   {entry.total_score}
-                  {entry.needs_review && (
-                    <span className="ml-2 text-xs px-2 py-1 rounded bg-neon-yellow/10 text-neon-yellow border border-neon-yellow/30">
-                      Review
-                    </span>
-                  )}
                   {(entry.judge_count ?? 0) > 0 && (
                     <span className="block text-[11px] font-normal text-slate-400 mt-0.5">
                       {entry.ai_score != null && <>AI {entry.ai_score} · </>}

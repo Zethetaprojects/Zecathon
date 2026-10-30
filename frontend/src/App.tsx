@@ -31,6 +31,7 @@ import PrivateRoute from './components/PrivateRoute';
 import PermissionRoute from './components/PermissionRoute';
 import SuperAdminRoute from './components/SuperAdminRoute';
 import ReportsPage from './pages/ReportsPage';
+import HackathonReportPage from './pages/HackathonReportPage';
 import TeamReportPage from './pages/TeamReportPage';
 
 function App() {
@@ -63,6 +64,7 @@ function App() {
                   </Route>
                   <Route element={<PermissionRoute feature="view_reports" />}>
                     <Route path="/reports" element={<ReportsPage />} />
+                    <Route path="/reports/hackathon/:id" element={<HackathonReportPage />} />
                     <Route path="/reports/submission/:id" element={<TeamReportPage />} />
                   </Route>
                   <Route element={<PermissionRoute feature="edit_hackathon" />}>
