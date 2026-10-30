@@ -239,6 +239,9 @@ def test_reports_sorted_by_score_with_problem_statement_pdf(auth_client, partici
     scores = [e["total_score"] for e in entries]
     assert scores[-1] is None  # the unscored team comes last
     assert scores[:-1] == sorted(scores[:-1], reverse=True)
+    # Each entry links to what the team handed in.
+    alpha = next(e for e in entries if e["team_name"] == "Alpha")
+    assert alpha["submission_url"] == "https://github.com/o/a" and alpha["submitted_at"]
 
     # The team report carries the statement text, and its PDF includes it.
     report = auth_client.get(f"/api/reports/submission/{first}").json()

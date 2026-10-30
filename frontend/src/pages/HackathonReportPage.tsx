@@ -7,6 +7,7 @@ import { formatError } from '../utils/formatError';
 import BackButton from '../components/BackButton';
 import LoadingScreen from '../components/LoadingScreen';
 import { safeFileName, saveBlob, uploadUrl } from '../utils/download';
+import SubmissionLinks from '../components/SubmissionLinks';
 
 function VerdictBadge({ verdict }: { verdict: string }) {
   const color =
@@ -191,7 +192,7 @@ export default function HackathonReportPage() {
                     <th className="px-4 py-3">Team</th>
                     {multiRound && <th className="px-4 py-3">Round</th>}
                     <th className="px-4 py-3">Problem</th>
-                    <th className="px-4 py-3">Type</th>
+                    <th className="px-4 py-3">Submission</th>
                     <th className="px-4 py-3">Status</th>
                     <th className="px-4 py-3">Score</th>
                     <th className="px-4 py-3">Verdict</th>
@@ -214,7 +215,12 @@ export default function HackathonReportPage() {
                       <td className="px-4 py-3 text-white font-semibold">{entry.team_name}</td>
                       {multiRound && <td className="px-4 py-3 text-slate-400 text-xs">R{entry.round_number ?? 1}</td>}
                       <td className="px-4 py-3 text-slate-400">{entry.problem_statement_title}</td>
-                      <td className="px-4 py-3 text-slate-400 uppercase text-[10px]">{entry.type}</td>
+                      <td className="px-4 py-3 min-w-[11rem]">
+                        <p className="text-[10px] uppercase tracking-wider text-slate-500 mb-1">
+                          {entry.type === 'tech' ? 'Code' : 'Document'}
+                        </p>
+                        <SubmissionLinks submission={entry} />
+                      </td>
                       <td className="px-4 py-3 text-slate-400 uppercase text-[10px]">{entry.status}</td>
                       <td className="px-4 py-3 text-neon-cyan font-mono">
                         {entry.total_score ?? '-'}

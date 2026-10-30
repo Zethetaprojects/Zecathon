@@ -80,6 +80,10 @@ def _build_report(db: Session, hackathon: Hackathon) -> HackathonReportDetail:
             llm_source=ev.llm_source if ev else None,
             round_number=sub.round_number or 1,
             problem_statement_file=ps.file_path,
+            submission_url=sub.submission_url,
+            github_url=sub.github_url,
+            ppt_url=sub.ppt_url,
+            submitted_at=sub.created_at,
         )
         for team, ps, sub, ev in rows
     ]

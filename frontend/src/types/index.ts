@@ -210,6 +210,10 @@ export interface TeamReportEntry {
   round_number?: number;
   /** The brief file the organisers attached to the statement, if any. */
   problem_statement_file?: string | null;
+  submission_url?: string | null;
+  github_url?: string | null;
+  ppt_url?: string | null;
+  submitted_at?: string | null;
 }
 
 export interface SubmissionReport extends Submission {

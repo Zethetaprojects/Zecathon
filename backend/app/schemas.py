@@ -536,6 +536,12 @@ class TeamReportEntry(BaseModel):
     llm_source: Optional[str] = None
     round_number: int = 1
     problem_statement_file: Optional[str] = None
+    # What the team handed in: the repository link (tech) or uploaded document
+    # (non-tech), plus the optional supporting repository and slides.
+    submission_url: Optional[str] = None
+    github_url: Optional[str] = None
+    ppt_url: Optional[str] = None
+    submitted_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

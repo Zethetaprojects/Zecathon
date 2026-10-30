@@ -7,6 +7,8 @@ import PageLayout from '../components/PageLayout';
 import EvaluationReport from '../components/EvaluationReport';
 import LoadingScreen from '../components/LoadingScreen';
 import { safeFileName, saveBlob, uploadUrl } from '../utils/download';
+import { formatDateTime } from '../utils/hackathon';
+import SubmissionLinks, { submissionLinks } from '../components/SubmissionLinks';
 
 export default function TeamReportPage() {
   const { id } = useParams<{ id: string }>();
@@ -15,6 +17,7 @@ export default function TeamReportPage() {
   const [report, setReport] = useState<SubmissionReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [preview, setPreview] = useState<string | null>(null);
 
   useEffect(() => {
     reportsApi
@@ -117,6 +120,48 @@ export default function TeamReportPage() {
             </div>
           </div>
         </div>
+
+        <section className="glass-panel p-5 sm:p-6 mb-6 border border-neon-cyan/20">
+          <div className="flex flex-wrap items-start justify-between gap-3 mb-4">
+            <div>
+              <h2 className="text-[10px] uppercase tracking-wider text-neon-cyan">What the team submitted</h2>
+              <p className="text-xs text-slate-400 mt-1">
+                {report.type === 'tech' ? 'Code project' : 'Document'}
+                {report.round_number && report.round_number > 1 ? ` · round ${report.round_number}` : ''} · submitted{' '}
+                {formatDateTime(report.created_at)}
+              </p>
+            </div>
+          </div>
+          <SubmissionLinks submission={report} size="md" />
+          {(() => {
+            // Documents and slides saved as PDF can be read right here.
+            const pdfs = submissionLinks(report).filter((l) => l.kind !== 'repo' && l.kind !== 'link' && /\.pdf$/i.test(l.href));
+            if (pdfs.length === 0) return null;
+            return (
+              <div className="mt-4">
+                <div className="flex flex-wrap gap-2">
+                  {pdfs.map((l) => (
+                    <button
+                      key={l.key}
+                      type="button"
+                      onClick={() => setPreview(preview === l.href ? null : l.href)}
+                      className="px-3 py-1.5 rounded text-xs border border-white/15 text-slate-300 hover:text-white transition"
+                    >
+                      {preview === l.href ? 'Hide preview' : `Preview ${l.label.toLowerCase()} here`}
+                    </button>
+                  ))}
+                </div>
+                {preview && (
+                  <iframe
+                    src={preview}
+                    title="Submission preview"
+                    className="mt-3 w-full h-[75vh] rounded border border-white/10 bg-white"
+                  />
+                )}
+              </div>
+            );
+          })()}
+        </section>
 
         <details className="glass-panel p-5 sm:p-6 mb-6 border border-neon-purple/20 group">
           <summary className="cursor-pointer flex flex-wrap items-center justify-between gap-2">
