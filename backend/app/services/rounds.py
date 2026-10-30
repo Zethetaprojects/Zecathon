@@ -23,6 +23,20 @@ def last_round_number(db: Session, hackathon_id: int) -> int:
     return max([1, *numbers])
 
 
+def results_published(round_row: Optional[HackathonRound]) -> bool:
+    """Whether everyone may see this round's scores and rankings (off until the organiser publishes)."""
+    return bool(round_row and round_row.results_published)
+
+
+def published_result_rounds(db: Session, hackathon_id: int) -> List[int]:
+    return sorted(
+        n
+        for (n,) in db.query(HackathonRound.number).filter(
+            HackathonRound.hackathon_id == hackathon_id, HackathonRound.results_published.is_(True)
+        )
+    )
+
+
 def is_shortlisted(round_row: Optional[HackathonRound], team_id: int) -> bool:
     return bool(round_row and any(s.team_id == team_id for s in round_row.shortlist))
 

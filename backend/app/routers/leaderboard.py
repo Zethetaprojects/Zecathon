@@ -6,10 +6,10 @@ from sqlalchemy.orm import Session, selectinload
 
 from app.auth import require_permission
 from app.database import get_db
-from app.models import Evaluation, Hackathon, JudgeScore, ProblemStatement, Submission, Team, User
-from app.routers.common import can_access_hackathon
+from app.models import Evaluation, Hackathon, ProblemStatement, Submission, Team, User, UserRole
+from app.routers.common import can_access_hackathon, can_manage_hackathon
 from app.schemas import LeaderboardEntry
-from app.services.rounds import get_round, round_score
+from app.services.rounds import get_round, published_result_rounds, round_score
 from app.services.scoring.constants import verdict_for_score
 
 router = APIRouter()
@@ -74,6 +74,21 @@ def _build_leaderboard(db: Session, hackathon_id: int, round_number: Optional[in
     return entries
 
 
+def _visible_leaderboard(db: Session, hackathon_id: int, round_number: Optional[int]) -> List[LeaderboardEntry]:
+    """What teams and the public may see: only rounds whose results are published.
+
+    Without a round, the latest published round. Unpublished rounds come back empty.
+    """
+    published = published_result_rounds(db, hackathon_id)
+    if round_number is None:
+        if not published:
+            return []
+        round_number = published[-1]
+    if round_number not in published:
+        return []
+    return _build_leaderboard(db, hackathon_id, round_number)
+
+
 @router.get("/{hackathon_id}", response_model=List[LeaderboardEntry])
 def get_leaderboard(
     hackathon_id: int,
@@ -86,7 +101,10 @@ def get_leaderboard(
         raise HTTPException(status_code=404, detail="Hackathon not found")
     if not can_access_hackathon(current_user, hackathon):
         raise HTTPException(status_code=403, detail="You do not have access to this hackathon")
-    return _build_leaderboard(db, hackathon_id, round)
+    # Organisers, admins and judges always see the scores, published or not.
+    if can_manage_hackathon(current_user, hackathon) or current_user.role == UserRole.judge:
+        return _build_leaderboard(db, hackathon_id, round)
+    return _visible_leaderboard(db, hackathon_id, round)
 
 
 @router.get("/public/{hackathon_id}", response_model=List[LeaderboardEntry])
@@ -98,11 +116,4 @@ def get_public_leaderboard(
     hackathon = db.query(Hackathon).filter(Hackathon.id == hackathon_id).first()
     if not hackathon:
         raise HTTPException(status_code=404, detail="Hackathon not found")
-    # Later rounds are public only once the organiser has published them.
-    number = round or default_round(db, hackathon_id)
-    row = get_round(db, hackathon_id, number) if number > 1 else None
-    if number > 1 and not (row and row.published):
-        if round:
-            return []
-        number = 1
-    return _build_leaderboard(db, hackathon_id, number)
+    return _visible_leaderboard(db, hackathon_id, round)

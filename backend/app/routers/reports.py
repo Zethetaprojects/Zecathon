@@ -84,6 +84,8 @@ def _build_report(db: Session, hackathon: Hackathon) -> HackathonReportDetail:
             github_url=sub.github_url,
             ppt_url=sub.ppt_url,
             submitted_at=sub.created_at,
+            review_note=ev.review_note if ev else None,
+            reviewed_by=ev.reviewed_by if ev else None,
         )
         for team, ps, sub, ev in rows
     ]

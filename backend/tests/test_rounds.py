@@ -193,11 +193,26 @@ def test_judge_marks_blend_into_round_leaderboard(auth_client, participant_clien
     assert first[s1]["total_score"] == round(ai[s1] * 0.5 + 1000 * 0.5)
     assert first[s2]["awaiting_judges"] is True and first[s2]["total_score"] == ai[s2]
 
-    # Public view: only published rounds.
-    assert len(participant_client.get(f"/api/leaderboard/public/{hid}?round=2").json()) == 2
-    auth_client.put(f"/api/hackathons/{hid}/rounds/2", json={"published": False})
-    assert participant_client.get(f"/api/leaderboard/public/{hid}?round=2").json() == []
+    # Teams and the public see nothing until the organiser publishes the results.
+    for url in (f"/api/leaderboard/public/{hid}", f"/api/leaderboard/{hid}", f"/api/leaderboard/{hid}?round=1"):
+        assert participant_client.get(url).json() == []
+    assert participant_client.get(f"/api/submissions/{s1}").json()["evaluation"] is None
+    assert auth_client.get(f"/api/submissions/{s1}").json()["evaluation"] is not None
+    assert len(judge_client.get(f"/api/leaderboard/{hid}?round=1").json()) == 2
+
+    r = auth_client.put(f"/api/hackathons/{hid}/rounds/1", json={"results_published": True})
+    assert r.status_code == 200 and r.json()["results_published"] is True
+    assert participant_client.put(f"/api/hackathons/{hid}/rounds/1", json={"results_published": False}).status_code == 403
+    # Round 1 results are out; round 2 results are still private.
     assert {e["round_number"] for e in participant_client.get(f"/api/leaderboard/public/{hid}").json()} == {1}
+    assert participant_client.get(f"/api/leaderboard/public/{hid}?round=2").json() == []
+    assert participant_client.get(f"/api/submissions/{s1}").json()["evaluation"] is not None
+
+    auth_client.put(f"/api/hackathons/{hid}/rounds/2", json={"results_published": True})
+    assert len(participant_client.get(f"/api/leaderboard/{hid}").json()) == 2  # latest published round
+    # Unpublishing hides them again.
+    auth_client.put(f"/api/hackathons/{hid}/rounds/2", json={"results_published": False})
+    assert participant_client.get(f"/api/leaderboard/public/{hid}?round=2").json() == []
 
     # Deleting the hackathon removes rounds, shortlists and marks with it.
     assert auth_client.delete(f"/api/hackathons/{hid}").status_code == 204

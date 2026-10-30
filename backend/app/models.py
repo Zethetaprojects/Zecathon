@@ -197,6 +197,9 @@ class HackathonRound(Base):
     judge_weight = Column(Integer, nullable=False, default=0)
     # Shortlisted teams learn they advanced, and may submit, only once this is set.
     published = Column(Boolean, nullable=False, default=False)
+    # Scores and rankings for this round stay with organisers and judges until the
+    # organiser publishes the results (so scores can be checked and corrected first).
+    results_published = Column(Boolean, nullable=True, default=False)
     created_at = Column(DateTime, default=dt.datetime.utcnow)
 
     hackathon = relationship("Hackathon", back_populates="rounds")
@@ -322,6 +325,11 @@ class Evaluation(Base):
     overall_assessment = Column(Text, nullable=True)  # the scorer's short written summary
     key_strengths = Column(JSON, default=list)
     areas_for_improvement = Column(JSON, default=list)
+    # A judge's or organiser's note after checking a flagged score; resolving the
+    # review clears needs_review. Internal: never shown to the team.
+    review_note = Column(Text, nullable=True)
+    reviewed_by = Column(String, nullable=True)  # username
+    reviewed_at = Column(DateTime, nullable=True)
     needs_review = Column(Boolean, default=False)
     # Which scorer produced this evaluation: gemini, generic, mock, gate (admissibility reject),
     # suspected_mock (legacy rows that match the old silent fallback), or NULL (legacy).

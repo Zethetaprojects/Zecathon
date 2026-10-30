@@ -12,7 +12,8 @@ from app.models import Hackathon, ProblemStatement, Submission, SubmissionStatus
 from app.routers.common import can_manage_hackathon, hackathon_not_started, is_manager
 from app.schemas import StaffSubmissionDetail, SubmissionDetail, SubmissionOut
 from app.services.file_storage import save_upload
-from app.services.rounds import get_round, is_shortlisted, round_name
+from app.services.github_client import parse_github_url
+from app.services.rounds import get_round, is_shortlisted, results_published, round_name
 
 router = APIRouter()
 logger = logging.getLogger(__name__)
@@ -35,6 +36,24 @@ def _ensure_team_access(team_id: int, user: User, db: Session) -> Team:
         logger.warning("User id=%s role=%s denied access to team id=%s", user.id, user.role, team_id)
         raise HTTPException(status_code=403, detail="You are not a member of this team")
     return team
+
+
+def _github_repo_url(url: str, label: str) -> str:
+    """Return https://github.com/owner/repo for a GitHub repository link; 400 for anything else."""
+    url = (url or "").strip()
+    if not url.lower().startswith(("http://", "https://")):
+        url = "https://" + url
+    parsed = parse_github_url(url)
+    if not parsed:
+        raise HTTPException(
+            status_code=400,
+            detail=(
+                f"{label} must be a public GitHub repository, like https://github.com/your-team/your-project. "
+                "Google Drive, Dropbox and other links are not accepted; upload documents as a file instead."
+            ),
+        )
+    owner, repo = parsed
+    return f"https://github.com/{owner}/{repo}"
 
 
 @router.post("", response_model=SubmissionOut, status_code=status.HTTP_201_CREATED)
@@ -129,9 +148,20 @@ async def create_submission(
                 ),
             )
 
+    # Only real GitHub repository links are accepted where a repository is expected:
+    # Drive, Dropbox or other links cannot be read by the evaluator.
     if sub_type == SubmissionType.tech:
         if not submission_url:
             raise HTTPException(status_code=400, detail="Tech submissions require a GitHub URL")
+        submission_url = _github_repo_url(submission_url, "GitHub repository link")
+    elif submission_url and not submission_file:
+        submission_url = _github_repo_url(submission_url, "Submission link")
+    if github_url and github_url.strip():
+        github_url = _github_repo_url(github_url, "Supporting GitHub link")
+    else:
+        github_url = None
+
+    if sub_type == SubmissionType.tech:
         final_url = submission_url
         final_github = None
     else:
@@ -203,8 +233,18 @@ def get_submission(
     submission = db.query(Submission).filter(Submission.id == submission_id).first()
     if not submission:
         raise HTTPException(status_code=404, detail="Submission not found")
-    _ensure_team_access(submission.team_id, current_user, db)
-    return submission
+    team = _ensure_team_access(submission.team_id, current_user, db)
+    staff = can_manage_hackathon(current_user, team.hackathon) or current_user.role == UserRole.judge
+    if staff:
+        return submission
+    out = SubmissionDetail.model_validate(submission)
+    if not out.evaluation or not results_published(get_round(db, team.hackathon_id, submission.round_number or 1)):
+        # The team sees its score only once the organiser publishes the round's results.
+        return out.model_copy(update={"evaluation": None})
+    # Judges' review notes are internal.
+    return out.model_copy(update={"evaluation": out.evaluation.model_copy(
+        update={"review_note": None, "reviewed_by": None, "reviewed_at": None}
+    )})
 
 
 @router.get("", response_model=List[SubmissionOut])
@@ -215,3 +255,28 @@ def list_submissions(
 ):
     _ensure_team_access(team_id, current_user, db)
     return db.query(Submission).filter(Submission.team_id == team_id).order_by(Submission.created_at.desc()).all()
+
+
+@router.delete("/{submission_id}", status_code=status.HTTP_204_NO_CONTENT)
+def delete_submission(
+    submission_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user),
+):
+    """Remove a submission (and its evaluation and marks) so the team can submit again.
+
+    For the hackathon's organisers and admins only, e.g. when a team submitted a
+    wrong or unreadable link. The team keeps its chosen problem statement only if
+    it has other submissions.
+    """
+    submission = db.query(Submission).filter(Submission.id == submission_id).first()
+    if not submission:
+        raise HTTPException(status_code=404, detail="Submission not found")
+    team = db.query(Team).filter(Team.id == submission.team_id).first()
+    if not can_manage_hackathon(current_user, team.hackathon if team else None):
+        raise HTTPException(status_code=403, detail="Only the hackathon organiser or an admin can remove a submission")
+    logger.info("Submission id=%s of team id=%s removed by user id=%s (url=%s)",
+                submission.id, submission.team_id, current_user.id, submission.submission_url)
+    db.delete(submission)
+    db.commit()
+    return None

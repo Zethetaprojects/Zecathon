@@ -44,6 +44,9 @@ MIGRATION_SPECS = {
         ("ppt_url", "VARCHAR"),
         ("round_number", "INTEGER"),
     ],
+    "hackathon_rounds": [
+        ("results_published", "BOOLEAN"),
+    ],
     "evaluations": [
         ("category_max_points", "JSON"),
         ("category_explanations", "JSON"),
@@ -51,6 +54,9 @@ MIGRATION_SPECS = {
         ("overall_assessment", "TEXT"),
         ("key_strengths", "JSON"),
         ("areas_for_improvement", "JSON"),
+        ("review_note", "TEXT"),
+        ("reviewed_by", "VARCHAR"),
+        ("reviewed_at", "TIMESTAMP"),
         ("llm_source", "VARCHAR"),
     ],
 }

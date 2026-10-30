@@ -382,6 +382,9 @@ class EvaluationOut(BaseModel):
     overall_assessment: Optional[str] = None
     key_strengths: Optional[List[str]] = None
     areas_for_improvement: Optional[List[str]] = None
+    review_note: Optional[str] = None
+    reviewed_by: Optional[str] = None
+    reviewed_at: Optional[datetime] = None
     llm_source: Optional[str] = None
     evaluated_at: datetime
 
@@ -443,6 +446,8 @@ class RoundOut(BaseModel):
     submission_deadline: Optional[datetime] = None
     judge_weight: int = 0
     published: bool = False
+    # Scores and rankings are visible to teams and the public only once this is set.
+    results_published: bool = False
     # Teams that advanced to this round (rounds 2+). Visible to the hackathon's
     # managers and judges always, and to everyone once the round is published.
     shortlisted_team_ids: Optional[List[int]] = None
@@ -456,6 +461,7 @@ class RoundUpdate(BaseModel):
     submission_deadline: Optional[datetime] = None
     judge_weight: Optional[int] = None
     published: Optional[bool] = None
+    results_published: Optional[bool] = None
 
     @field_validator("name")
     @classmethod
@@ -509,6 +515,20 @@ class JudgeScoreIn(BaseModel):
         return v.strip() or None if v is not None else None
 
 
+class ReviewIn(BaseModel):
+    note: str
+
+    @field_validator("note")
+    @classmethod
+    def _note(cls, v):
+        v = (v or "").strip()
+        if len(v) < 3:
+            raise ValueError("Write a short review note (what you checked and your conclusion)")
+        if len(v) > 2000:
+            raise ValueError("Review note must be 2000 characters or fewer")
+        return v
+
+
 class JudgeScoreOut(BaseModel):
     id: int
     submission_id: int
@@ -542,6 +562,8 @@ class TeamReportEntry(BaseModel):
     github_url: Optional[str] = None
     ppt_url: Optional[str] = None
     submitted_at: Optional[datetime] = None
+    review_note: Optional[str] = None
+    reviewed_by: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
 

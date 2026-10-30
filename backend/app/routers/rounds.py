@@ -6,6 +6,7 @@ to it. Judges (and the hackathon's managers) can mark any submission out of
 1000; each round's judge weight decides how much those marks count against the
 AI score on that round's leaderboard.
 """
+import datetime as dt
 import logging
 from typing import List
 
@@ -16,7 +17,7 @@ from app.auth import get_current_active_user, require_permission
 from app.database import get_db
 from app.models import Hackathon, HackathonRound, JudgeScore, RoundShortlist, Submission, Team, TeamMember, User, UserRole
 from app.routers.common import can_access_hackathon, can_manage_hackathon
-from app.schemas import JudgeScoreIn, JudgeScoreOut, RoundOut, RoundUpdate, ShortlistUpdate
+from app.schemas import EvaluationOut, JudgeScoreIn, JudgeScoreOut, ReviewIn, RoundOut, RoundUpdate, ShortlistUpdate
 from app.services.rounds import get_round, last_round_number, round_name
 
 router = APIRouter()
@@ -55,6 +56,7 @@ def _round_out(db: Session, hackathon: Hackathon, number: int, row: HackathonRou
         judge_weight=row.judge_weight if row else 0,
         # Round 1 is open to every team from the start.
         published=True if number == 1 else bool(row and row.published),
+        results_published=bool(row and row.results_published),
         submission_count=submission_count,
     )
     if number > 1 and row and (staff or row.published):
@@ -136,7 +138,7 @@ def update_round(
         if number != 1:
             raise HTTPException(status_code=404, detail="Round not found")
         # Round 1 gets a settings row the first time it is named or weighted.
-        row = HackathonRound(hackathon_id=hackathon_id, number=1, judge_weight=0, published=True)
+        row = HackathonRound(hackathon_id=hackathon_id, number=1, judge_weight=0, published=True, results_published=False)
         db.add(row)
 
     fields = payload.model_fields_set
@@ -146,6 +148,12 @@ def update_round(
         row.instructions = payload.instructions
     if "judge_weight" in fields and payload.judge_weight is not None:
         row.judge_weight = payload.judge_weight
+    if "results_published" in fields and payload.results_published is not None:
+        if payload.results_published and number > 1 and not row.published:
+            raise HTTPException(status_code=400, detail="Publish the round itself before publishing its results")
+        row.results_published = payload.results_published
+        logger.info("Results of round %s of hackathon id=%s %s by user id=%s", number, hackathon_id,
+                    "published" if payload.results_published else "hidden", current_user.id)
     if number > 1:
         if "submission_deadline" in fields:
             row.submission_deadline = payload.submission_deadline
@@ -332,3 +340,46 @@ def delete_judge_score(
     db.delete(mark)
     db.commit()
     return None
+
+
+@judge_router.put("/{submission_id}/review", response_model=EvaluationOut)
+def resolve_review(
+    submission_id: int,
+    payload: ReviewIn,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("evaluate_submission")),
+):
+    """Record that a judge or organiser checked a flagged score; clears the flag."""
+    submission = _submission_for_judging(db, submission_id, current_user)
+    evaluation = submission.evaluation
+    if not evaluation:
+        raise HTTPException(status_code=400, detail="This submission has not been evaluated yet")
+    evaluation.review_note = payload.note
+    evaluation.reviewed_by = current_user.username
+    evaluation.reviewed_at = dt.datetime.utcnow()
+    evaluation.needs_review = False
+    db.commit()
+    db.refresh(evaluation)
+    logger.info("Review of submission id=%s resolved by user id=%s", submission.id, current_user.id)
+    return evaluation
+
+
+@judge_router.delete("/{submission_id}/review", response_model=EvaluationOut)
+def reopen_review(
+    submission_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(require_permission("evaluate_submission")),
+):
+    """Put the flag back (e.g. the review was a mistake); the note is cleared."""
+    submission = _submission_for_judging(db, submission_id, current_user)
+    evaluation = submission.evaluation
+    if not evaluation:
+        raise HTTPException(status_code=400, detail="This submission has not been evaluated yet")
+    evaluation.review_note = None
+    evaluation.reviewed_by = None
+    evaluation.reviewed_at = None
+    evaluation.needs_review = True
+    db.commit()
+    db.refresh(evaluation)
+    logger.info("Review of submission id=%s reopened by user id=%s", submission.id, current_user.id)
+    return evaluation

@@ -539,6 +539,12 @@ def generate_pdf(report: Any) -> bytes:
         w.section("Review flags", accent=RED)
         w.bullets(flags, RED, "!")
 
+    if evaluation.get("review_note"):
+        who = evaluation.get("reviewed_by") or "a judge"
+        when = _fmt_date(evaluation.get("reviewed_at"))
+        w.section("Judge review", accent=GREEN)
+        w.callout(f"{evaluation['review_note']}\n\nReviewed by {who}{f' on {when}' if when else ''}.", GREEN_SOFT, GREEN)
+
     _judge_questions(pdf, w, evaluation.get("judge_questions"))
     _links(pdf, w, report)
     _problem_statement(
