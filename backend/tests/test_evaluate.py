@@ -181,3 +181,31 @@ def test_other_organizer_cannot_evaluate(auth_client, client, participant_client
 
     r = client.post(f"/api/evaluate/tech/{sub_id}", headers={"Authorization": f"Bearer {other_token}"})
     assert r.status_code == 403
+
+
+def test_concurrent_evaluation_returns_saved_score(auth_client, participant_client, monkeypatch):
+    """Two bulk runs scoring the same submission at once: the slower one gets the saved score, not a 500."""
+    from app.models import Evaluation
+    from app.routers import evaluate as evaluate_router
+
+    hid = auth_client.post("/api/hackathons", json={"name": "Race Hack"}).json()["id"]
+    ps_id = auth_client.post(f"/api/hackathons/{hid}/problem-statements", data={"title": "PS"}).json()["id"]
+    team_id = participant_client.post("/api/teams", json={"hackathon_id": hid, "name": "Racers"}).json()["id"]
+    sub_id = participant_client.post("/api/submissions", data={
+        "team_id": team_id, "problem_statement_id": ps_id, "type": "tech", "submission_url": "https://github.com/o/r",
+    }).json()["id"]
+
+    def _racing_evaluator(db, submission, problem_text):
+        fields = dict(percentage=70.0, verdict="EXCELLENT", raw_score=700, multiplier=1.0,
+                      authenticity_band="HIGH_HUMAN_INPUT", category_scores={}, review_flags=[], llm_source="gemini")
+        # The other run saves first...
+        db.add(Evaluation(submission_id=submission.id, total_score=700, **fields))
+        db.commit()
+        # ...then this run tries to save its own score for the same submission.
+        db.add(Evaluation(submission_id=submission.id, total_score=555, **fields))
+        db.commit()
+
+    monkeypatch.setattr(evaluate_router, "evaluate_tech", _racing_evaluator)
+    r = auth_client.post(f"/api/evaluate/tech/{sub_id}")
+    assert r.status_code == 200, r.text
+    assert r.json()["total_score"] == 700

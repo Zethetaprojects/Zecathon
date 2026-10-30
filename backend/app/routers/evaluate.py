@@ -1,4 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 import logging
@@ -54,6 +55,16 @@ def _run_evaluation(db: Session, submission: Submission) -> Evaluation:
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=f"GitHub could not be reached, so nothing was scored. Please try again later. ({exc})",
         )
+    except IntegrityError:
+        # Someone else (another tab, organiser or bulk run) finished scoring this
+        # submission while we were waiting on the AI. Their score stands; return it.
+        db.rollback()
+        existing = db.query(Evaluation).filter(Evaluation.submission_id == submission_id).first()
+        if existing:
+            logger.info("Submission id=%s was scored concurrently; returning the saved evaluation", submission_id)
+            return existing
+        logger.exception("%s evaluation failed for submission id=%s", kind, submission_id)
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Could not save the evaluation; please try again.")
     except Exception as exc:
         db.rollback()
         logger.exception("%s evaluation failed for submission id=%s: %s", kind, submission_id, exc)
