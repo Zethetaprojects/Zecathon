@@ -6,6 +6,7 @@ import { formatError } from '../utils/formatError';
 import PageLayout from '../components/PageLayout';
 import EvaluationReport from '../components/EvaluationReport';
 import LoadingScreen from '../components/LoadingScreen';
+import { safeFileName, saveBlob, uploadUrl } from '../utils/download';
 
 export default function TeamReportPage() {
   const { id } = useParams<{ id: string }>();
@@ -27,18 +28,19 @@ export default function TeamReportPage() {
     if (!report) return;
     try {
       const response = await reportsApi.downloadPdf(submissionId);
-      const blob = new Blob([response.data], { type: 'application/pdf' });
-      const url = window.URL.createObjectURL(blob);
-      const safeName = report.team_name.replace(/[^a-z0-9_-]/gi, '_').toLowerCase();
-      const link = document.createElement('a');
-      link.href = url;
-      link.download = `${safeName || 'team'}-report.pdf`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
+      saveBlob(response.data, `${safeFileName(report.team_name, 'team')}-report.pdf`);
     } catch (err) {
       setError(formatError(err, 'Failed to download PDF'));
+    }
+  };
+
+  const handleDownloadStatement = async () => {
+    if (!report) return;
+    try {
+      const response = await reportsApi.problemStatementPdf(report.problem_statement_id);
+      saveBlob(response.data, `${safeFileName(report.problem_statement_title, 'problem-statement')}.pdf`);
+    } catch (err) {
+      setError(formatError(err, 'Failed to download the problem statement'));
     }
   };
 
@@ -79,12 +81,20 @@ export default function TeamReportPage() {
               ← Back
             </button>
           </div>
-          <button
-            onClick={handleDownloadPdf}
-            className="px-5 py-2.5 rounded neon-btn neon-btn-cyan text-xs micro-lift micro-pop"
-          >
-            Download PDF
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              onClick={handleDownloadStatement}
+              className="px-5 py-2.5 rounded neon-btn neon-btn-ghost text-xs micro-lift micro-pop"
+            >
+              Problem statement PDF
+            </button>
+            <button
+              onClick={handleDownloadPdf}
+              className="px-5 py-2.5 rounded neon-btn neon-btn-cyan text-xs micro-lift micro-pop"
+            >
+              Download report PDF
+            </button>
+          </div>
         </div>
 
         <div className="glass-panel p-6 sm:p-8 border border-neon-cyan/20 mb-6 print-header">
@@ -107,6 +117,29 @@ export default function TeamReportPage() {
             </div>
           </div>
         </div>
+
+        <details className="glass-panel p-5 sm:p-6 mb-6 border border-neon-purple/20 group">
+          <summary className="cursor-pointer flex flex-wrap items-center justify-between gap-2">
+            <span className="text-sm text-white">
+              <span className="text-[10px] uppercase tracking-wider text-neon-purple mr-2">Problem statement</span>
+              {report.problem_statement_title}
+            </span>
+            <span className="text-[11px] text-slate-400 group-open:hidden">Show</span>
+          </summary>
+          <div className="mt-4 text-sm text-slate-300 leading-relaxed whitespace-pre-line">
+            {report.problem_statement_description?.trim() || 'No written description was provided for this statement.'}
+          </div>
+          {report.problem_statement_file && (
+            <a
+              href={uploadUrl(report.problem_statement_file)}
+              target="_blank"
+              rel="noreferrer"
+              className="inline-block mt-4 text-xs text-neon-cyan hover:text-white"
+            >
+              Open the attached brief →
+            </a>
+          )}
+        </details>
 
         {report.evaluation ? (
           <EvaluationReport evaluation={report.evaluation} />

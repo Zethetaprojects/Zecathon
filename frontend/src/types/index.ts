@@ -207,12 +207,17 @@ export interface TeamReportEntry {
   status?: SubmissionStatus | string;
   needs_review?: boolean;
   llm_source?: LlmSource | null;
+  round_number?: number;
+  /** The brief file the organisers attached to the statement, if any. */
+  problem_statement_file?: string | null;
 }
 
 export interface SubmissionReport extends Submission {
   team_name: string;
   problem_statement_title: string;
   hackathon_name: string;
+  problem_statement_description?: string | null;
+  problem_statement_file?: string | null;
 }
 
 export interface HackathonReportSummary {

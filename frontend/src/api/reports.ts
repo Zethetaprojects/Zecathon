@@ -9,4 +9,7 @@ export const reportsApi = {
     api.get(`/reports/submission/${id}/pdf`, {
       responseType: 'blob',
     }),
+  /** The problem statement (title and full description) as a PDF. */
+  problemStatementPdf: (problemStatementId: number) =>
+    api.get(`/reports/problem-statement/${problemStatementId}/pdf`, { responseType: 'blob' }),
 };

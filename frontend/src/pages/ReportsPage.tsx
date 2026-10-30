@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { reportsApi } from '../api/reports';
 import PageLayout from '../components/PageLayout';
@@ -6,6 +6,7 @@ import { HackathonReportSummary, HackathonReportDetail, TeamReportEntry, isFallb
 import { formatError } from '../utils/formatError';
 import BackButton from '../components/BackButton';
 import LoadingScreen from '../components/LoadingScreen';
+import { safeFileName, saveBlob, uploadUrl } from '../utils/download';
 
 function Stat({ label, value }: { label: string; value: string | number }) {
   return (
@@ -92,6 +93,33 @@ export default function ReportsPage() {
   const [detail, setDetail] = useState<HackathonReportDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  // Highest score first; entries that are not scored yet go last.
+  const entries = useMemo(
+    () =>
+      [...(detail?.team_entries ?? [])].sort((a, b) => {
+        if (a.total_score == null && b.total_score == null) return a.team_name.localeCompare(b.team_name);
+        if (a.total_score == null) return 1;
+        if (b.total_score == null) return -1;
+        return b.total_score - a.total_score;
+      }),
+    [detail],
+  );
+  const multiRound = entries.some((e) => (e.round_number ?? 1) > 1);
+
+  const download = async (key: string, request: () => Promise<{ data: BlobPart }>, filename: string) => {
+    setDownloading(key);
+    setError('');
+    try {
+      const res = await request();
+      saveBlob(res.data, filename);
+    } catch (err) {
+      setError(formatError(err, 'Download failed'));
+    } finally {
+      setDownloading(null);
+    }
+  };
 
   useEffect(() => {
     if (!detail) return;
@@ -223,24 +251,33 @@ export default function ReportsPage() {
                 </div>
 
                 <div>
-                  <h3 className="font-pixel text-[10px] text-neon-cyan mb-3 uppercase tracking-wider">Team entries</h3>
+                  <h3 className="font-pixel text-[10px] text-neon-cyan mb-1 uppercase tracking-wider">Team entries</h3>
+                  <p className="text-[11px] text-slate-500 mb-3">
+                    Sorted by score, highest first. "Statement" downloads the problem statement the team worked on.
+                  </p>
                   <div className="overflow-x-auto rounded border border-white/10">
                     <table className="w-full text-left text-sm">
                       <thead className="bg-white/5 text-[10px] uppercase tracking-wider text-slate-400">
                         <tr>
+                          <th className="px-4 py-3">#</th>
                           <th className="px-4 py-3">Team</th>
+                          {multiRound && <th className="px-4 py-3">Round</th>}
                           <th className="px-4 py-3">Problem</th>
                           <th className="px-4 py-3">Type</th>
                           <th className="px-4 py-3">Status</th>
                           <th className="px-4 py-3">Score</th>
                           <th className="px-4 py-3">Verdict</th>
-                          <th className="px-4 py-3 text-right">Report</th>
+                          <th className="px-4 py-3 text-right">Downloads</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {detail.team_entries.map((entry: TeamReportEntry) => (
+                        {entries.map((entry: TeamReportEntry, index: number) => (
                           <tr key={entry.submission_id} className="border-t border-white/10 hover:bg-white/5 transition">
+                            <td className="px-4 py-3 font-mono text-xs text-slate-500">
+                              {entry.total_score != null ? index + 1 : '-'}
+                            </td>
                             <td className="px-4 py-3 text-white font-semibold">{entry.team_name}</td>
+                            {multiRound && <td className="px-4 py-3 text-slate-400 text-xs">R{entry.round_number ?? 1}</td>}
                             <td className="px-4 py-3 text-slate-400">{entry.problem_statement_title}</td>
                             <td className="px-4 py-3 text-slate-400 uppercase text-[10px]">{entry.type}</td>
                             <td className="px-4 py-3 text-slate-400 uppercase text-[10px]">{entry.status}</td>
@@ -258,8 +295,51 @@ export default function ReportsPage() {
                             <td className="px-4 py-3">
                               {entry.verdict ? <VerdictBadge verdict={entry.verdict} /> : <span className="text-slate-500">-</span>}
                             </td>
-                            <td className="px-4 py-3 text-right">
-                              {entry.submission_id && entry.total_score !== undefined ? (
+                            <td className="px-4 py-3">
+                              <div className="flex flex-wrap justify-end gap-1.5">
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  download(
+                                    `ps-${entry.submission_id}`,
+                                    () => reportsApi.problemStatementPdf(entry.problem_statement_id),
+                                    `${safeFileName(entry.problem_statement_title, 'problem-statement')}.pdf`,
+                                  )
+                                }
+                                disabled={downloading === `ps-${entry.submission_id}`}
+                                title={`Download "${entry.problem_statement_title}"`}
+                                className="px-2.5 py-1.5 rounded text-[10px] font-semibold border border-neon-purple/40 text-neon-purple hover:bg-neon-purple/10 transition disabled:opacity-50"
+                              >
+                                {downloading === `ps-${entry.submission_id}` ? '...' : 'Statement'}
+                              </button>
+                              {entry.problem_statement_file && (
+                                <a
+                                  href={uploadUrl(entry.problem_statement_file)}
+                                  target="_blank"
+                                  rel="noreferrer"
+                                  title="The brief file the organisers attached"
+                                  className="px-2.5 py-1.5 rounded text-[10px] font-semibold border border-white/15 text-slate-300 hover:text-white transition"
+                                >
+                                  Brief
+                                </a>
+                              )}
+                              {entry.submission_id && entry.total_score != null && (
+                                <button
+                                  type="button"
+                                  onClick={() =>
+                                    download(
+                                      `pdf-${entry.submission_id}`,
+                                      () => reportsApi.downloadPdf(entry.submission_id),
+                                      `${safeFileName(entry.team_name, 'team')}-report.pdf`,
+                                    )
+                                  }
+                                  disabled={downloading === `pdf-${entry.submission_id}`}
+                                  className="px-2.5 py-1.5 rounded text-[10px] font-semibold border border-neon-cyan/40 text-neon-cyan hover:bg-neon-cyan/10 transition disabled:opacity-50"
+                                >
+                                  {downloading === `pdf-${entry.submission_id}` ? '...' : 'PDF'}
+                                </button>
+                              )}
+                              {entry.submission_id && entry.total_score != null ? (
                                 <Link
                                   to={`/reports/submission/${entry.submission_id}`}
                                   className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-[10px] font-semibold neon-btn neon-btn-cyan micro-lift micro-pop"
@@ -269,9 +349,8 @@ export default function ReportsPage() {
                                   </svg>
                                   View report
                                 </Link>
-                              ) : (
-                                <span className="text-slate-500 text-[10px]">-</span>
-                              )}
+                              ) : null}
+                              </div>
                             </td>
                           </tr>
                         ))}
